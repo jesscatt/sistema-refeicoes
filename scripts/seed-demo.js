@@ -22,7 +22,7 @@ for (const [username, name, role, code] of users) {
   const rest = code ? db.prepare('SELECT id FROM restaurants WHERE code = ?').get(code).id : null;
   db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id) VALUES (?,?,?,?,?)').run(username, name, hashPassword('demo1234'), role, rest);
 }
-db.prepare("UPDATE users SET must_change_password = 0 WHERE username IN ('admin','dev')").run();
+if (!process.env.SEED_DEMO) db.prepare("UPDATE users SET must_change_password = 0 WHERE username IN ('admin','dev')").run();
 
 const first = ['Ana', 'Bruno', 'Carla', 'Daniel', 'Eduarda', 'Felipe', 'Gabriela', 'Henrique', 'Isabela', 'João', 'Larissa', 'Marcos', 'Natália', 'Otávio', 'Paula', 'Rafael', 'Sofia', 'Tiago', 'Vanessa', 'William'];
 const last = ['Silva', 'Souza', 'Oliveira', 'Pereira', 'Lima', 'Carvalho', 'Ferreira', 'Rodrigues', 'Almeida', 'Costa', 'Gomes', 'Martins', 'Rocha', 'Ribeiro', 'Mendes'];

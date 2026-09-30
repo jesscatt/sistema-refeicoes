@@ -36,6 +36,14 @@ Testes das regras de negócio: `npm test`.
 | `ANTHROPIC_API_KEY` | — | Ativa o Assistente IA |
 | `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Modelo usado pelo assistente |
 
+### Publicar no Railway (ambiente de testes)
+
+1. Em railway.app, entre com o GitHub e crie **New Project → Deploy from GitHub repo → sistema-refeicoes**.
+2. No serviço, em **Settings → Volumes**, adicione um volume montado em `/app/data` (é onde fica o banco; sem isso os dados somem a cada atualização).
+3. Em **Variables**, defina `ADMIN_PASSWORD`, `DEV_PASSWORD` e `COOKIE_SECURE=1`.
+4. Em **Settings → Networking**, clique em **Generate Domain** para ter o link.
+5. Opcional: para já ter usuários de teste e reservas de exemplo, defina `SEED_DEMO=1` no primeiro deploy e depois remova.
+
 Com Docker: `docker build -t mesa . && docker run -p 3000:3000 -v mesa-data:/app/data mesa`.
 
 ## Perfis

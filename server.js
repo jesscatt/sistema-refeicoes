@@ -5,6 +5,7 @@ const http = require('node:http');
 const path = require('node:path');
 
 require('./src/db');
+if (process.env.SEED_DEMO === '1') require('./scripts/seed-demo');
 require('./src/routes/auth');
 require('./src/routes/reservations');
 require('./src/routes/service');

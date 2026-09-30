@@ -5,6 +5,8 @@ const { BOARDS, MEAL_LABEL } = require('../util');
 
 const attempts = new Map(); // ip|user -> {n, until}
 
+route('GET', '/api/health', { auth: false }, () => ({ ok: true }));
+
 route('POST', '/api/login', { auth: false }, ({ body, res, ip }) => {
   const username = String(body.username || '').trim();
   const key = `${ip}|${username.toLowerCase()}`;
