@@ -66,7 +66,7 @@ export async function render(el) {
           <span style="min-width:0"><div class="nm">${esc(g.guest_name)}</div><div class="sub">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)}${g.origin !== 'auto' && g.origin !== 'manual' ? ` · via ${esc(g.origin)}` : ''}
             ${g.att_status ? ` · <b style="color:var(--ok)">✓ ${g.att_restaurant_id === r.id ? 'veio' : 'foi a outro'}</b>` : ''}</div></span>
           <span class="row" style="gap:4px">
-            ${g.locked ? (edit ? `<button class="icon-btn" title="Destravar" data-unlock="${g.assignment_id}" style="color:var(--terracotta)">${icon('lock')}</button>` : `<span title="Travado" style="color:var(--terracotta)">${icon('lock')}</span>`) : ''}
+            ${g.locked ? (edit ? `<button class="icon-btn" title="Destravar" data-unlock="${g.assignment_id}" style="color:var(--primary)">${icon('lock')}</button>` : `<span title="Travado" style="color:var(--primary)">${icon('lock')}</span>`) : ''}
             ${edit && !g.att_status ? `<select data-asg="${g.assignment_id}" aria-label="Mover">${serving.map((o) => `<option value="${o.id}" ${o.id === r.id ? 'selected' : ''}>${esc(o.code)}</option>`).join('')}</select>` : ''}
           </span>
         </div>`).join('') || '<div class="empty">Ninguém aqui.</div>'}</div>

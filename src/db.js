@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS restaurants (
   id INTEGER PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  color TEXT NOT NULL DEFAULT '#b5532c',
+  color TEXT NOT NULL DEFAULT '#00889b',
   share_cafe REAL NOT NULL DEFAULT 0,
   share_almoco REAL NOT NULL DEFAULT 0,
   share_janta REAL NOT NULL DEFAULT 0,
@@ -248,9 +248,13 @@ function seed() {
   if (!db.prepare('SELECT COUNT(*) n FROM restaurants').get().n) {
     const ins = db.prepare(`INSERT INTO restaurants(code, name, color, share_cafe, share_almoco, share_janta) VALUES (?,?,?,?,?,?)`);
     // Regra: Di Giordana 60%; Paradiso e Maestro dividem os 40% (20% cada). Café só Di Giordana (60%) e Paradiso (40%).
-    ins.run('DG', 'Di Giordana', '#b5532c', 0.6, 0.6, 0.6);
-    ins.run('PAR', 'Paradiso', '#6b7f3a', 0.4, 0.2, 0.2);
-    ins.run('MAE', 'Churrascaria Maestro', '#8a3b2e', 0, 0.2, 0.2);
+    ins.run('DG', 'Di Giordana', '#00889b', 0.6, 0.6, 0.6);
+    ins.run('PAR', 'Paradiso', '#4f8f2f', 0.4, 0.2, 0.2);
+    ins.run('MAE', 'Churrascaria Maestro', '#a4502d', 0, 0.2, 0.2);
+  }
+  // Cores antigas do primeiro tema -> cores da marca Termas Romanas
+  for (const [oldC, newC] of [['#b5532c', '#00889b'], ['#6b7f3a', '#4f8f2f'], ['#8a3b2e', '#a4502d']]) {
+    db.prepare('UPDATE restaurants SET color = ? WHERE lower(color) = ?').run(newC, oldC);
   }
   if (!db.prepare('SELECT COUNT(*) n FROM meal_times').get().n) {
     const ins = db.prepare('INSERT INTO meal_times(meal, label, start, end, notify_before_min, sort) VALUES (?,?,?,?,?,?)');

@@ -48,7 +48,8 @@ function renderLogin(msg = '') {
   root.innerHTML = `
   <div class="login">
     <div class="login-card">
-      <div class="brand"><img src="/img/icon.svg" alt=""><div><div class="t">Mesa</div><div class="s">Controle de refeições</div></div></div>
+      <img class="login-logo" src="/img/logo-cor.png" alt="Termas Romanas · Recanto Maestro">
+      <div class="login-title">Controle de refeições</div>
       <form id="login-form" autocomplete="on">
         <label class="f">Usuário<input class="input" name="username" autocomplete="username" required autofocus></label>
         <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
@@ -86,7 +87,8 @@ function renderShell() {
   root.innerHTML = `
   <div class="app" id="app">
     <aside class="side">
-      <div class="brand"><img src="/img/icon.svg" alt=""><div><div class="t" style="color:#fff">Mesa</div><div class="s">Controle de refeições</div></div></div>
+      <div class="brand"><img src="/img/emblema-branco.png" alt=""><div><div class="t">Termas Romanas</div><div class="s">Controle de refeições</div></div></div>
+      <div class="meander"></div>
       <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${n.label}</span></a>`)).join('')}</nav>
       <div class="me">
         <b>${esc(state.me.name)}</b>
@@ -134,7 +136,7 @@ function tickClock() {
   }
   if (!txt) txt = `${mealIcon('cafe')} Próximo: café amanhã às ${state.meta.meal_times[0].start}`;
   const nm = document.getElementById('now-meal');
-  if (nm.dataset.t !== txt) { nm.innerHTML = txt; nm.dataset.t = txt; nm.querySelector('svg').setAttribute('style', 'width:20px;height:20px;color:var(--terracotta)'); }
+  if (nm.dataset.t !== txt) { nm.innerHTML = txt; nm.dataset.t = txt; nm.querySelector('svg').setAttribute('style', 'width:20px;height:20px;color:var(--primary)'); }
 }
 setInterval(tickClock, 15000);
 
@@ -169,7 +171,7 @@ async function pollNotifs() {
           const t = toast(n.body || '', 'notif', n.title);
           t.onclick = () => { if (n.link) location.hash = n.link; markRead([n.id]); t.remove(); };
           if ('Notification' in window && Notification.permission === 'granted') {
-            try { new Notification(n.title, { body: n.body || '', icon: '/img/icon.svg', tag: 'mesa-' + n.id }); } catch {}
+            try { new Notification(n.title, { body: n.body || '', icon: '/img/favicon.png', tag: 'refeicoes-' + n.id }); } catch {}
           }
         }
         if (fresh.some((x) => !x.read)) beep();

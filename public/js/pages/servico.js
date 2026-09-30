@@ -93,7 +93,7 @@ export async function render(el) {
         return `<div class="item ${here ? 'done' : ''} ${other ? 'other' : ''}" data-res="${g.reservation_id}" data-att="${here ? g.attendance_id : ''}" ${other ? 'data-other' : ''}>
           <span class="tick">${icon('check')}</span>
           <span class="room">${esc(g.room)}</span>
-          <span style="min-width:0"><span class="nm">${esc(g.guest_name)}</span><br><span class="muted small">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)} ${other ? ` · <b style="color:var(--wine)">foi ao ${esc(g.att_restaurant.name)}</b>` : ''}</span></span>
+          <span style="min-width:0"><span class="nm">${esc(g.guest_name)}</span><br><span class="muted small">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)} ${other ? ` · <b style="color:var(--danger)">foi ao ${esc(g.att_restaurant.name)}</b>` : ''}</span></span>
           <span class="muted small">${here ? `✓ ${esc(g.att_at.slice(11, 16))}${g.att_adults + g.att_children !== g.adults + g.children ? ` · ${g.att_adults + g.att_children} pax` : ''}` : ''}</span>
         </div>`;
       }).join('')}</div>`;

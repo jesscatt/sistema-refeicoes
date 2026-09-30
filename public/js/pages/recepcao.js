@@ -39,7 +39,7 @@ export async function render(el) {
       <div class="card"><div class="table-wrap"><table class="t">
         <thead><tr><th>Quarto</th><th>Hóspede</th><th>Pax</th><th>Pensão</th><th>Estadia</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
         <tbody>${list.map((r) => `<tr class="click" data-id="${r.id}">
-          <td class="room">${esc(r.room)}${r.old_room ? `<div class="small" style="color:var(--terracotta-d);font-weight:600">era ${esc(r.old_room)}</div>` : ''}</td>
+          <td class="room">${esc(r.room)}${r.old_room ? `<div class="small" style="color:var(--primary-d);font-weight:600">era ${esc(r.old_room)}</div>` : ''}</td>
           <td><b>${esc(r.guest_name)}</b><div class="muted small">reserva ${esc(r.reservation_number)}</div></td>
           <td>${paxTxt(r.adults, r.children)}</td>
           <td>${boardTag(r.board)}</td>

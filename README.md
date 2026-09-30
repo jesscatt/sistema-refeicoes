@@ -1,4 +1,4 @@
-# Mesa · Controle de Refeições
+# Refeições · Termas Romanas (Recanto Maestro)
 
 Sistema web para organizar a pensão alimentar dos hóspedes entre os restaurantes **Di Giordana**, **Paradiso** e **Churrascaria Maestro**: importa a planilha de reservas, divide os clientes pela regra 60/20/20, avisa os restaurantes 40 minutos antes de cada refeição, registra quem veio comer, junta previsto × real numa planilha só e gera o faturamento.
 
