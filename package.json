@@ -1,0 +1,17 @@
+{
+  "name": "sistema-refeicoes",
+  "version": "0.1.0",
+  "description": "Gestão de pensão alimentar: importação de reservas, divisão entre restaurantes, marcação de refeições, controle previsto x real e faturamento.",
+  "main": "server.js",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server.js",
+    "demo": "node --disable-warning=ExperimentalWarning scripts/seed-demo.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "license": "UNLICENSED"
+}
