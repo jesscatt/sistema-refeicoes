@@ -1,0 +1,258 @@
+import { state, esc, get, post, api, toast, fail, icon, mealIcon, MEAL_FULL, ROLE_LABEL, modal } from './ui.js';
+
+const root = document.getElementById('root');
+
+// Menu por perfil
+const NAV = [
+  { path: 'painel', label: 'Painel', icon: 'home', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
+  { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: ['admin', 'refeicao', 'restaurante'] },
+  { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: ['admin', 'supervisor', 'refeicao'] },
+  { path: 'recepcao', label: 'Recepção · Cartões', icon: 'card', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
+  { path: 'reservas', label: 'Reservas', icon: 'book', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
+  { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: ['admin', 'refeicao'] },
+  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante'] },
+  { sep: 'Controle' },
+  { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
+  { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao'] },
+  { path: 'ia', label: 'Assistente IA', icon: 'spark', roles: ['admin', 'supervisor', 'refeicao'] },
+  { sep: 'Administração', roles: ['admin', 'supervisor'] },
+  { path: 'usuarios', label: 'Usuários', icon: 'users', roles: ['admin'] },
+  { path: 'config', label: 'Configurações', icon: 'gear', roles: ['admin'] },
+  { path: 'logs', label: 'Logs', icon: 'log', roles: ['admin', 'supervisor'] },
+];
+
+const PAGES = {
+  painel: () => import('./pages/painel.js'),
+  servico: () => import('./pages/servico.js'),
+  distribuicao: () => import('./pages/distribuicao.js'),
+  recepcao: () => import('./pages/recepcao.js'),
+  reservas: () => import('./pages/reservas.js'),
+  importar: () => import('./pages/importar.js'),
+  trocas: () => import('./pages/trocas.js'),
+  controle: () => import('./pages/controle.js'),
+  faturamento: () => import('./pages/faturamento.js'),
+  ia: () => import('./pages/ia.js'),
+  usuarios: () => import('./pages/usuarios.js'),
+  config: () => import('./pages/config.js'),
+  logs: () => import('./pages/logs.js'),
+  senha: () => import('./pages/senha.js'),
+};
+
+function homeFor(role) {
+  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : 'painel';
+}
+
+// ---------- Login ----------
+function renderLogin(msg = '') {
+  stopPolling();
+  root.innerHTML = `
+  <div class="login">
+    <div class="login-card">
+      <div class="login-hero">
+        <img class="login-logo" src="/img/logo-branco.png" alt="Termas Romanas · Recanto Maestro">
+        <div class="login-title">Controle de refeições</div>
+      </div>
+      <div class="login-body">
+      <form id="login-form" autocomplete="on">
+        <label class="f">Usuário<input class="input" name="username" autocomplete="username" required autofocus></label>
+        <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
+        <div class="banner danger ${msg ? '' : 'hidden'}" id="login-msg">${icon('alert')}<span>${esc(msg)}</span></div>
+        <button class="btn primary lg" type="submit">Entrar</button>
+      </form>
+      <div class="login-meals">
+        <span>${mealIcon('cafe')} 07:30–10:00</span><span>${mealIcon('almoco')} 12:00–14:30</span><span>${mealIcon('janta')} 19:00–22:30</span>
+      </div>
+      </div>
+    </div>
+  </div>`;
+  root.querySelectorAll('.login-meals svg').forEach((s) => { s.style.width = '16px'; s.style.height = '16px'; });
+  root.querySelector('#login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    try {
+      await api('POST', '/api/login', { username: f.get('username'), password: f.get('password') });
+      await boot();
+    } catch (err) {
+      const m = root.querySelector('#login-msg');
+      m.classList.remove('hidden'); m.querySelector('span').textContent = err.message;
+      btn.disabled = false;
+    }
+  });
+}
+
+// ---------- Estrutura ----------
+function renderShell() {
+  const role = state.me.role;
+  const items = NAV.filter((n) => !n.roles || n.roles.includes(role));
+  // remove separadores sem itens depois
+  const nav = items.filter((n, i) => !n.sep || (items[i + 1] && !items[i + 1].sep));
+  root.innerHTML = `
+  <div class="app" id="app">
+    <aside class="side">
+      <div class="brand"><img src="/img/emblema-branco.png" alt=""><div><div class="t">Termas Romanas</div><div class="s">Controle de refeições</div></div></div>
+      <div class="meander"></div>
+      <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${n.label}</span></a>`)).join('')}</nav>
+      <div class="me">
+        <b>${esc(state.me.name)}</b>
+        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}</span>
+        <div class="row"><button id="btn-pw">Senha</button><button id="btn-out">Sair</button></div>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn burger" id="burger" aria-label="Menu">${icon('menu')}</button>
+        <div class="now-meal" id="now-meal"></div>
+        <div class="grow"></div>
+        <span class="clock" id="clock"></span>
+        <button class="icon-btn bell" id="bell" aria-label="Avisos">${icon('bell')}<span class="count hidden" id="bell-count"></span></button>
+      </header>
+      <div id="notif-panel" class="notif-panel hidden"></div>
+      <main class="content" id="page"></main>
+    </div>
+  </div>
+  <div class="print-cards" id="print-area"></div>`;
+  root.querySelector('#btn-out').onclick = async () => { try { await post('/api/logout'); } catch {} renderLogin(); };
+  root.querySelector('#btn-pw').onclick = () => { location.hash = '#/senha'; };
+  root.querySelector('#burger').onclick = () => root.querySelector('#app').classList.toggle('menu-open');
+  root.querySelector('#bell').onclick = toggleNotifPanel;
+  root.querySelector('.side').addEventListener('click', (e) => { if (e.target.closest('a')) root.querySelector('#app').classList.remove('menu-open'); });
+  tickClock();
+  startPolling();
+}
+
+function tickClock() {
+  const el = document.getElementById('clock');
+  if (!el) return;
+  const d = new Date();
+  el.textContent = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) + ' · ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const now = d.getHours() * 60 + d.getMinutes();
+  const toMin = (hm) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+  let txt = '';
+  for (const t of state.meta.meal_times) {
+    if (now >= toMin(t.start) && now <= toMin(t.end)) { txt = `${mealIcon(t.meal)} ${MEAL_FULL[t.meal]} em serviço até ${t.end}`; break; }
+    if (now < toMin(t.start)) {
+      const open = toMin(t.start) - t.notify_before_min;
+      txt = `${mealIcon(t.meal)} Próximo: ${MEAL_FULL[t.meal]} às ${t.start}` + (now >= open ? ' · lista liberada' : ` · lista às ${String(Math.floor(open / 60)).padStart(2, '0')}:${String(open % 60).padStart(2, '0')}`);
+      break;
+    }
+  }
+  if (!txt) txt = `${mealIcon('cafe')} Próximo: café amanhã às ${state.meta.meal_times[0].start}`;
+  const nm = document.getElementById('now-meal');
+  if (nm.dataset.t !== txt) { nm.innerHTML = txt; nm.dataset.t = txt; nm.querySelector('svg').setAttribute('style', 'width:20px;height:20px;color:var(--primary)'); }
+}
+setInterval(tickClock, 15000);
+
+// ---------- Avisos ----------
+let pollTimer = null, lastNotifId = 0, notifs = [], firstPoll = true;
+function stopPolling() { clearInterval(pollTimer); pollTimer = null; firstPoll = true; lastNotifId = 0; notifs = []; }
+function startPolling() { stopPolling(); pollNotifs(); pollTimer = setInterval(pollNotifs, 30000); }
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [660, 880].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + i * 0.18 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.18 + 0.16);
+      o.start(ctx.currentTime + i * 0.18); o.stop(ctx.currentTime + i * 0.18 + 0.2);
+    });
+  } catch {}
+}
+
+async function pollNotifs() {
+  try {
+    const rows = await get('/api/notifications?since=' + lastNotifId);
+    if (rows.length) {
+      const fresh = rows.filter((r) => r.id > lastNotifId);
+      lastNotifId = Math.max(lastNotifId, ...rows.map((r) => r.id));
+      notifs = [...fresh, ...notifs].slice(0, 40);
+      if (!firstPoll) {
+        for (const n of fresh.filter((x) => !x.read).slice(0, 3)) {
+          const t = toast(n.body || '', 'notif', n.title);
+          t.onclick = () => { if (n.link) location.hash = n.link; markRead([n.id]); t.remove(); };
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification(n.title, { body: n.body || '', icon: '/img/favicon.png', tag: 'refeicoes-' + n.id }); } catch {}
+          }
+        }
+        if (fresh.some((x) => !x.read)) beep();
+      }
+    }
+    firstPoll = false;
+    updateBell();
+  } catch {}
+}
+
+function updateBell() {
+  const unread = notifs.filter((n) => !n.read).length;
+  const c = document.getElementById('bell-count');
+  if (!c) return;
+  c.textContent = unread > 9 ? '9+' : unread;
+  c.classList.toggle('hidden', !unread);
+}
+
+async function markRead(ids) {
+  notifs.forEach((n) => { if (ids.includes(n.id)) n.read = 1; });
+  updateBell();
+  try { await post('/api/notifications/read', { ids }); } catch {}
+}
+
+function toggleNotifPanel() {
+  const p = document.getElementById('notif-panel');
+  if (!p.classList.contains('hidden')) { p.classList.add('hidden'); return; }
+  const perm = 'Notification' in window && Notification.permission === 'default';
+  p.innerHTML = `<div class="card-head"><h3 class="grow">Avisos</h3>${notifs.some((n) => !n.read) ? '<button class="btn sm" id="n-all">Marcar como lidos</button>' : ''}</div>
+    ${perm ? `<div class="n" id="n-perm"><b>Ativar avisos na tela do computador</b><small>Recomendado para os restaurantes: aparece mesmo com o sistema minimizado.</small></div>` : ''}
+    ${notifs.length ? notifs.map((n) => `<div class="n ${n.read ? '' : 'unread'}" data-id="${n.id}" data-link="${esc(n.link || '')}"><b>${esc(n.title)}</b>${n.body ? `<div>${esc(n.body)}</div>` : ''}<small>${esc(n.created_at.slice(8, 10) + '/' + n.created_at.slice(5, 7) + ' ' + n.created_at.slice(11, 16))}</small></div>`).join('') : '<div class="empty">Nenhum aviso nos últimos dias.</div>'}`;
+  p.classList.remove('hidden');
+  p.querySelector('#n-all')?.addEventListener('click', () => { markRead(notifs.map((n) => n.id)); p.classList.add('hidden'); });
+  p.querySelector('#n-perm')?.addEventListener('click', async () => { await Notification.requestPermission(); p.classList.add('hidden'); });
+  p.querySelectorAll('.n[data-id]').forEach((el) => el.addEventListener('click', () => {
+    markRead([Number(el.dataset.id)]);
+    if (el.dataset.link) location.hash = el.dataset.link;
+    p.classList.add('hidden');
+  }));
+}
+document.addEventListener('click', (e) => {
+  const p = document.getElementById('notif-panel');
+  if (p && !p.classList.contains('hidden') && !e.target.closest('#notif-panel') && !e.target.closest('#bell')) p.classList.add('hidden');
+});
+
+// ---------- Rotas ----------
+let cleanup = null;
+async function route() {
+  if (!state.me) return;
+  let path = (location.hash.replace(/^#\/?/, '').split('?')[0]) || '';
+  if (state.me.must_change_password) path = 'senha';
+  const allowed = (p) => p === 'senha' || NAV.some((n) => n.path === p && n.roles.includes(state.me.role));
+  if (!PAGES[path] || !allowed(path)) { location.replace('#/' + homeFor(state.me.role)); return; }
+  document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.path === path));
+  if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
+  const page = document.getElementById('page');
+  page.innerHTML = '<div class="empty">Carregando…</div>';
+  try {
+    const mod = await PAGES[path]();
+    cleanup = (await mod.render(page)) || null;
+  } catch (e) {
+    page.innerHTML = `<div class="banner danger">${icon('alert')}<span>${esc(e.message)}</span></div>`;
+  }
+  window.scrollTo(0, 0);
+}
+// (setHashParams usa replaceState, que não dispara hashchange; então todo hashchange é navegação)
+window.addEventListener('hashchange', route);
+window.addEventListener('logout', () => { state.me = null; renderLogin('Sua sessão expirou. Entre novamente.'); });
+
+async function boot() {
+  try {
+    state.me = await get('/api/me');
+    state.meta = await get('/api/meta');
+  } catch { renderLogin(); return; }
+  renderShell();
+  route();
+}
+export function refreshMe() { return get('/api/me').then((m) => { state.me = m; }); }
+window.__mesa = { route, refreshMe, boot };
+boot();
