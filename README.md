@@ -44,7 +44,7 @@ Testes das regras de negócio: `npm test`.
 4. Em **Settings → Networking**, clique em **Generate Domain** para ter o link.
 5. Opcional: para já ter usuários de teste e reservas de exemplo, defina `SEED_DEMO=1` no primeiro deploy e depois remova.
 
-Com Docker: `docker build -t mesa . && docker run -p 3000:3000 -v mesa-data:/app/data mesa`.
+Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes-data:/app/data refeicoes` (o volume é informado no `docker run`; o Dockerfile não declara `VOLUME` porque o Railway não aceita).
 
 ## Perfis
 
