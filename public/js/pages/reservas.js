@@ -1,4 +1,4 @@
-import { get, post, esc, icon, fail, toast, can, state, boardTag, paxTxt, br, modal, download } from '../ui.js';
+import { get, post, esc, icon, fail, toast, can, state, boardTag, paxTxt, br, modal, download, roomHtml } from '../ui.js';
 import { readParams, syncParams } from './common.js';
 import { openReservation } from './plan.js';
 
@@ -12,7 +12,7 @@ export async function render(el) {
     const d = await get('/api/reservations?' + qs);
     const off = Number(st.offset);
     el.querySelector('#tbody').innerHTML = d.rows.map((r) => `<tr class="click" data-id="${r.id}">
-      <td>${esc(r.reservation_number)}</td><td class="room">${esc(r.room)}</td><td><b>${esc(r.guest_name)}</b>${r.room_changes ? ` <span class="badge terra">${icon('swap').replace('<svg', '<svg style="width:12px;height:12px"')} ${r.room_changes}</span>` : ''}</td>
+      <td>${esc(r.reservation_number)}</td><td class="room">${roomHtml(r.room)}</td><td><b>${esc(r.guest_name)}</b>${r.room_changes ? ` <span class="badge terra">${icon('swap').replace('<svg', '<svg style="width:12px;height:12px"')} ${r.room_changes}</span>` : ''}</td>
       <td>${esc(br(r.checkin))}</td><td>${esc(br(r.checkout))}</td><td>${boardTag(r.board)}</td><td>${paxTxt(r.adults, r.children)}</td>
       <td><span class="badge">${esc(r.source)}</span></td><td>${r.status === 'ativa' ? '<span class="badge ok">ativa</span>' : '<span class="badge danger">cancelada</span>'}</td></tr>`).join('')
       || '<tr><td colspan="9"><div class="empty">Nenhuma reserva encontrada.</div></td></tr>';
@@ -30,7 +30,7 @@ export async function render(el) {
     </div>
     <div class="card pad" style="margin-bottom:14px">
       <div class="row">
-        <input class="input" id="q" placeholder="Buscar por nome, quarto ou nº da reserva" value="${esc(st.q)}" style="max-width:340px">
+        <input class="input" id="q" placeholder="Nome, quarto e torre (101A) ou nº da reserva" value="${esc(st.q)}" style="max-width:340px">
         <label class="row small" style="gap:6px">Hospedados em <input type="date" class="input sm" id="date" value="${esc(st.date)}" style="width:auto"></label>
         <select class="input sm" id="board" style="width:auto"><option value="">Todas as pensões</option>${Object.keys(state.meta.boards).map((b) => `<option ${b === st.board ? 'selected' : ''}>${b}</option>`).join('')}</select>
         <select class="input sm" id="status" style="width:auto">${[['ativa', 'Ativas'], ['cancelada', 'Canceladas'], ['', 'Todas']].map(([v, l]) => `<option value="${v}" ${v === st.status ? 'selected' : ''}>${l}</option>`).join('')}</select>

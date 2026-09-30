@@ -1,4 +1,4 @@
-import { get, post, put, esc, icon, mealIcon, MEALS, MEAL_LABEL, MEAL_FULL, modal, toast, fail, can, state, boardTag, br, dayLabel, restTag, confirmBox } from '../ui.js';
+import { get, post, put, esc, icon, mealIcon, MEALS, MEAL_LABEL, MEAL_FULL, modal, toast, fail, can, state, boardTag, br, dayLabel, restTag, confirmBox, roomHtml } from '../ui.js';
 
 function cell(m) {
   if (!m.included) return `<span class="muted small">${m.reason === 'nao_inclui' ? 'não incluso' : '—'}</span>`;
@@ -20,7 +20,7 @@ export function printCards(items) {
   const area = document.getElementById('print-area');
   area.innerHTML = items.map(({ reservation: r, plan }) => `
     <div class="pcard">
-      <div style="display:flex;align-items:center;gap:14px;border-bottom:1px solid #999;padding-bottom:8px;margin-bottom:8px"><img src="/img/logo-cor.png" alt="" style="height:54px"><div><div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase">Suas refeições</div><h2>Quarto ${esc(r.room)} · ${esc(r.guest_name)}</h2></div></div>
+      <div style="display:flex;align-items:center;gap:14px;border-bottom:1px solid #999;padding-bottom:8px;margin-bottom:8px"><img src="/img/logo-cor.png" alt="" style="height:54px"><div><div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase">Suas refeições</div><h2>Quarto ${roomHtml(r.room)} · ${esc(r.guest_name)}</h2></div></div>
       <div>Reserva ${esc(r.reservation_number)} · ${esc(br(r.checkin))} a ${esc(br(r.checkout))} · ${esc(r.board)} (${esc(state.meta.boards[r.board].label)}) · ${r.adults} adulto(s)${r.children ? `, ${r.children} criança(s)` : ''}</div>
       <table><thead><tr><th>Dia</th>${MEALS.map((m) => `<th>${MEAL_FULL[m]}<br><small>${esc(state.meta.meal_times.find((t) => t.meal === m).start)}–${esc(state.meta.meal_times.find((t) => t.meal === m).end)}</small></th>`).join('')}</tr></thead>
       <tbody>${plan.filter((d) => MEALS.some((m) => d.meals[m].included)).map((d) => `<tr><td>${esc(dayLabel(d.date))}</td>${MEALS.map((m) => `<td>${d.meals[m].included ? esc(d.meals[m].restaurant ? d.meals[m].restaurant.name : '—') : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table>
@@ -37,7 +37,7 @@ export async function openReservation(id, onChange = () => {}) {
   const boards = state.meta.boards;
   const { el, close } = modal({
     wide: true,
-    title: `Quarto ${esc(r.room)} · ${esc(r.guest_name)}`,
+    title: `Quarto ${roomHtml(r.room)} · ${esc(r.guest_name)}`,
     body: `
       <div class="row" style="margin-bottom:14px">
         <span class="badge">Reserva ${esc(r.reservation_number)}</span> ${boardTag(r.board)} <span class="muted">${esc(boards[r.board].label)}</span>

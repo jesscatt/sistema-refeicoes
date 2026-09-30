@@ -1,7 +1,7 @@
 'use strict';
 const { route, HttpError } = require('../http');
 const { db, tx, audit } = require('../db');
-const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS } = require('../util');
+const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS, roomMatch, roomKey } = require('../util');
 const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible } = require('../meals');
 const { publishList, currentMeal } = require('../publish');
 const { restMap } = require('./reservations');
@@ -52,7 +52,7 @@ route('GET', '/api/distribution', { roles: VIEW }, ({ query }) => {
       r.board, r.adults, r.children, t.restaurant_id att_restaurant_id, t.status att_status
     FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     LEFT JOIN attendance t ON t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal
-    WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa' ORDER BY CAST(r.room AS INTEGER), r.room`).all(date, meal);
+    WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa' ORDER BY room_sort(r.room)`).all(date, meal);
   const pub = db.prepare('SELECT m.*, u.name published_by_name FROM meal_lists m LEFT JOIN users u ON u.id = m.published_by WHERE date = ? AND meal = ?').get(date, meal);
   return { date, meal, published: pub || null, summary: daySummary(date, meal), rows };
 });
@@ -95,7 +95,7 @@ route('GET', '/api/distribution/export.csv', { roles: [...VIEW, 'restaurante'] }
   const rm = restMap();
   const rows = db.prepare(`SELECT a.restaurant_id, r.* FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa' ${restId ? 'AND a.restaurant_id = ' + restId : ''}
-    ORDER BY a.restaurant_id, CAST(r.room AS INTEGER), r.room`).all(date, meal);
+    ORDER BY a.restaurant_id, room_sort(r.room)`).all(date, meal);
   return {
     __raw: toCSV(['Restaurante', 'Quarto', 'Nome', 'Reserva', 'Pensão', 'Adultos', 'Crianças', 'Pax'],
       rows.map((r) => [rm[r.restaurant_id].name, r.room, r.guest_name, r.reservation_number, r.board, r.adults, r.children, r.adults + r.children])),
@@ -116,7 +116,7 @@ route('GET', '/api/service', { roles: SERVICE }, ({ query, user }) => {
     FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     LEFT JOIN attendance t ON t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal
     WHERE a.date = ? AND a.meal = ? AND a.restaurant_id = ? AND r.status = 'ativa'
-    ORDER BY CAST(r.room AS INTEGER), r.room`).all(date, meal, restId)
+    ORDER BY room_sort(r.room)`).all(date, meal, restId)
     .map((x) => ({ ...x, att_restaurant: x.att_restaurant_id ? rm[x.att_restaurant_id] : null }));
   const extras = db.prepare(`
     SELECT t.id attendance_id, t.created_at att_at, t.adults att_adults, t.children att_children, t.assigned_restaurant_id,
@@ -136,8 +136,9 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
   const q = String(query.q || '').trim();
   if (q.length < 1) return { results: [], moved: [] };
   const rm = restMap();
+  const match = roomMatch('room', q);
   const rows = db.prepare(`SELECT * FROM reservations WHERE checkin <= ? AND checkout >= ?
-    AND (room = ? OR reservation_number = ? OR guest_name LIKE ?) ORDER BY status, CAST(room AS INTEGER) LIMIT 30`).all(date, date, q, q, `%${q}%`);
+    AND (${match.sql} OR reservation_number = ? OR guest_name LIKE ?) ORDER BY status, room_sort(room) LIMIT 30`).all(date, date, ...match.args, q, `%${q}%`);
   const results = rows.map((r) => {
     const a = db.prepare('SELECT * FROM assignments WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
     const t = db.prepare('SELECT * FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
@@ -156,7 +157,7 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
   });
   // Trocas de quarto recentes: avisa se o número digitado era o quarto antigo
   const moved = db.prepare(`SELECT c.old_room, c.new_room, c.created_at, r.guest_name FROM room_changes c JOIN reservations r ON r.id = c.reservation_id
-    WHERE c.old_room = ? AND r.checkout >= ? AND r.status = 'ativa' ORDER BY c.id DESC LIMIT 5`).all(q, date);
+    WHERE room_key(c.old_room) = ? AND room_key(r.room) != ? AND r.checkout >= ? AND r.status = 'ativa' ORDER BY c.id DESC LIMIT 5`).all(roomKey(q), roomKey(q), date);
   if (!results.length && !moved.length) {
     return { results, moved, notFound: `Nenhum hóspede hospedado com "${q}" em ${date.split('-').reverse().join('/')}.` };
   }

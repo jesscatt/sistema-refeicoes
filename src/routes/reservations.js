@@ -1,7 +1,7 @@
 'use strict';
 const { route, HttpError } = require('../http');
 const { db, tx, audit, notify } = require('../db');
-const { MEALS, BOARDS, addDays, todayISO, isISODate, toCSV, MEAL_LABEL } = require('../util');
+const { MEALS, BOARDS, addDays, todayISO, isISODate, toCSV, MEAL_LABEL, roomKey, roomMatch } = require('../util');
 const { syncReservation, boardHas, inWindow } = require('../meals');
 const { parseRows, upsertReservations, normalizeRecord } = require('../importer');
 const { readSpreadsheet } = require('../xlsx');
@@ -43,8 +43,9 @@ function stayPlan(res) {
 route('GET', '/api/reservations', { roles: VIEW }, ({ query }) => {
   const where = [], args = [];
   if (query.q) {
-    where.push('(r.reservation_number LIKE ? OR r.guest_name LIKE ? OR r.room = ?)');
-    args.push(`%${query.q}%`, `%${query.q}%`, query.q);
+    const rm = roomMatch('r.room', query.q);
+    where.push(`(r.reservation_number LIKE ? OR r.guest_name LIKE ? OR ${rm.sql})`);
+    args.push(`%${query.q}%`, `%${query.q}%`, ...rm.args);
   }
   if (query.date && isISODate(query.date)) { where.push('r.checkin <= ? AND r.checkout >= ?'); args.push(query.date, query.date); }
   if (query.status) { where.push('r.status = ?'); args.push(query.status); }
@@ -54,12 +55,12 @@ route('GET', '/api/reservations', { roles: VIEW }, ({ query }) => {
   const w = where.length ? 'WHERE ' + where.join(' AND ') : '';
   const total = db.prepare(`SELECT COUNT(*) n FROM reservations r ${w}`).get(...args).n;
   const rows = db.prepare(`SELECT r.*, (SELECT COUNT(*) FROM room_changes c WHERE c.reservation_id = r.id) room_changes
-    FROM reservations r ${w} ORDER BY r.checkin DESC, CAST(r.room AS INTEGER), r.room LIMIT ? OFFSET ?`).all(...args, limit, offset);
+    FROM reservations r ${w} ORDER BY r.checkin DESC, room_sort(r.room) LIMIT ? OFFSET ?`).all(...args, limit, offset);
   return { total, rows };
 });
 
 route('GET', '/api/reservations/export.csv', { roles: ['admin', 'supervisor', 'refeicao'] }, ({ query, user, ip }) => {
-  const rows = db.prepare('SELECT * FROM reservations ORDER BY checkin, room').all()
+  const rows = db.prepare('SELECT * FROM reservations ORDER BY checkin, room_sort(room)').all()
     .filter((r) => !query.date || (r.checkin <= query.date && r.checkout >= query.date));
   audit(user, 'exportou_reservas', { total: rows.length }, ip);
   return {
@@ -104,7 +105,7 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
   if (!ex) throw new HttpError(404, 'Reserva não encontrada.');
   const rec = readReservationBody({ ...ex, ...body, reservation_number: ex.reservation_number });
   tx(() => {
-    if (rec.room !== ex.room) {
+    if (roomKey(rec.room) !== roomKey(ex.room)) {
       db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id) VALUES (?,?,?,?,?)').run(ex.id, ex.room, rec.room, 'manual', user.id);
       const title = `Troca de quarto: ${ex.room} → ${rec.room}`;
       const bodyTxt = `${rec.guest_name} (reserva ${ex.reservation_number})`;
@@ -115,7 +116,7 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
       .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, body.notes ?? ex.notes, ex.id);
     syncReservation(ex.id);
   });
-  const diff = Object.fromEntries(['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].filter((k) => String(ex[k]) !== String(rec[k])).map((k) => [k, [ex[k], rec[k]]]));
+  const diff = Object.fromEntries(['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].filter((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(rec.room) : String(ex[k]) !== String(rec[k]))).map((k) => [k, [ex[k], rec[k]]]));
   audit(user, 'reserva_alterada', { reserva: ex.reservation_number, diff }, ip);
   return { ok: true };
 });
@@ -156,9 +157,9 @@ route('POST', '/api/import/preview', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ 
     const ex = find.get(r.reservation_number);
     if (!ex) r.action = 'nova';
     else {
-      const changed = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].some((k) => String(ex[k]) !== String(r[k])) || ex.status !== 'ativa';
+      const changed = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].some((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(r.room) : String(ex[k]) !== String(r[k]))) || ex.status !== 'ativa';
       r.action = changed ? 'alterada' : 'igual';
-      if (ex.room !== r.room) r.old_room = ex.room;
+      if (roomKey(ex.room) !== roomKey(r.room)) r.old_room = ex.room;
     }
   }
   const dup = {};
@@ -198,7 +199,7 @@ route('GET', '/api/reception', { roles: VIEW }, ({ query }) => {
   const date = isISODate(query.date) ? query.date : todayISO();
   const rm = restMap();
   const res = db.prepare(`SELECT * FROM reservations WHERE status = 'ativa' AND checkin <= ? AND checkout >= ?
-    ORDER BY CAST(room AS INTEGER), room`).all(date, date);
+    ORDER BY room_sort(room)`).all(date, date);
   const asg = db.prepare('SELECT reservation_id, meal, restaurant_id FROM assignments WHERE date = ?').all(date);
   const recent = db.prepare(`SELECT reservation_id, old_room FROM room_changes WHERE created_at >= datetime('now','localtime','-3 days')`).all();
   return {

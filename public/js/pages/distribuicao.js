@@ -1,4 +1,4 @@
-import { get, post, esc, icon, MEAL_FULL, toast, fail, state, can, boardTag, paxTxt, dayLabel, pct, confirmBox, download } from '../ui.js';
+import { get, post, esc, icon, MEAL_FULL, toast, fail, state, can, boardTag, paxTxt, dayLabel, pct, confirmBox, download, roomHtml } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -62,7 +62,7 @@ export async function render(el) {
       ${r.full ? '<div class="banner danger" style="margin:0 14px 10px">Capacidade atingida</div>' : ''}
       <div class="list-scroll">${rows.map((g) => `
         <div class="guest">
-          <span class="room">${esc(g.room)}</span>
+          <span class="room">${roomHtml(g.room)}</span>
           <span style="min-width:0"><div class="nm">${esc(g.guest_name)}</div><div class="sub">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)}${g.origin !== 'auto' && g.origin !== 'manual' ? ` · via ${esc(g.origin)}` : ''}
             ${g.att_status ? ` · <b style="color:var(--ok)">✓ ${g.att_restaurant_id === r.id ? 'veio' : 'foi a outro'}</b>` : ''}</div></span>
           <span class="row" style="gap:4px">
@@ -79,7 +79,7 @@ export async function render(el) {
       const rows = d.rows.filter((x) => x.restaurant_id === r.id);
       return `<div class="plist"><h2>${esc(r.name)} — ${MEAL_FULL[d.meal]} ${esc(dayLabel(d.date))}</h2><p>${rows.length} reservas · ${r.pax} pax</p>
         <table><thead><tr><th></th><th>Quarto</th><th>Nome</th><th>Adt</th><th>Chd</th><th>Pensão</th></tr></thead><tbody>
-        ${rows.map((g) => `<tr><td><span class="box"></span></td><td><b>${esc(g.room)}</b></td><td>${esc(g.guest_name)}</td><td>${g.adults}</td><td>${g.children}</td><td>${esc(g.board)}</td></tr>`).join('')}
+        ${rows.map((g) => `<tr><td><span class="box"></span></td><td><b>${roomHtml(g.room)}</b></td><td>${esc(g.guest_name)}</td><td>${g.adults}</td><td>${g.children}</td><td>${esc(g.board)}</td></tr>`).join('')}
         </tbody></table></div>`;
     }).join('');
     window.print();

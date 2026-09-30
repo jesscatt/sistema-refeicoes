@@ -1,4 +1,4 @@
-import { api, post, esc, icon, fail, toast, boardTag, br, download } from '../ui.js';
+import { api, post, esc, icon, fail, toast, boardTag, br, download, roomHtml } from '../ui.js';
 
 export async function render(el) {
   let preview = null;
@@ -59,7 +59,7 @@ export async function render(el) {
         <tbody>${rows.map((r) => `<tr>
           <td class="muted">${r.line}</td><td>${badge[r.action]}</td><td>${esc(r.reservation_number)}</td><td>${esc(r.guest_name)}</td>
           <td>${esc(br(r.checkin))}</td><td>${esc(br(r.checkout))}</td>
-          <td class="room">${r.old_room ? `<span class="muted" style="text-decoration:line-through">${esc(r.old_room)}</span> ` : ''}${esc(r.room)}</td>
+          <td class="room">${r.old_room ? `<span class="muted" style="text-decoration:line-through">${esc(r.old_room)}</span> ` : ''}${roomHtml(r.room)}</td>
           <td>${r.board ? boardTag(r.board) : ''}</td><td class="n">${r.adults ?? ''}</td><td class="n">${r.children ?? ''}</td>
           <td class="small" style="color:var(--danger)">${esc(r.errors.join('; '))}${r.warning ? `<span style="color:#8a5a07">${esc(r.warning)}</span>` : ''}</td></tr>`).join('')}</tbody>
       </table></div></div>`;

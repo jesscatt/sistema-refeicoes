@@ -1,7 +1,7 @@
 'use strict';
 // Importação de reservas (Excel/CSV/API) com detecção automática das colunas.
 const { db, tx, notify } = require('./db');
-const { normKey, parseDate, parseBoard, toInt, BOARDS } = require('./util');
+const { normKey, parseDate, parseBoard, toInt, BOARDS, roomKey, normRoom } = require('./util');
 const { syncMany } = require('./meals');
 
 // Apelidos aceitos para cada coluna (comparados sem acento, minúsculo, sem espaços)
@@ -69,7 +69,7 @@ function normalizeRecord(raw) {
     guest_name: String(raw.guest_name ?? '').trim().replace(/\s+/g, ' '),
     checkin: parseDate(raw.checkin),
     checkout: parseDate(raw.checkout),
-    room: String(raw.room ?? '').trim().replace(/\.0$/, ''),
+    room: normRoom(raw.room),
     board: parseBoard(raw.board),
     children: toInt(raw.children, 0),
     adults: null,
@@ -126,10 +126,10 @@ function upsertReservations(records, { source = 'excel', user = null } = {}) {
         result.inserted++; result.ids.push(Number(r.lastInsertRowid));
         continue;
       }
-      const changed = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].some((k) => String(ex[k]) !== String(rec[k]))
+      const changed = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].some((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(rec.room) : String(ex[k]) !== String(rec[k])))
         || ex.status !== 'ativa' || (pref !== null && pref !== ex.pref_restaurant_id);
       if (!changed) { result.unchanged++; continue; }
-      if (ex.room !== rec.room) {
+      if (roomKey(ex.room) !== roomKey(rec.room)) {
         db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id) VALUES (?,?,?,?,?)')
           .run(ex.id, ex.room, rec.room, source, user ? user.id : null);
         result.roomChanges.push({ reservation_number: rec.reservation_number, guest_name: rec.guest_name, old_room: ex.room, new_room: rec.room });

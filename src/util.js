@@ -105,6 +105,33 @@ function toInt(v, def = 0) {
   return Number.isFinite(n) && n >= 0 ? n : def;
 }
 
+// ---------- Quartos com torre ----------
+// "101A", "A101", "a-101", "Torre A 101", "101 a"  ->  chave "101A" (número + letra da torre)
+const ROOM_WORDS = /\b(TORRE|TOR|BLOCO|BL|APTO|APT|AP|UH|QUARTO|QTO|QT|NUMERO|NUM)\b|\bN\s*[º°]/g;
+function roomKey(v) {
+  const s = String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\.0$/, '').replace(ROOM_WORDS, ' ');
+  const digits = (s.match(/\d/g) || []).join('').replace(/^0+(?=\d)/, '');
+  const letters = (s.match(/[A-Z]/g) || []).join('');
+  return digits + letters;
+}
+// Ordenação: número do quarto e depois a torre
+function roomSort(v) {
+  const k = roomKey(v);
+  const m = k.match(/^(\d*)([A-Z]*)$/) || ['', '', k];
+  return (m[1] || '').padStart(8, '0') + (m[2] || '');
+}
+// Texto do quarto como gravado: maiúsculo e sem espaços sobrando
+function normRoom(v) {
+  return String(v ?? '').trim().toUpperCase().replace(/\.0$/, '').replace(/\s+/g, ' ');
+}
+// Condição SQL para achar um quarto digitado. Só o número (ex.: 101) acha todas as torres (101A, 101B...)
+function roomMatch(col, q) {
+  if (!/\d/.test(String(q))) return { sql: '0', args: [] };
+  const k = roomKey(q);
+  if (/^\d+$/.test(k)) return { sql: `(room_key(${col}) = ? OR room_key(${col}) GLOB ?)`, args: [k, k + '[A-Z]*'] };
+  return { sql: `room_key(${col}) = ?`, args: [k] };
+}
+
 function csvEscape(v) {
   if (v === null || v === undefined) return '';
   const s = String(v);
@@ -120,5 +147,5 @@ function toCSV(headers, rows) {
 
 module.exports = {
   MEALS, MEAL_LABEL, BOARDS, pad, todayISO, nowHM, nowLocal, isISODate, addDays, daysBetween,
-  monthRange, hmToMin, minToHM, parseDate, normKey, parseBoard, toInt, toCSV,
+  monthRange, hmToMin, minToHM, parseDate, normKey, parseBoard, toInt, toCSV, roomKey, roomSort, normRoom, roomMatch,
 };

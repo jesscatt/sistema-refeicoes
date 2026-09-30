@@ -48,8 +48,11 @@ function renderLogin(msg = '') {
   root.innerHTML = `
   <div class="login">
     <div class="login-card">
-      <img class="login-logo" src="/img/logo-cor.png" alt="Termas Romanas · Recanto Maestro">
-      <div class="login-title">Controle de refeições</div>
+      <div class="login-hero">
+        <img class="login-logo" src="/img/logo-branco.png" alt="Termas Romanas · Recanto Maestro">
+        <div class="login-title">Controle de refeições</div>
+      </div>
+      <div class="login-body">
       <form id="login-form" autocomplete="on">
         <label class="f">Usuário<input class="input" name="username" autocomplete="username" required autofocus></label>
         <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
@@ -58,6 +61,7 @@ function renderLogin(msg = '') {
       </form>
       <div class="login-meals">
         <span>${mealIcon('cafe')} 07:30–10:00</span><span>${mealIcon('almoco')} 12:00–14:30</span><span>${mealIcon('janta')} 19:00–22:30</span>
+      </div>
       </div>
     </div>
   </div>`;

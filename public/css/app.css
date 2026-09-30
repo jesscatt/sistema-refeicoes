@@ -3,6 +3,10 @@
   /* Cores da marca Termas Romanas · Recanto Maestro */
   --teal: #00b1c5;            /* turquesa do logo (águas termais) */
   --green-brand: #006737;     /* verde dos louros */
+  --blue: #035b8a;            /* azul do logo Resort Termas Romanas */
+  --blue-d: #01497c;
+  --blue-dd: #013457;
+  --blue-l: #dcebf5;
   --bg: #eef4f1;
   --paper: #fcfdfb;
   --paper-2: #f0f6f4;
@@ -26,8 +30,8 @@
   --danger-l: #f8dedb;
   --info: #00708a;
   --info-l: #d7eef3;
-  --side: #003a20;
-  --side-2: #0b4b2d;
+  --side: #01497c;
+  --side-2: #0a639a;
   --radius: 14px;
   --shadow: 0 1px 0 rgba(14, 42, 31, .04), 0 8px 22px -12px rgba(0, 58, 32, .28);
   --ring: rgba(0, 136, 155, .18);
@@ -43,7 +47,7 @@ body {
   font-family: var(--font); font-size: 15px; color: var(--ink); background: var(--bg);
   -webkit-font-smoothing: antialiased; line-height: 1.45;
 }
-h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: .01em; margin: 0; color: var(--green-d); }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: .01em; margin: 0; color: var(--blue-d); }
 h3 { font-family: var(--font); font-weight: 700; letter-spacing: 0; color: var(--ink); }
 h1 { font-size: 28px; }
 h2 { font-size: 20px; }
@@ -82,25 +86,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* ---------- Layout ---------- */
 .app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
 .side {
-  background: linear-gradient(180deg, #004526 0%, var(--side) 55%, #002d18 100%); color: #e1f1ea; padding: 18px 14px; position: sticky; top: 0; height: 100vh;
+  background: radial-gradient(420px 380px at 50% 12%, #0a6ea3 0%, var(--blue) 45%, var(--blue-d) 75%, var(--blue-dd) 100%); color: #e3f0f8; padding: 18px 14px; position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
 }
 .side .brand { padding: 4px 8px 16px; border-bottom: 1px solid rgba(255, 255, 255, .08); margin-bottom: 10px; }
 .side .brand .s { color: #8fd6e0; }
 .nav a {
-  display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 10px; color: #d3eadf;
+  display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 10px; color: #d7e9f5;
   text-decoration: none; font-weight: 500; font-size: 14.5px;
 }
 .nav a svg { width: 19px; height: 19px; flex: none; opacity: .85; }
 .nav a:hover { background: var(--side-2); color: #fff; }
-.nav a.active { background: var(--teal); color: #00261a; font-weight: 700; }
+.nav a.active { background: var(--teal); color: #01263f; font-weight: 700; box-shadow: 0 6px 14px -8px rgba(0,0,0,.5); }
 .nav a.active svg { opacity: 1; }
-.nav .sep { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: #7fbfa3; padding: 14px 12px 4px; }
+.nav .sep { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; color: #8cc3e3; padding: 14px 12px 4px; }
 .side .me { margin-top: auto; padding: 12px; border-radius: 12px; background: var(--side-2); font-size: 13px; }
 .side .me b { display: block; font-size: 14px; color: #fff; }
 .side .me .role { color: #8fd6e0; }
 .side .me .row { display: flex; gap: 8px; margin-top: 10px; }
-.side .me button { flex: 1; background: transparent; border: 1px solid rgba(255, 255, 255, .15); color: #e1f1ea; border-radius: 8px; padding: 6px; cursor: pointer; font-size: 12.5px; }
+.side .me button { flex: 1; background: transparent; border: 1px solid rgba(255, 255, 255, .15); color: #e3f0f8; border-radius: 8px; padding: 6px; cursor: pointer; font-size: 12.5px; }
 .side .me button:hover { background: rgba(255, 255, 255, .06); }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
@@ -201,7 +205,7 @@ table.t tfoot td { font-weight: 700; background: var(--paper-2); border-top: 2px
 .meal-ico.cafe { background: #f2e8d8; color: #7a5422; }
 .meal-ico.almoco { background: var(--green-l); color: var(--green); }
 .meal-ico.janta { background: #dfe5f1; color: #2f4a7a; }
-.meal-card .title { font-family: var(--serif); font-size: 17px; color: var(--green-d); font-weight: 600; }
+.meal-card .title { font-family: var(--serif); font-size: 17px; color: var(--blue-d); font-weight: 600; }
 .meal-card .hours { font-size: 13px; color: var(--muted); }
 .meal-card .total { margin-left: auto; text-align: right; }
 .meal-card .total b { font-family: var(--font); font-weight: 700; font-size: 26px; font-variant-numeric: tabular-nums; }
@@ -230,7 +234,7 @@ table.t tfoot td { font-weight: 700; background: var(--paper-2); border-top: 2px
 .list-scroll { max-height: 62vh; overflow: auto; }
 
 /* ---------- Serviço (restaurante) ---------- */
-.svc-head { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 22px 20px 18px; border-radius: 18px; color: #fff; margin-bottom: 16px; background: linear-gradient(120deg, var(--c, var(--primary)), #002d18 140%); position: relative; overflow: hidden; }
+.svc-head { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; padding: 22px 20px 18px; border-radius: 18px; color: #fff; margin-bottom: 16px; background: linear-gradient(120deg, var(--c, var(--primary)), var(--blue-dd) 140%); position: relative; overflow: hidden; }
 .svc-head::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 10px; background: rgba(255,255,255,.35); -webkit-mask: var(--meander) repeat-x 0 0 / auto 100%; mask: var(--meander) repeat-x 0 0 / auto 100%; }
 .svc-head h1 { color: #fff; font-size: 24px; }
 .svc-head .sub { opacity: .85; margin-top: 2px; }
@@ -334,7 +338,7 @@ table.ctl tr.weekend td:first-child { color: var(--primary-d); }
 @keyframes fade { from { opacity: 0; } }
 
 #toasts { position: fixed; right: 18px; bottom: 18px; display: grid; gap: 10px; z-index: 200; width: min(380px, calc(100vw - 36px)); }
-.toast { background: var(--side); color: #e4f3ec; padding: 12px 16px; border-radius: 12px; box-shadow: 0 16px 30px -12px rgba(0, 0, 0, .5); font-size: 14px; animation: up .2s; display: grid; gap: 2px; }
+.toast { background: var(--blue-dd); color: #e3f0f8; padding: 12px 16px; border-radius: 12px; box-shadow: 0 16px 30px -12px rgba(0, 0, 0, .5); font-size: 14px; animation: up .2s; display: grid; gap: 2px; }
 .toast b { color: #fff; }
 .toast.ok { border-left: 5px solid #7cc38a; }
 .toast.err { border-left: 5px solid #ff8a7a; }
@@ -352,7 +356,7 @@ table.ctl tr.weekend td:first-child { color: var(--primary-d); }
 .dropzone:hover, .dropzone.over { border-color: var(--primary); background: var(--hover); }
 .dropzone svg { width: 44px; height: 44px; color: var(--primary); }
 code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
-pre { background: var(--side); color: #d8f1ea; padding: 14px; border-radius: 12px; overflow: auto; }
+pre { background: var(--blue-dd); color: #d7e9f5; padding: 14px; border-radius: 12px; overflow: auto; }
 
 /* ---------- Responsivo ---------- */
 @media (max-width: 1100px) {
@@ -404,10 +408,31 @@ pre { background: var(--side); color: #d8f1ea; padding: 14px; border-radius: 12p
 .topbar { border-bottom: 0; }
 .topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 8px; background: var(--teal); opacity: .35; -webkit-mask: var(--meander) repeat-x 0 0 / auto 100%; mask: var(--meander) repeat-x 0 0 / auto 100%; }
 .page-head h1 { font-size: 26px; }
-.card-head h3, .modal-head h2 { color: var(--green-d); }
+.card-head h3, .modal-head h2 { color: var(--blue-d); }
 .btn.primary { box-shadow: 0 6px 14px -8px rgba(0, 136, 155, .7); }
 .stat { border-top: 3px solid var(--teal); }
-.stat .k { color: var(--green); }
+.stat .k { color: var(--blue); }
 .content { background: radial-gradient(900px 400px at 100% 0, rgba(0, 177, 197, .07), transparent 70%); }
 .empty { color: var(--muted); }
 @media print { .pcard h2, .plist h2 { font-family: var(--serif); color: #000; } }
+
+/* Letra da torre ao lado do número do quarto */
+.tower { display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; padding: 0 .25em; margin-left: .3em; border-radius: .35em; background: var(--blue); color: #fff; font-size: .72em; font-weight: 700; vertical-align: .12em; letter-spacing: 0; }
+.plist .tower, .pcard .tower { background: none; color: #000; border: 1px solid #000; }
+
+/* Tela de entrada com o painel azul do resort */
+.login-card { padding: 0; }
+.login-hero { position: relative; padding: 34px 24px 26px; text-align: center; color: #fff;
+  background: radial-gradient(320px 260px at 50% 40%, #0a6ea3 0%, var(--blue) 50%, var(--blue-d) 80%, var(--blue-dd) 100%); }
+.login-hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: var(--teal);
+  -webkit-mask: var(--meander) repeat-x 0 0 / auto 100%; mask: var(--meander) repeat-x 0 0 / auto 100%; }
+.login-hero .login-logo { max-width: 250px; margin: 0 auto; }
+.login-hero .login-title { color: #bfe3f5; margin-top: 12px; }
+.login-body { padding: 24px 30px 26px; }
+.login-body form { margin-top: 0; display: grid; gap: 14px; }
+.login-card::before { display: none; }
+.login { background: radial-gradient(1100px 620px at 8% -12%, rgba(0, 177, 197, .28), transparent 60%), radial-gradient(900px 520px at 108% 112%, rgba(3, 91, 138, .30), transparent 62%), linear-gradient(180deg, #f1f7fa, #e2edf3); }
+.result { grid-template-columns: 104px 1fr auto; }
+.room { white-space: nowrap; }
+.guest { grid-template-columns: 64px 1fr auto; }
+@media (max-width: 860px) { .result { grid-template-columns: 84px 1fr; } }

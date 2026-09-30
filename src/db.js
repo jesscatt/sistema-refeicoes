@@ -10,6 +10,12 @@ const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, 'refeicoes.db');
 
 const db = new DatabaseSync(DB_FILE);
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+// Funções SQL para quartos com letra da torre (ver util.roomKey)
+{
+  const { roomKey, roomSort } = require('./util');
+  db.function('room_key', { deterministic: true }, (v) => roomKey(v));
+  db.function('room_sort', { deterministic: true }, (v) => roomSort(v));
+}
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS restaurants (

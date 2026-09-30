@@ -82,6 +82,24 @@ export function restTag(r) {
   if (!r) return '<span class="rest-tag none">—</span>';
   return `<span class="rest-tag" style="background:${esc(r.color || '#888')}">${esc(r.name)}</span>`;
 }
+// Quarto com letra da torre: "A101", "101a", "Torre A 101" -> chave "101A"
+const ROOM_WORDS = /\b(TORRE|TOR|BLOCO|BL|APTO|APT|AP|UH|QUARTO|QTO|QT|NUMERO|NUM)\b|\bN\s*[º°]/g;
+export function roomKey(v) {
+  const s = String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(ROOM_WORDS, ' ');
+  return (s.match(/\d/g) || []).join('').replace(/^0+(?=\d)/, '') + (s.match(/[A-Z]/g) || []).join('');
+}
+// Busca: "101" acha 101A e 101B; "101A" / "A101" acha só a torre A
+export function roomMatches(room, q) {
+  if (!/\d/.test(q)) return false;
+  const k = roomKey(q), r = roomKey(room);
+  return /^\d+$/.test(k) ? r === k || new RegExp('^' + k + '[A-Z]+$').test(r) : r === k;
+}
+// Número em destaque + selo com a letra da torre
+export function roomHtml(room) {
+  const k = roomKey(room), m = k.match(/^(\d+)([A-Z]+)$/);
+  if (!m) return esc(room);
+  return `${esc(m[1])}<span class="tower" title="Torre ${esc(m[2])}">${esc(m[2])}</span>`;
+}
 export const restDot = (r) => `<span class="dot" style="background:${esc(r.color)}"></span>`;
 export const boardTag = (b) => `<span class="board" title="${esc((state.meta?.boards?.[b] || {}).label || '')}">${esc(b)}</span>`;
 export const paxTxt = (a, c) => `${a} adt${c ? ` + ${c} chd` : ''}`;

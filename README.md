@@ -61,7 +61,9 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 **Listas e avisos** — No horário de cada refeição menos 40 min (06:50, 11:20, 18:20) a lista do dia é publicada automaticamente e cada restaurante recebe o aviso no sistema (com som e notificação do navegador, se permitida). O setor de refeições também pode publicar antes.
 
-**Marcação no restaurante** — Busca por quarto, nome ou reserva:
+**Quartos com torre** — O quarto pode vir escrito de qualquer jeito na planilha ou na busca: `101A`, `A101`, `a-101`, `Torre A 101` são o mesmo quarto. Digitar só o número (`101`) mostra todas as torres (101A, 101B…); com a letra, só aquela torre. A letra aparece num selo azul ao lado do número. Escrever o mesmo quarto de outro jeito numa nova importação não conta como troca de quarto.
+
+**Marcação no restaurante** — Busca por quarto e torre, nome ou reserva:
 - na lista → marca presença;
 - na lista de outro restaurante → marca como **fora da lista** e o outro restaurante não consegue mais marcar (sem duplicidade — garantido também por restrição no banco);
 - sem aquela refeição na pensão, ou fora dos dias da estadia → aviso “cobrar à parte”, com opção de registrar o consumo pago à parte;

@@ -84,3 +84,19 @@ test('marcação não duplica entre restaurantes', () => {
   ins.run(res.id, 1);
   assert.throws(() => ins.run(res.id, 2), /UNIQUE/);
 });
+
+test('quarto com letra da torre', () => {
+  const { roomKey, roomMatch } = require('../src/util');
+  for (const v of ['101A', 'A101', 'a-101', 'Torre A 101', '101 a', 'Bloco A - 101']) assert.equal(roomKey(v), '101A', v);
+  upsertReservations([
+    { reservation_number: 'TW1', guest_name: 'Torre A', checkin: '2026-12-01', checkout: '2026-12-03', room: '101A', board: 'CM', adults: 1, children: 0 },
+    { reservation_number: 'TW2', guest_name: 'Torre B', checkin: '2026-12-01', checkout: '2026-12-03', room: 'B101', board: 'CM', adults: 1, children: 0 },
+  ]);
+  const find = (q) => { const m = roomMatch('room', q); return db.prepare(`SELECT reservation_number n FROM reservations WHERE ${m.sql} ORDER BY n`).all(...m.args).map((r) => r.n); };
+  assert.deepEqual(find('a101'), ['TW1']);
+  assert.deepEqual(find('101 B'), ['TW2']);
+  assert.deepEqual(find('101'), ['TW1', 'TW2']);
+  // mesma reserva com o quarto escrito de outro jeito não é troca de quarto
+  const r = upsertReservations([{ reservation_number: 'TW1', guest_name: 'Torre A', checkin: '2026-12-01', checkout: '2026-12-03', room: 'A-101', board: 'CM', adults: 1, children: 0 }]);
+  assert.equal(r.roomChanges.length, 0);
+});

@@ -1,4 +1,4 @@
-import { get, post, del, esc, icon, mealIcon, MEAL_FULL, MEAL_LABEL, toast, fail, state, can, boardTag, paxTxt, dayLabel, modal, confirmBox, restTag, today, download } from '../ui.js';
+import { get, post, del, esc, icon, mealIcon, MEAL_FULL, MEAL_LABEL, toast, fail, state, can, boardTag, paxTxt, dayLabel, modal, confirmBox, restTag, today, download, roomHtml } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -48,7 +48,7 @@ export async function render(el) {
       ${!data.serves ? `<div class="banner danger">${icon('alert')}<span>${esc(r.name)} não serve ${MEAL_FULL[data.meal].toLowerCase()}.</span></div>` : ''}
       ${data.serves && !data.published && data.date >= today() ? `<div class="banner warn">${icon('info')}<span><b>Prévia.</b> A lista oficial é liberada às ${openAt} e você recebe um aviso aqui no sistema. Até lá ela ainda pode mudar.</span></div>` : ''}
       ${data.serves && data.published ? `<div class="banner ok">${icon('check')}<span>Lista liberada às ${esc(data.published.published_at.slice(11, 16))}.</span></div>` : ''}
-      <div class="search-big">${icon('search')}<input id="q" placeholder="Quarto, nome ou nº da reserva" inputmode="search" autocomplete="off" value="${esc(st.q)}"></div>
+      <div class="search-big">${icon('search')}<input id="q" placeholder="Quarto e torre (ex.: 101A), nome ou reserva" inputmode="search" autocomplete="off" value="${esc(st.q)}"></div>
       <div class="results" id="results"></div>
       <div class="card">
         <div class="card-head">
@@ -92,7 +92,7 @@ export async function render(el) {
         const other = g.att_restaurant_id && !here;
         return `<div class="item ${here ? 'done' : ''} ${other ? 'other' : ''}" data-res="${g.reservation_id}" data-att="${here ? g.attendance_id : ''}" ${other ? 'data-other' : ''}>
           <span class="tick">${icon('check')}</span>
-          <span class="room">${esc(g.room)}</span>
+          <span class="room">${roomHtml(g.room)}</span>
           <span style="min-width:0"><span class="nm">${esc(g.guest_name)}</span><br><span class="muted small">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)} ${other ? ` · <b style="color:var(--danger)">foi ao ${esc(g.att_restaurant.name)}</b>` : ''}</span></span>
           <span class="muted small">${here ? `✓ ${esc(g.att_at.slice(11, 16))}${g.att_adults + g.att_children !== g.adults + g.children ? ` · ${g.att_adults + g.att_children} pax` : ''}` : ''}</span>
         </div>`;
@@ -101,7 +101,7 @@ export async function render(el) {
     if (st.tab === 'fora') {
       if (!data.extras.length) return '<div class="empty">Nenhum cliente fora da lista.</div>';
       return `<div class="table-wrap"><table class="t"><thead><tr><th>Quarto</th><th>Nome</th><th>Pax</th><th>Era do</th><th>Hora</th><th></th></tr></thead><tbody>
-        ${data.extras.map((x) => `<tr><td class="room">${esc(x.room)}</td><td>${esc(x.guest_name)}</td><td>${paxTxt(x.att_adults, x.att_children)}</td><td>${restTag(x.assigned_restaurant)}</td><td>${esc(x.att_at.slice(11, 16))}</td>
+        ${data.extras.map((x) => `<tr><td class="room">${roomHtml(x.room)}</td><td>${esc(x.guest_name)}</td><td>${paxTxt(x.att_adults, x.att_children)}</td><td>${restTag(x.assigned_restaurant)}</td><td>${esc(x.att_at.slice(11, 16))}</td>
         <td><button class="btn sm ghost" data-undo="${x.attendance_id}">${icon('undo')} Desfazer</button></td></tr>`).join('')}</tbody></table></div>`;
     }
     if (!data.walkins.length) return '<div class="empty">Nenhum consumo pago à parte registrado.</div>';
@@ -152,7 +152,7 @@ export async function render(el) {
       const canMark = x.state === 'na_lista' || x.state === 'outro_restaurante';
       const here = x.attendance && x.attendance.restaurant_id === data.restaurant.id;
       return `<div class="result ${x.state}" data-res="${x.reservation_id}">
-        <span class="room">${esc(x.room)}</span>
+        <span class="room">${roomHtml(x.room)}</span>
         <div style="min-width:0"><b>${esc(x.guest_name)}</b> <span class="muted small">· reserva ${esc(x.reservation_number)} · ${boardTag(x.board)} · ${paxTxt(x.adults, x.children)}</span>
           <div class="msg">${esc(x.message)}</div></div>
         <div class="act row">
@@ -210,7 +210,7 @@ export async function render(el) {
     area.innerHTML = `<div class="plist"><h2>${esc(data.restaurant.name)} — ${MEAL_FULL[data.meal]} ${esc(dayLabel(data.date))}</h2>
       <p>${data.list.length} reservas · ${data.list.reduce((s, r) => s + r.adults + r.children, 0)} pax</p>
       <table><thead><tr><th></th><th>Quarto</th><th>Nome</th><th>Adt</th><th>Chd</th><th>Pensão</th></tr></thead><tbody>
-      ${data.list.map((g) => `<tr><td><span class="box"></span></td><td><b>${esc(g.room)}</b></td><td>${esc(g.guest_name)}</td><td>${g.adults}</td><td>${g.children}</td><td>${esc(g.board)}</td></tr>`).join('')}
+      ${data.list.map((g) => `<tr><td><span class="box"></span></td><td><b>${roomHtml(g.room)}</b></td><td>${esc(g.guest_name)}</td><td>${g.adults}</td><td>${g.children}</td><td>${esc(g.board)}</td></tr>`).join('')}
       </tbody></table></div>`;
     window.print();
   }
