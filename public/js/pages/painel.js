@@ -7,7 +7,7 @@ export async function render(el) {
 
   async function load() {
     syncParams(st, ['date']);
-    const [d, notifs, rd] = await Promise.all([get('/api/dashboard?date=' + st.date), get('/api/notifications').catch(() => []), get('/api/restaurants/day?date=' + st.date)]);
+    const [d, notifs, rd] = await Promise.all([get('/api/dashboard?date=' + st.date), get('/api/notifications').catch(() => []), get('/api/restaurants/week?date=' + st.date)]);
     const boards = Object.fromEntries(d.boards.map((b) => [b.board, b]));
     el.innerHTML = `
       <div class="page-head">
@@ -40,37 +40,41 @@ export async function render(el) {
           : '<div class="empty">Nenhuma troca registrada.</div>'}
       </div>`;
     bindDateBar(el, st, load);
-    el.querySelectorAll('[data-rday]').forEach((b) => b.addEventListener('click', () => toggleDay(rd, b.dataset.rday, b.dataset.meal)));
+    el.querySelectorAll('[data-rday]').forEach((b) => b.addEventListener('click', () => toggleDay(rd, b.dataset.rday, b.dataset.meal, b.dataset.date)));
   }
 
   const REASON = { fechado_semana: 'fechado neste dia da semana', fechado_dia: 'fechado nesta data', aberto_excecao: 'aberto excepcionalmente' };
-  function openCard(rd) {
-    const edit = can('admin', 'refeicao') && rd.date >= today();
-    const isToday = rd.date === today();
-    const openCount = rd.restaurants.filter((r) => r.meals.some((m) => m.open)).length;
+  const WD = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  const SHORT = { cafe: 'Café', almoco: 'Almoço', janta: 'Jantar' };
+  function openCard(wk) {
+    const edit = can('admin', 'refeicao');
+    const br = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+    const wdOf = (iso) => { const [y, m, d] = iso.split('-').map(Number); return WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; };
+    const isThisWeek = wk.days.includes(wk.today);
     return `<div class="card" style="margin-bottom:18px">
-      <div class="card-head">${icon('plate')}<h3 class="grow">Restaurantes abertos ${isToday ? 'hoje' : 'em ' + esc(dayLabel(rd.date))}</h3>
-        <span class="muted small">${openCount} de ${rd.restaurants.length} em funcionamento${edit ? ' · clique na refeição para abrir ou fechar' : ''}</span></div>
-      <div class="open-grid">${rd.restaurants.map((r) => `
-        <div class="open-rest" style="--c:${esc(r.color)}">
-          <div class="open-name">${restDot(r)}<b>${esc(r.name)}</b>${r.meals.some((m) => m.open) ? '<span class="badge ok">aberto</span>' : '<span class="badge danger">fechado</span>'}</div>
-          <div class="open-meals">${r.meals.map((m) => {
+      <div class="card-head">${icon('plate')}<h3 class="grow">Restaurantes abertos ${isThisWeek ? 'nesta semana' : 'na semana'} · ${br(wk.from)} a ${br(wk.to)}</h3>
+        <span class="row small muted" style="gap:10px"><span class="lg on"></span>aberto <span class="lg off"></span>fechado <span class="lg na"></span>não serve${edit ? ' · clique para abrir ou fechar' : ''}</span></div>
+      <div class="table-wrap"><table class="t week">
+        <thead><tr><th>Restaurante</th>${wk.days.map((d) => `<th class="${d === wk.today ? 'today' : ''}">${wdOf(d)}<div>${br(d)}${d === wk.today ? ' · hoje' : ''}</div></th>`).join('')}</tr></thead>
+        <tbody>${wk.restaurants.map((r) => `<tr>
+          <td class="wr"><span class="row" style="gap:8px;flex-wrap:nowrap">${restDot(r)}<b>${esc(r.name)}</b></span></td>
+          ${r.days.map((d) => `<td class="${d.date === wk.today ? 'today' : ''}"><div class="wk-meals">${d.meals.map((m) => {
             const cls = !m.serves ? 'na' : m.open ? 'on' : 'off';
-            const tip = !m.serves ? 'não serve esta refeição' : (REASON[m.reason] || 'aberto') + (m.note ? ' · ' + m.note : '');
-            const tag = edit && m.serves ? 'button' : 'div';
-            return `<${tag} class="om ${cls}" title="${esc(tip)}" ${edit && m.serves ? `data-rday="${r.id}" data-meal="${m.meal}"` : ''}>
-              <span class="om-l">${mealIcon(m.meal)} ${esc(m.label)}</span>
-              <span class="om-s">${!m.serves ? 'não serve' : m.open ? `${m.start} – ${m.end}` : 'fechado'}</span>
-              ${m.serves && (m.note || (m.reason && m.reason !== 'nao_serve')) ? `<span class="om-n">${esc(m.note || REASON[m.reason] || '')}</span>` : ''}
-            </${tag}>`;
-          }).join('')}</div>
-        </div>`).join('')}</div>
+            const can = edit && m.serves && d.date >= wk.today;
+            const tip = `${SHORT[m.meal]} · ${!m.serves ? 'não serve' : m.open ? 'aberto' : 'fechado'}${m.note ? ' · ' + m.note : ''}`;
+            return `<${can ? 'button' : 'span'} class="wm ${cls}" title="${esc(tip)}" ${can ? `data-rday="${r.id}" data-meal="${m.meal}" data-date="${d.date}"` : ''}>${SHORT[m.meal]}</${can ? 'button' : 'span'}>`;
+          }).join('')}</div>${d.meals.some((m) => m.note && !m.open) ? `<div class="wk-note">${esc(d.meals.find((m) => m.note && !m.open).note)}</div>` : ''}</td>`).join('')}
+        </tr>`).join('')}</tbody>
+      </table></div>
     </div>`;
   }
 
-  function toggleDay(rd, restId, meal) {
-    const r = rd.restaurants.find((x) => String(x.id) === String(restId));
-    const m = r.meals.find((x) => x.meal === meal);
+  function toggleDay(wk, restId, meal, date) {
+    const r = wk.restaurants.find((x) => String(x.id) === String(restId));
+    const m = r.days.find((x) => x.date === date).meals.find((x) => x.meal === meal);
+    const t = wk.meal_times.find((x) => x.meal === meal);
+    Object.assign(m, { label: t.label, start: t.start, end: t.end });
+    const rd = { date };
     const closing = m.open;
     const { el: md, close } = modal({
       title: `${closing ? 'Fechar' : 'Abrir'} ${esc(r.name)} · ${esc(m.label)}`,

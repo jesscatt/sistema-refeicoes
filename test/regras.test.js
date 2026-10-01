@@ -261,3 +261,14 @@ test('fechar restaurante numa data redistribui os hóspedes', async () => {
     assert.equal(st.open, false); assert.equal(st.note, 'manutenção');
   } finally { srv.close(); }
 });
+
+test('semana dos restaurantes no painel', () => {
+  const { restaurantStatus } = require('../src/meals');
+  const { addDays, todayISO } = require('../src/util');
+  const d = addDays(todayISO(), 6);
+  const mae = db.prepare("SELECT id FROM restaurants WHERE code = 'MAE'").get().id;
+  assert.equal(restaurantStatus('cafe', d).find((r) => r.id === mae).serves, false);
+  db.prepare("INSERT OR REPLACE INTO restaurant_days(date, restaurant_id, meal, is_open, note) VALUES (?, ?, 'almoco', 0, 'evento')").run(d, mae);
+  const s = restaurantStatus('almoco', d).find((r) => r.id === mae);
+  assert.equal(s.open, false); assert.equal(s.reason, 'fechado_dia');
+});

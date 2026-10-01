@@ -63,6 +63,27 @@ route('GET', '/api/restaurants/day', { portal: true }, ({ query }) => {
   };
 });
 
+// Semana (segunda a domingo) com a situação de cada restaurante em cada refeição
+route('GET', '/api/restaurants/week', { portal: true }, ({ query }) => {
+  const ref = isISODate(query.date) ? query.date : todayISO();
+  const from = addDays(ref, -((weekday(ref) + 6) % 7));
+  const times = db.prepare('SELECT * FROM meal_times ORDER BY sort').all();
+  const rests = db.prepare('SELECT id, code, name, color FROM restaurants WHERE active = 1 ORDER BY id').all();
+  const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
+  const st = {};
+  for (const d of days) for (const t of times) st[`${d}|${t.meal}`] = restaurantStatus(t.meal, d);
+  return {
+    from, to: days[6], today: todayISO(), days, meal_times: times,
+    restaurants: rests.map((r) => ({
+      ...r,
+      days: days.map((d) => ({
+        date: d,
+        meals: times.map((t) => { const x = st[`${d}|${t.meal}`].find((y) => y.id === r.id); return { meal: t.meal, serves: x.serves, open: x.open, reason: x.reason, note: x.note }; }),
+      })),
+    })),
+  };
+});
+
 // Fechar ou reabrir um restaurante numa refeição/data (Administração e Refeição)
 route('PUT', '/api/restaurants/day', { roles: MANAGE }, ({ body, user, ip }) => {
   const date = body.date, meal = body.meal, restId = Number(body.restaurant_id);
