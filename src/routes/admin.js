@@ -1,15 +1,15 @@
 'use strict';
 const crypto = require('node:crypto');
 const { route, HttpError } = require('../http');
-const { db, hashPassword, audit, getSetting, setSetting } = require('../db');
+const { db, tx, hashPassword, audit, getSetting, setSetting } = require('../db');
 const { MEALS } = require('../util');
 
 const ADMIN = ['admin'];
-const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante'];
+const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia', 'cliente'];
 
 // ---------- Usuários ----------
 route('GET', '/api/users', { roles: ADMIN }, () =>
-  db.prepare(`SELECT u.id, u.username, u.name, u.role, u.restaurant_id, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
+  db.prepare(`SELECT u.id, u.username, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
     FROM users u LEFT JOIN restaurants r ON r.id = u.restaurant_id ORDER BY u.active DESC, u.role, u.name`).all());
 
 function validUser(body, isNew) {
@@ -19,15 +19,19 @@ function validUser(body, isNew) {
   if (!ROLES.includes(body.role)) throw new HttpError(400, 'Perfil inválido.');
   const restId = body.role === 'restaurante' ? Number(body.restaurant_id) : null;
   if (body.role === 'restaurante' && !db.prepare('SELECT 1 FROM restaurants WHERE id = ?').get(restId)) throw new HttpError(400, 'Escolha o restaurante do usuário.');
-  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId };
+  const agency = body.role === 'agencia' ? String(body.agency || '').trim() : null;
+  const resNum = ['agencia', 'cliente'].includes(body.role) ? String(body.reservation_number || '').trim().replace(/\./g, '') : null;
+  if (body.role === 'agencia' && !agency && !resNum) throw new HttpError(400, 'Informe o nome da agência como aparece na planilha (ou os números das reservas).');
+  if (body.role === 'cliente' && !resNum) throw new HttpError(400, 'Informe o número da reserva do cliente.');
+  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: agency || null, reservation_number: resNum || null };
 }
 
 route('POST', '/api/users', { roles: ADMIN }, ({ body, user, ip }) => {
   const u = validUser(body, true);
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(u.username)) throw new HttpError(409, 'Já existe esse usuário.');
   const pw = body.password && String(body.password).length >= 8 ? String(body.password) : crypto.randomBytes(6).toString('base64url');
-  const r = db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, must_change_password) VALUES (?,?,?,?,?,1)')
-    .run(u.username, u.name, hashPassword(pw), u.role, u.restaurant_id);
+  const r = db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, agency, reservation_number, must_change_password) VALUES (?,?,?,?,?,?,?,1)')
+    .run(u.username, u.name, hashPassword(pw), u.role, u.restaurant_id, u.agency, u.reservation_number);
   audit(user, 'usuario_criado', { username: u.username, role: u.role }, ip);
   return { id: Number(r.lastInsertRowid), temp_password: body.password ? null : pw };
 });
@@ -41,7 +45,7 @@ route('PUT', '/api/users/:id', { roles: ADMIN }, ({ params, body, user, ip }) =>
     const admins = db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'admin' AND active = 1").get().n;
     if (admins <= 1) throw new HttpError(400, 'É preciso manter pelo menos um administrador ativo.');
   }
-  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, active = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, active, ex.id);
+  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, agency = ?, reservation_number = ?, active = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, active, ex.id);
   if (!active) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(ex.id);
   audit(user, 'usuario_alterado', { username: ex.username, role: u.role, active }, ip);
   return { ok: true };
@@ -69,8 +73,12 @@ route('PUT', '/api/restaurants/:id', { roles: ADMIN }, ({ params, body, user, ip
     share_cafe: pct(body.share_cafe, ex.share_cafe), share_almoco: pct(body.share_almoco, ex.share_almoco), share_janta: pct(body.share_janta, ex.share_janta),
     cap_cafe: cap(body.cap_cafe, ex.cap_cafe), cap_almoco: cap(body.cap_almoco, ex.cap_almoco), cap_janta: cap(body.cap_janta, ex.cap_janta),
   };
-  db.prepare(`UPDATE restaurants SET name=?, color=?, share_cafe=?, share_almoco=?, share_janta=?, cap_cafe=?, cap_almoco=?, cap_janta=? WHERE id = ?`)
-    .run(n.name, n.color, n.share_cafe, n.share_almoco, n.share_janta, n.cap_cafe, n.cap_almoco, n.cap_janta, ex.id);
+  // dias da semana fechados (0 = domingo ... 6 = sábado)
+  const days = (v, d) => (v === undefined ? d : [...new Set((Array.isArray(v) ? v : String(v).split(',')).map((x) => parseInt(x, 10)).filter((x) => x >= 0 && x <= 6))].sort().join(','));
+  for (const m of MEALS) n[`closed_${m}`] = days(body[`closed_${m}`], ex[`closed_${m}`] || '');
+  db.prepare(`UPDATE restaurants SET name=?, color=?, share_cafe=?, share_almoco=?, share_janta=?, cap_cafe=?, cap_almoco=?, cap_janta=?,
+    closed_cafe=?, closed_almoco=?, closed_janta=? WHERE id = ?`)
+    .run(n.name, n.color, n.share_cafe, n.share_almoco, n.share_janta, n.cap_cafe, n.cap_almoco, n.cap_janta, n.closed_cafe, n.closed_almoco, n.closed_janta, ex.id);
   audit(user, 'restaurante_alterado', { code: ex.code, ...n }, ip);
   return { ok: true };
 });
@@ -84,6 +92,17 @@ route('PUT', '/api/meal-times', { roles: ADMIN }, ({ body, user, ip }) => {
   }
   audit(user, 'horarios_alterados', body.meal_times, ip);
   return { ok: true };
+});
+
+// ---------- Começar do zero: apaga reservas e tudo ligado a elas (mantém usuários, restaurantes e valores) ----------
+route('POST', '/api/admin/reset-reservations', { roles: ADMIN }, ({ body, user, ip }) => {
+  if (String(body.confirm || '').trim().toUpperCase() !== 'APAGAR') throw new HttpError(400, 'Digite APAGAR para confirmar.');
+  const n = db.prepare('SELECT COUNT(*) n FROM reservations').get().n;
+  tx(() => {
+    for (const t of ['attendance', 'assignments', 'room_changes', 'walkins', 'meal_lists', 'control_real', 'billing_closures', 'reservations']) db.exec(`DELETE FROM ${t}`);
+  });
+  audit(user, 'reservas_apagadas', { quartos: n }, ip);
+  return { deleted: n };
 });
 
 // ---------- Logs ----------

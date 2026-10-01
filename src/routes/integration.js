@@ -12,7 +12,7 @@ const { route, HttpError } = require('../http');
 const { db, tx, audit, getSetting, setSetting } = require('../db');
 const { MEALS, isISODate, todayISO, addDays, nowLocal } = require('../util');
 const { restaurantsFor, paxLoads, isEligible } = require('../meals');
-const { upsertReservations } = require('../importer');
+const { upsertReservations, splitReservation } = require('../importer');
 const { stayPlan } = require('./reservations');
 
 function apiKeyAuth(req) {
@@ -26,7 +26,7 @@ function apiKeyAuth(req) {
 
 function availability(date, meal) {
   const loads = paxLoads(date, meal);
-  return restaurantsFor(meal).map((r) => {
+  return restaurantsFor(meal, date).map((r) => {
     const used = loads[r.id] || 0;
     return {
       restaurante: r.code, nome: r.name, capacidade: r.cap || null, ocupado: used,
@@ -66,25 +66,30 @@ function restByCode(code) {
   return db.prepare('SELECT * FROM restaurants WHERE (code = ? OR name = ?) AND active = 1').get(String(code).toUpperCase(), String(code));
 }
 
+// Escolha do cliente vale para o grupo inteiro (todos os quartos ativos da reserva)
 function applyChoices(resNumber, choices) {
-  const r = db.prepare('SELECT * FROM reservations WHERE reservation_number = ?').get(resNumber);
+  const rooms = db.prepare("SELECT * FROM reservations WHERE reservation_number = ? AND status = 'ativa'").all(resNumber);
   const results = [];
-  if (!r) return results;
+  if (!rooms.length) return results;
   for (const c of choices || []) {
     const date = c.data, meal = c.refeicao;
     const rest = restByCode(c.restaurante);
     if (!isISODate(date) || !MEALS.includes(meal) || !rest) { results.push({ ...c, ok: false, erro: 'dados inválidos' }); continue; }
-    if (!isEligible(r, date, meal)) { results.push({ ...c, ok: false, erro: 'refeição não incluída na pensão/estadia' }); continue; }
-    if (!(rest[`share_${meal}`] > 0)) { results.push({ ...c, ok: false, erro: `${rest.name} não serve esta refeição` }); continue; }
-    const a = db.prepare('SELECT * FROM assignments WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
+    const elig = rooms.filter((r) => isEligible(r, date, meal));
+    if (!elig.length) { results.push({ ...c, ok: false, erro: 'refeição não incluída na pensão/estadia' }); continue; }
+    if (!restaurantsFor(meal, date).find((x) => x.id === rest.id)) { results.push({ ...c, ok: false, erro: `${rest.name} não serve esta refeição nesse dia` }); continue; }
     const loads = paxLoads(date, meal);
-    const pax = r.adults + r.children;
-    const already = a && a.restaurant_id === rest.id ? pax : 0;
+    const getA = db.prepare('SELECT * FROM assignments WHERE reservation_id = ? AND date = ? AND meal = ?');
+    const pax = elig.reduce((s, r) => s + r.adults + r.children, 0);
+    const already = elig.reduce((s, r) => { const a = getA.get(r.id, date, meal); return s + (a && a.restaurant_id === rest.id ? r.adults + r.children : 0); }, 0);
     const cap = rest[`cap_${meal}`];
     if (cap && (loads[rest.id] || 0) - already + pax > cap) { results.push({ ...c, ok: false, erro: 'restaurante lotado' }); continue; }
-    if (a) db.prepare('UPDATE assignments SET restaurant_id = ?, locked = 1, origin = ? WHERE id = ?').run(rest.id, r.source, a.id);
-    else db.prepare('INSERT INTO assignments(reservation_id, date, meal, restaurant_id, locked, origin) VALUES (?,?,?,?,1,?)').run(r.id, date, meal, rest.id, r.source);
-    results.push({ ...c, ok: true });
+    for (const r of elig) {
+      const a = getA.get(r.id, date, meal);
+      if (a) db.prepare('UPDATE assignments SET restaurant_id = ?, locked = 1, origin = ? WHERE id = ?').run(rest.id, r.source, a.id);
+      else db.prepare('INSERT INTO assignments(reservation_id, date, meal, restaurant_id, locked, origin) VALUES (?,?,?,?,1,?)').run(r.id, date, meal, rest.id, r.source);
+    }
+    results.push({ ...c, ok: true, quartos: elig.length });
   }
   return results;
 }
@@ -100,7 +105,8 @@ function ingest(list, source) {
   const escolhas = [];
   tx(() => {
     for (const o of list) if (Array.isArray(o.escolhas) && o.escolhas.length) {
-      escolhas.push({ numero_reserva: String(fromExternal(o).reservation_number), resultado: applyChoices(String(fromExternal(o).reservation_number).trim(), o.escolhas) });
+      const num = splitReservation(fromExternal(o).reservation_number).number;
+      escolhas.push({ numero_reserva: num, resultado: applyChoices(num, o.escolhas) });
     }
   });
   return { inseridas: result.inserted, atualizadas: result.updated, sem_mudanca: result.unchanged, trocas_de_quarto: result.roomChanges, erros: result.errors, escolhas };
@@ -115,12 +121,15 @@ route('POST', '/api/v1/reservas', { apiKey: true }, ({ body, apiClient, ip }) =>
 });
 
 route('GET', '/api/v1/reservas/:numero', { apiKey: true }, ({ params }) => {
-  const r = db.prepare('SELECT * FROM reservations WHERE reservation_number = ?').get(params.numero);
-  if (!r) throw new HttpError(404, 'Reserva não encontrada.');
+  const rooms = db.prepare('SELECT * FROM reservations WHERE reservation_number = ? ORDER BY room_sort(room)').all(splitReservation(params.numero).number);
+  if (!rooms.length) throw new HttpError(404, 'Reserva não encontrada.');
+  const r0 = rooms[0];
   return {
-    numero_reserva: r.reservation_number, nome: r.guest_name, entrada: r.checkin, saida: r.checkout, quarto: r.room, pensao: r.board,
-    adultos: r.adults, criancas: r.children, situacao: r.status,
-    plano: stayPlan(r).map((d) => ({ data: d.date, refeicoes: Object.fromEntries(Object.entries(d.meals).map(([m, v]) => [m, v.included ? (v.restaurant ? v.restaurant.code : null) : false])) })),
+    numero_reserva: r0.reservation_number, nome: r0.guest_name,
+    quartos: rooms.map((r) => ({
+      quarto: r.room, entrada: r.checkin, saida: r.checkout, pensao: r.board, adultos: r.adults, criancas: r.children, situacao: r.status,
+      plano: stayPlan(r).map((d) => ({ data: d.date, refeicoes: Object.fromEntries(Object.entries(d.meals).map(([m, v]) => [m, v.included ? (v.restaurant ? v.restaurant.code : null) : false])) })),
+    })),
   };
 });
 

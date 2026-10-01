@@ -15,6 +15,8 @@ db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeou
   const { roomKey, roomSort } = require('./util');
   db.function('room_key', { deterministic: true }, (v) => roomKey(v));
   db.function('room_sort', { deterministic: true }, (v) => roomSort(v));
+  // texto sem acento e em maiúsculas (busca de agência pelo nome)
+  db.function('norm_txt', { deterministic: true }, (v) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim());
 }
 
 db.exec(`
@@ -37,8 +39,10 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL COLLATE NOCASE,
   name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin','supervisor','refeicao','recepcao','restaurante')),
+  role TEXT NOT NULL CHECK (role IN ('admin','supervisor','refeicao','recepcao','restaurante','agencia','cliente')),
   restaurant_id INTEGER REFERENCES restaurants(id),
+  agency TEXT,
+  reservation_number TEXT,
   active INTEGER NOT NULL DEFAULT 1,
   must_change_password INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -62,7 +66,7 @@ CREATE TABLE IF NOT EXISTS meal_times (
 
 CREATE TABLE IF NOT EXISTS reservations (
   id INTEGER PRIMARY KEY,
-  reservation_number TEXT UNIQUE NOT NULL,
+  reservation_number TEXT NOT NULL,
   guest_name TEXT NOT NULL,
   checkin TEXT NOT NULL,
   checkout TEXT NOT NULL,
@@ -73,12 +77,14 @@ CREATE TABLE IF NOT EXISTS reservations (
   source TEXT NOT NULL DEFAULT 'excel',
   status TEXT NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','cancelada')),
   pref_restaurant_id INTEGER REFERENCES restaurants(id),
+  lunch_on_arrival INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_res_dates ON reservations(checkin, checkout);
 CREATE INDEX IF NOT EXISTS idx_res_room ON reservations(room);
+CREATE INDEX IF NOT EXISTS idx_res_number ON reservations(reservation_number);
 
 CREATE TABLE IF NOT EXISTS room_changes (
   id INTEGER PRIMARY KEY,
@@ -216,6 +222,78 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
 `);
+
+// ---------- Migrações ----------
+// v2: a mesma reserva pode ter vários quartos (grupos) -> sai o UNIQUE do número da reserva;
+//     novos campos: almoço no dia da chegada e dias de fechamento dos restaurantes.
+{
+  const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+  const resSql = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'reservations'").get() || {}).sql || '';
+  if (/reservation_number\s+TEXT\s+UNIQUE/i.test(resSql)) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN');
+    try {
+      db.exec(`CREATE TABLE reservations_v2 (
+        id INTEGER PRIMARY KEY,
+        reservation_number TEXT NOT NULL,
+        guest_name TEXT NOT NULL,
+        checkin TEXT NOT NULL,
+        checkout TEXT NOT NULL,
+        room TEXT NOT NULL,
+        board TEXT NOT NULL CHECK (board IN ('SA','CM','MAP','MAPA','FAP')),
+        adults INTEGER NOT NULL DEFAULT 1,
+        children INTEGER NOT NULL DEFAULT 0,
+        source TEXT NOT NULL DEFAULT 'excel',
+        status TEXT NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','cancelada')),
+        pref_restaurant_id INTEGER REFERENCES restaurants(id),
+        lunch_on_arrival INTEGER NOT NULL DEFAULT 0,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`);
+      db.exec(`INSERT INTO reservations_v2(id, reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, status, pref_restaurant_id, notes, created_at, updated_at)
+        SELECT id, reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, status, pref_restaurant_id, notes, created_at, updated_at FROM reservations`);
+      db.exec('DROP TABLE reservations');
+      db.exec('ALTER TABLE reservations_v2 RENAME TO reservations');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_res_dates ON reservations(checkin, checkout)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_res_room ON reservations(room)');
+      db.exec('CREATE INDEX IF NOT EXISTS idx_res_number ON reservations(reservation_number)');
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; } finally { db.exec('PRAGMA foreign_keys = ON'); }
+  }
+  // v3: perfis Agência e Cliente final (vinculados a um nome de agência ou a um número de reserva)
+  const usersSql = (db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").get() || {}).sql || '';
+  if (usersSql && !usersSql.includes("'agencia'")) {
+    db.exec('PRAGMA foreign_keys = OFF');
+    db.exec('BEGIN');
+    try {
+      db.exec(`CREATE TABLE users_v3 (
+        id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL COLLATE NOCASE,
+        name TEXT NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin','supervisor','refeicao','recepcao','restaurante','agencia','cliente')),
+        restaurant_id INTEGER REFERENCES restaurants(id),
+        agency TEXT,
+        reservation_number TEXT,
+        active INTEGER NOT NULL DEFAULT 1,
+        must_change_password INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        last_login_at TEXT
+      )`);
+      db.exec(`INSERT INTO users_v3(id, username, name, password_hash, role, restaurant_id, active, must_change_password, created_at, last_login_at)
+        SELECT id, username, name, password_hash, role, restaurant_id, active, must_change_password, created_at, last_login_at FROM users`);
+      db.exec('DROP TABLE users');
+      db.exec('ALTER TABLE users_v3 RENAME TO users');
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; } finally { db.exec('PRAGMA foreign_keys = ON'); }
+  }
+  if (!cols('reservations').includes('lunch_on_arrival')) db.exec('ALTER TABLE reservations ADD COLUMN lunch_on_arrival INTEGER NOT NULL DEFAULT 0');
+  // Dias da semana em que o restaurante NÃO serve a refeição (0 = domingo ... 6 = sábado), ex.: "3" = fechado na quarta
+  for (const m of ['cafe', 'almoco', 'janta']) {
+    if (!cols('restaurants').includes(`closed_${m}`)) db.exec(`ALTER TABLE restaurants ADD COLUMN closed_${m} TEXT NOT NULL DEFAULT ''`);
+  }
+}
 
 function tx(fn) {
   db.exec('BEGIN');

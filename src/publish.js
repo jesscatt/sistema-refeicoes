@@ -2,14 +2,14 @@
 // Publicação das listas de refeição e agendamento automático (aviso 40 min antes).
 const { db, notify, audit } = require('./db');
 const { MEAL_LABEL, todayISO, nowLocal, hmToMin, addDays } = require('./util');
-const { daySummary, isPublished, rebalance } = require('./meals');
+const { daySummary, isPublished, rebalance, restaurantsFor } = require('./meals');
 
 function fmtDate(iso) { const [y, m, d] = iso.split('-'); return `${d}/${m}`; }
 
 function publishList(date, meal, user = null, auto = false) {
   // Garante que ninguém ficou sem restaurante antes de publicar
-  const orphans = db.prepare(`SELECT COUNT(*) n FROM assignments a JOIN restaurants r ON r.id = a.restaurant_id
-    WHERE a.date = ? AND a.meal = ? AND r.share_${meal} = 0`).get(date, meal).n;
+  const open = new Set(restaurantsFor(meal, date).map((r) => r.id));
+  const orphans = db.prepare('SELECT restaurant_id FROM assignments WHERE date = ? AND meal = ? AND locked = 0').all(date, meal).filter((a) => !open.has(a.restaurant_id)).length;
   if (orphans) rebalance(date, meal);
   const already = isPublished(date, meal);
   db.prepare(`INSERT INTO meal_lists(date, meal, published_at, published_by, auto) VALUES (?,?,?,?,?)

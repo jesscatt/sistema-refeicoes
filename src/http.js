@@ -8,6 +8,8 @@ const { db } = require('./db');
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 14);
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 
+const PORTAL_ROLES = ['agencia', 'cliente'];
+
 class HttpError extends Error {
   constructor(status, message, extra) { super(message); this.status = status; this.extra = extra; }
 }
@@ -56,7 +58,7 @@ function send(res, status, body, headers = {}) {
 function sessionUser(req) {
   const sid = parseCookies(req).sid;
   if (!sid) return null;
-  const row = db.prepare(`SELECT s.sid, s.expires_at, u.id, u.username, u.name, u.role, u.restaurant_id, u.active, u.must_change_password
+  const row = db.prepare(`SELECT s.sid, s.expires_at, u.id, u.username, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password
     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.sid = ?`).get(sid);
   if (!row || row.expires_at < Date.now() || !row.active) return null;
   // sessão deslizante
@@ -127,6 +129,10 @@ async function handle(req, res, publicDir, apiKeyAuth) {
       ctx.user = sessionUser(req);
       if (!ctx.user) throw new HttpError(401, 'Sessão expirada. Entre novamente.');
       if (match.opts.roles && !match.opts.roles.includes(ctx.user.role)) throw new HttpError(403, 'Seu perfil não tem acesso a esta função.');
+      // Agência e Cliente final só acessam as rotas liberadas para o portal (as próprias reservas)
+      if (PORTAL_ROLES.includes(ctx.user.role) && !match.opts.portal && !(match.opts.roles && match.opts.roles.includes(ctx.user.role))) {
+        throw new HttpError(403, 'Seu perfil não tem acesso a esta função.');
+      }
       // Proteção CSRF: toda alteração exige o cabeçalho enviado pelo próprio app
       if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'fetch') throw new HttpError(403, 'Requisição bloqueada.');
       if (ctx.user.must_change_password && !match.opts.allowPwChange) throw new HttpError(428, 'Troque sua senha para continuar.');
@@ -149,4 +155,4 @@ async function handle(req, res, publicDir, apiKeyAuth) {
   }
 }
 
-module.exports = { route, handle, HttpError, createSession, destroySession, send };
+module.exports = { route, handle, HttpError, createSession, destroySession, send, PORTAL_ROLES };

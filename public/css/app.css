@@ -445,3 +445,22 @@ body { font-feature-settings: "cv11", "ss01"; }
 .rest-line .chk { width: auto; min-width: 0; }
 .btn, .seg button, .nav a { font-weight: 500; }
 .nav a.active, .btn.primary { font-weight: 600; }
+
+/* área de envio da planilha: bloco inteiro clicável */
+.dropzone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 220px; }
+.dropzone svg { display: block; flex: none; }
+.dropzone h2, .dropzone p { margin: 0; }
+/* grupos na distribuição */
+details.grp { border-top: 1px solid var(--line); }
+details.grp > summary { list-style: none; cursor: pointer; border-top: 0; background: var(--paper-2); }
+details.grp > summary::-webkit-details-marker { display: none; }
+details.grp[open] > summary { background: var(--primary-l); }
+.guest.in-group { padding-left: 26px; background: #fbfdfc; }
+.guest.in-group .room { font-size: 13.5px; }
+.closed-days { display: flex; gap: 2px; flex-wrap: nowrap; }
+.closed-days label { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line-2); font-size: 11px; font-weight: 600; cursor: pointer; user-select: none; }
+.closed-days input { display: none; }
+.closed-days label:has(input:checked) { background: var(--danger-l); color: var(--danger); border-color: #e6aaa4; text-decoration: line-through; }
+/* caixas de seleção com texto ao lado (não quebrar a linha) */
+label.row:has(> input[type="checkbox"]) { flex-wrap: nowrap; align-items: flex-start; }
+label.row > input[type="checkbox"] { margin-top: 3px; flex: none; width: 16px; height: 16px; accent-color: var(--primary); }

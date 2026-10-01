@@ -3,7 +3,7 @@ const { route, HttpError } = require('../http');
 const { db, tx, audit, notify } = require('../db');
 const { MEALS, BOARDS, addDays, todayISO, isISODate, toCSV, MEAL_LABEL, roomKey, roomMatch } = require('../util');
 const { syncReservation, boardHas, inWindow } = require('../meals');
-const { parseRows, upsertReservations, normalizeRecord } = require('../importer');
+const { parseRows, upsertReservations, normalizeRecord, planImport, checkDistribution } = require('../importer');
 const { readSpreadsheet } = require('../xlsx');
 
 const VIEW = ['admin', 'supervisor', 'refeicao', 'recepcao'];
@@ -77,6 +77,7 @@ route('GET', '/api/reservations/:id', { roles: VIEW }, ({ params }) => {
     reservation: r,
     plan: stayPlan(r),
     room_changes: db.prepare(`SELECT c.*, u.name user_name FROM room_changes c LEFT JOIN users u ON u.id = c.user_id WHERE reservation_id = ? ORDER BY c.id DESC`).all(r.id),
+    group: db.prepare(`SELECT id, room, adults, children, board, checkin, checkout, status FROM reservations WHERE reservation_number = ? ORDER BY room_sort(room)`).all(r.reservation_number),
   };
 });
 
@@ -88,10 +89,10 @@ function readReservationBody(body) {
 
 route('POST', '/api/reservations', { roles: EDIT }, ({ body, user, ip }) => {
   const rec = readReservationBody(body);
-  if (db.prepare('SELECT 1 FROM reservations WHERE reservation_number = ?').get(rec.reservation_number)) throw new HttpError(409, 'Já existe uma reserva com esse número.');
+  if (db.prepare("SELECT 1 FROM reservations WHERE reservation_number = ? AND room_key(room) = ? AND status = 'ativa'").get(rec.reservation_number, roomKey(rec.room))) throw new HttpError(409, 'Essa reserva já tem esse quarto cadastrado.');
   const id = tx(() => {
-    const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, notes)
-      VALUES (?,?,?,?,?,?,?,?,?,?)`).run(rec.reservation_number, rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, 'manual', body.notes || null);
+    const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, notes, lunch_on_arrival)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(rec.reservation_number, rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, 'manual', body.notes || null, body.lunch_on_arrival ? 1 : 0);
     const id = Number(r.lastInsertRowid);
     syncReservation(id);
     return id;
@@ -111,10 +112,18 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
       const bodyTxt = `${rec.guest_name} (reserva ${ex.reservation_number})`;
       for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title, body: bodyTxt, link: '#/trocas' });
     }
-    db.prepare(`UPDATE reservations SET guest_name=?, checkin=?, checkout=?, room=?, board=?, adults=?, children=?, notes=?,
+    const loa = body.lunch_on_arrival === undefined ? ex.lunch_on_arrival : (body.lunch_on_arrival ? 1 : 0);
+    db.prepare(`UPDATE reservations SET guest_name=?, checkin=?, checkout=?, room=?, board=?, adults=?, children=?, notes=?, lunch_on_arrival=?,
       updated_at = datetime('now','localtime') WHERE id = ?`)
-      .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, body.notes ?? ex.notes, ex.id);
+      .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, body.notes ?? ex.notes, loa, ex.id);
     syncReservation(ex.id);
+    // "almoço na chegada" vale para o grupo inteiro (todos os quartos da reserva)
+    if (loa !== ex.lunch_on_arrival) {
+      for (const o of db.prepare('SELECT id FROM reservations WHERE reservation_number = ? AND id != ?').all(ex.reservation_number, ex.id)) {
+        db.prepare('UPDATE reservations SET lunch_on_arrival = ? WHERE id = ?').run(loa, o.id);
+        syncReservation(o.id);
+      }
+    }
   });
   const diff = Object.fromEntries(['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].filter((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(rec.room) : String(ex[k]) !== String(rec[k]))).map((k) => [k, [ex[k], rec[k]]]));
   audit(user, 'reserva_alterada', { reserva: ex.reservation_number, diff }, ip);
@@ -150,22 +159,22 @@ route('POST', '/api/import/preview', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ 
   try { rows = readSpreadsheet(body, filename); } catch (e) { throw new HttpError(400, e.message); }
   const parsed = parseRows(rows);
   if (!parsed.ok) throw new HttpError(400, parsed.error);
-  // marca o que é novo / alterado / troca de quarto
-  const find = db.prepare('SELECT * FROM reservations WHERE reservation_number = ?');
-  for (const r of parsed.rows) {
-    if (r.errors.length) { r.action = 'erro'; continue; }
-    const ex = find.get(r.reservation_number);
-    if (!ex) r.action = 'nova';
-    else {
-      const changed = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children'].some((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(r.room) : String(ex[k]) !== String(r[k]))) || ex.status !== 'ativa';
-      r.action = changed ? 'alterada' : 'igual';
-      if (roomKey(ex.room) !== roomKey(r.room)) r.old_room = ex.room;
-    }
-  }
-  const dup = {};
-  for (const r of parsed.rows) dup[r.reservation_number] = (dup[r.reservation_number] || 0) + 1;
-  for (const r of parsed.rows) if (r.reservation_number && dup[r.reservation_number] > 1 && !r.errors.length) r.warning = 'número de reserva repetido na planilha (vale a última linha)';
-  return { filename, headerRow: parsed.headerRow, mapping: parsed.mapping, rows: parsed.rows };
+  checkDistribution(parsed.rows, parsed.distribution && parsed.distribution.slots);
+  // marca o que é novo / alterado / troca de quarto (mesma lógica da gravação)
+  const plan = planImport(parsed.rows.map((r) => ({ ...r })), { cancelMissing: true });
+  plan.items.forEach((it, i) => {
+    const r = parsed.rows[i];
+    r.action = it.action;
+    if (it.old_room) r.old_room = it.old_room;
+    if (it.rec.warning) r.warning = it.rec.warning;
+  });
+  const groups = new Set(parsed.rows.filter((r) => !r.errors.length).map((r) => r.reservation_number));
+  return {
+    filename, headerRow: parsed.headerRow, mapping: parsed.mapping, rows: parsed.rows,
+    groups: groups.size,
+    removed: plan.removed.map((e) => ({ id: e.id, reservation_number: e.reservation_number, guest_name: e.guest_name, room: e.room, checkin: e.checkin, checkout: e.checkout })),
+    distribution: parsed.distribution,
+  };
 });
 
 route('POST', '/api/import/commit', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ body, user, ip }) => {
@@ -173,9 +182,9 @@ route('POST', '/api/import/commit', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ b
   try { data = JSON.parse(body.toString('utf8')); } catch { throw new HttpError(400, 'JSON inválido.'); }
   const rows = (data.rows || []).filter((r) => !r.errors || !r.errors.length).map((r) => ({ ...r, errors: undefined }));
   if (!rows.length) throw new HttpError(400, 'Nenhuma linha válida para importar.');
-  const result = upsertReservations(rows, { source: 'excel', user });
-  audit(user, 'importacao_planilha', { arquivo: data.filename, inseridas: result.inserted, alteradas: result.updated, iguais: result.unchanged, trocas_quarto: result.roomChanges.length, erros: result.errors.length }, ip);
-  return { inserted: result.inserted, updated: result.updated, unchanged: result.unchanged, roomChanges: result.roomChanges, errors: result.errors };
+  const result = upsertReservations(rows, { source: 'excel', user, cancelMissing: !!data.cancel_missing, useDistribution: !!data.use_distribution });
+  audit(user, 'importacao_planilha', { arquivo: data.filename, inseridas: result.inserted, alteradas: result.updated, iguais: result.unchanged, canceladas: result.cancelled, trocas_quarto: result.roomChanges.length, divisao_planilha: result.distApplied, erros: result.errors.length }, ip);
+  return { inserted: result.inserted, updated: result.updated, unchanged: result.unchanged, cancelled: result.cancelled, roomChanges: result.roomChanges, errors: result.errors, distApplied: result.distApplied, distSkipped: result.distSkipped };
 });
 
 route('GET', '/api/import/modelo.csv', { roles: EDIT }, () => ({

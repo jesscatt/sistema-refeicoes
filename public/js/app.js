@@ -5,6 +5,7 @@ const root = document.getElementById('root');
 // Menu por perfil
 const NAV = [
   { path: 'painel', label: 'Painel', icon: 'home', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
+  { path: 'minhas', label: 'Minhas reservas', icon: 'book', roles: ['agencia', 'cliente'] },
   { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: ['admin', 'refeicao', 'restaurante'] },
   { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: ['admin', 'supervisor', 'refeicao'] },
   { path: 'recepcao', label: 'Recepção · Cartões', icon: 'card', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
@@ -12,6 +13,7 @@ const NAV = [
   { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: ['admin', 'refeicao'] },
   { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante'] },
   { sep: 'Controle' },
+  { path: 'semana', label: 'Controle da divisão', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
   { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
   { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao'] },
   { path: 'ia', label: 'Assistente IA', icon: 'spark', roles: ['admin', 'supervisor', 'refeicao'] },
@@ -23,12 +25,14 @@ const NAV = [
 
 const PAGES = {
   painel: () => import('./pages/painel.js'),
+  minhas: () => import('./pages/minhas.js'),
   servico: () => import('./pages/servico.js'),
   distribuicao: () => import('./pages/distribuicao.js'),
   recepcao: () => import('./pages/recepcao.js'),
   reservas: () => import('./pages/reservas.js'),
   importar: () => import('./pages/importar.js'),
   trocas: () => import('./pages/trocas.js'),
+  semana: () => import('./pages/semana.js'),
   controle: () => import('./pages/controle.js'),
   faturamento: () => import('./pages/faturamento.js'),
   ia: () => import('./pages/ia.js'),
@@ -39,7 +43,7 @@ const PAGES = {
 };
 
 function homeFor(role) {
-  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : 'painel';
+  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : ['agencia', 'cliente'].includes(role) ? 'minhas' : 'painel';
 }
 
 // ---------- Login ----------
@@ -96,7 +100,7 @@ function renderShell() {
       <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${n.label}</span></a>`)).join('')}</nav>
       <div class="me">
         <b>${esc(state.me.name)}</b>
-        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}</span>
+        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}${role === 'agencia' && state.me.agency ? ' · ' + esc(state.me.agency) : ''}${role === 'cliente' && state.me.reservation_number ? ' · reserva ' + esc(state.me.reservation_number) : ''}</span>
         <div class="row"><button id="btn-pw">Senha</button><button id="btn-out">Sair</button></div>
       </div>
     </aside>

@@ -42,7 +42,7 @@ Testes das regras de negócio: `npm test`.
 2. No serviço, em **Settings → Volumes**, adicione um volume montado em `/app/data` (é onde fica o banco; sem isso os dados somem a cada atualização).
 3. Em **Variables**, defina `ADMIN_PASSWORD`, `DEV_PASSWORD` e `COOKIE_SECURE=1`.
 4. Em **Settings → Networking**, clique em **Generate Domain** para ter o link.
-5. Opcional: para já ter usuários de teste e reservas de exemplo, defina `SEED_DEMO=1` no primeiro deploy e depois remova.
+5. Opcional: `SEED_DEMO=1` cria os usuários de teste (inclusive `agencia` e `cliente`, senha `demo1234`) e, só em banco vazio, reservas de exemplo. Antes de importar as planilhas reais, use *Configurações → Começar do zero* para apagar as reservas de teste.
 
 Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes-data:/app/data refeicoes` (o volume é informado no `docker run`; o Dockerfile não declara `VOLUME` porque o Railway não aceita).
 
@@ -54,12 +54,20 @@ Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes
 | **Supervisão** | Vê tudo, cadastra valores das refeições, **fecha o faturamento** e exporta os relatórios oficiais (só ela e o admin). |
 | **Refeição** | Importa planilhas, revisa a divisão, move clientes, publica listas, informa o real, vê faturamento. |
 | **Recepção** | Só visualiza onde cada hóspede come em cada dia e imprime os cartões. |
-| **Restaurante** | Marca quem veio comer no seu restaurante e informa o número real do dia. |
+| **Restaurante** | Marca quem veio comer no seu restaurante, informa o número real do dia e vê o controle semanal dele. |
+| **Agência** | Vê só as reservas da agência (pelo nome que aparece na coluna Reserva). Pode trocar quarto, alterar nome, datas e pessoas e remover quarto/hóspede. Não muda a pensão. |
+| **Cliente final** | Mesmo que a agência, mas só para a própria reserva (vinculada pelo número). |
 
 ## Regras principais
 
 **Pensões** — `CM` só café · `MAP` café + jantar · `MAPA` café + almoço · `FAP` todas.
 Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar de E até S−1. Ajustável em `src/meals.js` (`inWindow`).
+
+**Grupos** — Todos os quartos com o mesmo número de reserva formam um grupo e vão sempre juntos ao mesmo restaurante em cada refeição. Ao longo da estadia o sistema alterna os restaurantes do grupo (rodízio), como é feito na planilha manual.
+
+**Almoço na chegada** — Grupos que chegam antes do almoço almoçam no dia da entrada (e não no dia da saída). Detectado sozinho quando a planilha de divisão traz almoço no dia da chegada; também dá para marcar na reserva.
+
+**Restaurante fechado** — Em *Configurações* marque os dias da semana em que cada restaurante não serve cada refeição; a parte dele vai para os outros abertos.
 
 **Divisão** — Almoço e jantar: Di Giordana 60%, Paradiso 20%, Maestro 20%. Café: Di Giordana 60%, Paradiso 40% (Maestro não serve). A divisão é por pax (adultos + crianças), grupos inteiros no mesmo restaurante, respeitando a capacidade quando cadastrada. Percentuais e capacidades ficam em *Configurações*.
 
@@ -83,16 +91,32 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 **Faturamento** — Por restaurante × refeição × adulto/criança. Base: o real informado; sem real, o marcado. A supervisão fecha o mês (os números ficam congelados e o controle daquele mês trava).
 
+## Controle da divisão (pagamento dos restaurantes)
+
+Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, por restaurante e refeição, o pax previsto, marcado e real, quantos adultos e crianças pagar e o valor em R$ (com os valores de *Faturamento → Valores*). A diferença para a previsão aparece em vermelho quando passa do previsto. Base do pagamento: real informado → marcado no sistema → previsão. Exporta em Excel. O restaurante vê só o dele.
+
 ## Importação da planilha
 
-Aceita `.xlsx` e `.csv` (o `.xls` antigo precisa ser salvo como `.xlsx`). O cabeçalho pode estar em qualquer uma das primeiras linhas; as colunas são reconhecidas pelo nome (sem importar acentos ou maiúsculas):
+Aceita `.xlsx` e `.csv` (o `.xls` antigo precisa ser salvo como `.xlsx`). Validado com a planilha *DIVISÃO 30-09 a 04-10* do resort (350 quartos, 94 reservas):
+
+- **Reserva** pode vir com o nome do grupo junto (`50893 ANR TUR`); o número e o nome são separados.
+- **Vários quartos na mesma reserva** são um grupo.
+- **Datas que o Excel gravou com dia e mês trocados** (01/10 virando 10 de janeiro) são corrigidas.
+- **Pax** é o total do quarto (já inclui as crianças); **Chd** pode vir como `-`.
+- **Colunas de divisão** (`JANTAR DI GIORDANA QUARTA-FEIRA 30/09`…) são lidas; na conferência dá para usar a divisão da planilha (fica travada) ou deixar o sistema dividir.
+- Avisos por linha: refeição que a pensão não inclui, refeição da pensão que a planilha não mandou, pensão inválida (com sugestão de correção).
+- Quartos de uma reserva que sumiram da planilha podem ser cancelados na mesma importação.
+
+A *Distribuição* exporta a **planilha de divisão no mesmo formato** (.xlsx), para continuar mandando aos restaurantes.
+
+O cabeçalho pode estar em qualquer uma das primeiras linhas; as colunas são reconhecidas pelo nome (sem importar acentos ou maiúsculas):
 
 | Campo | Nomes aceitos (exemplos) |
 |---|---|
 | Nº da reserva | Reserva, Nº Reserva, Localizador |
-| Nome completo | Nome, Nome Completo, Hóspede, Cliente |
+| Nome (opcional) | Nome, Nome Completo, Hóspede, Cliente, Grupo, Agência — ou junto do número na coluna Reserva |
 | Entrada / Saída | Entrada, Check-in, Chegada / Saída, Check-out, Partida |
-| Quarto | Quarto, UH, Apto |
+| Quarto | Quarto, UH, Apto (com a letra da torre: `101C`) |
 | Pensão | Pensão, Regime, Plano |
 | Adultos | Adultos, ADT — ou **Pessoas/Pax** (total; as crianças são descontadas) |
 | Crianças | Crianças, CHD |

@@ -19,6 +19,9 @@ export async function render(el) {
             ${MEALS.map((m) => `<td><input class="input sm" type="number" min="0" name="cap_${m}" value="${r[`cap_${m}`]}" style="width:80px" title="0 = sem limite"></td>`).join('')}
           </tr>`).join('')}</tbody></table></div>
         <p class="muted small" style="padding:0 18px 14px">Percentual 0 = não serve aquela refeição. Capacidade em pax por refeição (0 = sem limite); é usada na divisão e na API do site para não lotar.</p>
+        <div class="card-head" style="border-top:1px solid var(--line)"><h3 class="grow">Dias em que o restaurante fecha</h3><span class="muted small">marque o dia para fechar · a parte dele vai para os outros abertos</span></div>
+        <div class="table-wrap"><table class="t"><thead><tr><th>Restaurante</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
+          <tbody>${meta.restaurants.map((r) => `<tr data-closed="${r.id}"><td><b>${esc(r.name)}</b></td>${MEALS.map((m) => r[`share_${m}`] > 0 ? `<td><div class="closed-days" data-meal="${m}">${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((l, i) => `<label title="${['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][i]}"><input type="checkbox" value="${i}" ${String(r[`closed_${m}`] || '').split(',').includes(String(i)) ? 'checked' : ''}>${l}</label>`).join('')}</div></td>` : '<td class="muted small">não serve</td>').join('')}</tr>`).join('')}</tbody></table></div>
       </div>
 
       <div class="card" style="margin-bottom:16px">
@@ -66,14 +69,20 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
           <div class="card-head" style="border-top:1px solid var(--line)"><h3 class="grow">Assistente IA</h3>${integ.ai_enabled ? '<span class="badge ok">ativo</span>' : '<span class="badge warn">não configurado</span>'}</div>
           <p class="muted small" style="padding:0 18px 16px">Defina a variável de ambiente <code>ANTHROPIC_API_KEY</code> no servidor para ativar.</p>
         </div>
+      </div>
+      <div class="card" style="margin-top:16px;border-color:#e6aaa4">
+        <div class="card-head"><h3 class="grow" style="color:var(--danger)">Começar do zero</h3><button class="btn sm danger" id="reset">Apagar todas as reservas</button></div>
+        <p class="muted small" style="padding:0 18px 14px">Use para tirar os dados de teste antes de importar as planilhas reais. Apaga reservas, divisão, marcações e controle. Usuários, restaurantes, horários e valores continuam.</p>
       </div>`;
 
     el.querySelector('#save-rest').onclick = async () => {
       try {
         for (const tr of el.querySelectorAll('tr[data-id]')) {
           const v = (n) => tr.querySelector(`[name=${n}]`).value;
+          const cl = el.querySelector(`tr[data-closed="${tr.dataset.id}"]`);
+          const closed = Object.fromEntries(MEALS.map((m) => [`closed_${m}`, cl && cl.querySelector(`[data-meal="${m}"]`) ? [...cl.querySelectorAll(`[data-meal="${m}"] input:checked`)].map((i) => i.value).join(',') : undefined]));
           await put('/api/restaurants/' + tr.dataset.id, {
-            name: v('name'), color: v('color'),
+            name: v('name'), color: v('color'), ...closed,
             ...Object.fromEntries(MEALS.flatMap((m) => [[`share_${m}`, Number(v(`share_${m}`)) / 100], [`cap_${m}`, v(`cap_${m}`)]])),
           });
         }
@@ -114,6 +123,16 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
       if (!f.silbeck_token) delete f.silbeck_token;
       try { await put('/api/settings/integration', f); toast('Integração salva.'); load(); } catch (err) { fail(err); }
     });
+    el.querySelector('#reset').onclick = () => {
+      const { el: m, close } = modal({
+        title: 'Apagar todas as reservas?',
+        body: '<p style="margin-top:0">Isso não pode ser desfeito. Digite <b>APAGAR</b> para confirmar.</p><input class="input" name="c" autocomplete="off">',
+        foot: '<button class="btn" data-close>Cancelar</button><button class="btn danger" data-ok>Apagar</button>',
+      });
+      m.querySelector('[data-ok]').onclick = async () => {
+        try { const r = await post('/api/admin/reset-reservations', { confirm: m.querySelector('[name=c]').value }); toast(`${r.deleted} quartos apagados. Pode importar a planilha real.`); close(); } catch (e) { fail(e); }
+      };
+    };
     el.querySelector('#sync').onclick = async () => {
       try { const r = await post('/api/integration/silbeck/sync'); toast(r.skipped || `${r.inseridas} novas, ${r.atualizadas} atualizadas.`); load(); } catch (e) { fail(e); }
     };

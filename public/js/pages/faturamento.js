@@ -20,7 +20,7 @@ export async function render(el) {
     const sum = (k) => b.lines.reduce((s, l) => s + l[k], 0);
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e pax (adulto/criança). Base de cálculo: o número <b>real</b> informado pelo restaurante; se o dia não tiver real, usa o <b>marcado</b> no sistema.</p></div>
+        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e pax (adulto/criança). Base de cálculo: o número <b>real</b> informado pelo restaurante; sem real, o <b>marcado</b> no sistema; se ninguém marcou, a <b>previsão</b> da divisão.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         ${boss ? `<button class="btn" id="prices">${icon('coin')} Valores</button><button class="btn" id="csv">${icon('download')} Relatório oficial</button>` : ''}
         ${boss && !b.closed ? `<button class="btn primary" id="close">${icon('lock')} Fechar mês</button>` : ''}

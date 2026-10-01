@@ -46,6 +46,9 @@ export async function openReservation(id, onChange = () => {}) {
         <span class="badge ${r.status === 'ativa' ? 'ok' : 'danger'}">${r.status}</span>
         <span class="badge info">origem: ${esc(r.source)}</span>
       </div>
+      ${data.group && data.group.length > 1 ? `<div class="banner info">${icon('users')}<span><b>Grupo com ${data.group.length} quartos</b> (${data.group.filter((g) => g.status === 'ativa').reduce((s, g) => s + g.adults + g.children, 0)} pax). O grupo vai sempre junto ao mesmo restaurante em cada refeição.
+        <span class="small" style="display:block;margin-top:4px">${data.group.map((g) => `<a href="#" data-goto="${g.id}" style="${g.id === r.id ? 'font-weight:700' : ''};${g.status !== 'ativa' ? 'text-decoration:line-through' : ''}">${roomHtml(g.room)}</a>`).join(' · ')}</span></span></div>` : ''}
+      ${r.lunch_on_arrival ? `<div class="banner ok">${icon('plate')}<span>Este grupo almoça no <b>dia da chegada</b> (e não no dia da saída).</span></div>` : ''}
       ${planGrid(data.plan)}
       ${data.room_changes.length ? `<h3 style="margin:18px 0 8px">Trocas de quarto</h3>
         <table class="t"><tbody>${data.room_changes.map((c) => `<tr><td class="room">${esc(c.old_room)} → ${esc(c.new_room)}</td><td>${esc(c.source)}${c.user_name ? ' · ' + esc(c.user_name) : ''}</td><td class="muted small">${esc(c.created_at)}</td></tr>`).join('')}</tbody></table>` : ''}
@@ -59,6 +62,8 @@ export async function openReservation(id, onChange = () => {}) {
           <label class="f">Adultos<input class="input" type="number" min="0" name="adults" value="${r.adults}"></label>
           <label class="f">Crianças<input class="input" type="number" min="0" name="children" value="${r.children}"></label>
           <label class="f full">Observações<input class="input" name="notes" value="${esc(r.notes || '')}"></label>
+          <label class="row full" style="gap:8px;cursor:pointer"><input type="checkbox" name="lunch_on_arrival" ${r.lunch_on_arrival ? 'checked' : ''}>
+            <span><b>Almoço no dia da chegada</b> — para grupos que chegam antes do almoço; o último almoço deixa de ser no dia da saída. Vale para todos os quartos da reserva.</span></label>
         </form>
         <p class="muted small">Ao trocar o quarto, recepção, setor de refeições e restaurantes recebem um aviso.</p>` : ''}`,
     foot: `${edit ? (r.status === 'ativa' ? '<button class="btn danger" data-cancel>Cancelar reserva</button>' : '<button class="btn" data-react>Reativar</button>') : ''}
@@ -66,8 +71,10 @@ export async function openReservation(id, onChange = () => {}) {
       ${edit ? '<button class="btn primary" data-save>Salvar</button>' : '<button class="btn" data-close>Fechar</button>'}`,
   });
   el.querySelector('[data-print]').onclick = () => printCards([data]);
+  el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); if (Number(a.dataset.goto) !== r.id) { close(); openReservation(a.dataset.goto, onChange); } }));
   el.querySelector('[data-save]')?.addEventListener('click', async () => {
     const f = Object.fromEntries(new FormData(el.querySelector('#ed')));
+    f.lunch_on_arrival = el.querySelector('[name=lunch_on_arrival]').checked;
     try { await put('/api/reservations/' + r.id, f); toast('Reserva salva.'); close(); onChange(); } catch (e) { fail(e); }
   });
   el.querySelector('[data-cancel]')?.addEventListener('click', async () => {

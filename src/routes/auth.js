@@ -26,18 +26,18 @@ route('POST', '/api/login', { auth: false }, ({ body, res, ip }) => {
   return { ok: true };
 });
 
-route('POST', '/api/logout', { allowPwChange: true }, ({ req, res, user, ip }) => {
+route('POST', '/api/logout', { allowPwChange: true, portal: true }, ({ req, res, user, ip }) => {
   audit(user, 'logout', null, ip);
   destroySession(req, res);
   return { ok: true };
 });
 
-route('GET', '/api/me', { allowPwChange: true }, ({ user }) => {
+route('GET', '/api/me', { allowPwChange: true, portal: true }, ({ user }) => {
   const rest = user.restaurant_id ? db.prepare('SELECT id, code, name, color FROM restaurants WHERE id = ?').get(user.restaurant_id) : null;
-  return { id: user.id, username: user.username, name: user.name, role: user.role, restaurant: rest, must_change_password: !!user.must_change_password };
+  return { id: user.id, username: user.username, name: user.name, role: user.role, restaurant: rest, agency: user.agency || null, reservation_number: user.reservation_number || null, must_change_password: !!user.must_change_password };
 });
 
-route('POST', '/api/me/password', { allowPwChange: true }, ({ user, body, ip }) => {
+route('POST', '/api/me/password', { allowPwChange: true, portal: true }, ({ user, body, ip }) => {
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
   if (!verifyPassword(body.current || '', u.password_hash)) throw new HttpError(400, 'Senha atual incorreta.');
   const pw = String(body.password || '');
@@ -47,13 +47,13 @@ route('POST', '/api/me/password', { allowPwChange: true }, ({ user, body, ip }) 
   return { ok: true };
 });
 
-route('GET', '/api/meta', { allowPwChange: true }, () => ({
+route('GET', '/api/meta', { allowPwChange: true, portal: true }, () => ({
   restaurants: db.prepare('SELECT * FROM restaurants WHERE active = 1 ORDER BY id').all(),
   meal_times: db.prepare('SELECT * FROM meal_times ORDER BY sort').all(),
   boards: BOARDS,
   meals: MEAL_LABEL,
   roles: {
     admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição',
-    recepcao: 'Recepção', restaurante: 'Restaurante',
+    recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Agência', cliente: 'Cliente final',
   },
 }));

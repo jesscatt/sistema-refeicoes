@@ -2,7 +2,9 @@
 // Planilha de controle unificada (previsão x marcado x real) e faturamento.
 const { route, HttpError } = require('../http');
 const { db, audit } = require('../db');
-const { MEALS, MEAL_LABEL, monthRange, isISODate, toCSV, todayISO, nowLocal } = require('../util');
+const { MEALS, MEAL_LABEL, monthRange, isISODate, toCSV, todayISO, nowLocal, addDays } = require('../util');
+const { buildXlsx } = require('../xlsx-write');
+const { weekday } = require('../meals');
 
 const BILL_VIEW = ['admin', 'supervisor', 'refeicao'];
 const BILL_CLOSE = ['admin', 'supervisor'];
@@ -19,6 +21,10 @@ function closure(month) {
 // Linhas por dia x refeição x restaurante
 function controlRows(month, restId = null) {
   const { first, last } = monthRange(month);
+  return controlRange(first, last, restId);
+}
+
+function controlRange(first, last, restId = null) {
   const key = (d, m, r) => `${d}|${m}|${r}`;
   const map = new Map();
   const get = (d, m, r) => {
@@ -45,10 +51,13 @@ function controlRows(month, restId = null) {
   return [...map.values()].sort((a, b) => a.date.localeCompare(b.date) || MEALS.indexOf(a.meal) - MEALS.indexOf(b.meal) || a.restaurant_id - b.restaurant_id);
 }
 
-// Base de cálculo: valor real informado pelo restaurante; se não houver, o que foi marcado no sistema
+// Base de cálculo: 1) número real informado pelo restaurante; 2) sem real, o que foi marcado no sistema;
+// 3) se ninguém marcou nada naquela refeição, a previsão da divisão.
 function billedPax(row) {
   const hasReal = row.real_adults !== null || row.real_children !== null;
-  return hasReal ? { adults: row.real_adults || 0, children: row.real_children || 0, basis: 'real' } : { adults: row.checked_adults, children: row.checked_children, basis: 'marcado' };
+  if (hasReal) return { adults: row.real_adults || 0, children: row.real_children || 0, basis: 'real' };
+  if (row.checked_adults + row.checked_children > 0) return { adults: row.checked_adults, children: row.checked_children, basis: 'marcado' };
+  return { adults: row.forecast_adults, children: row.forecast_children, basis: 'previsto' };
 }
 
 function billing(month) {
@@ -164,4 +173,92 @@ route('PUT', '/api/prices', { roles: BILL_CLOSE }, ({ body, user, ip }) => {
   return { ok: true };
 });
 
-module.exports = { billing, controlRows };
+// ---------- Controle semanal da divisão (pagamento dos restaurantes) ----------
+// Por restaurante e refeição: pax previsto (divisão), marcado no restaurante, real informado,
+// base de pagamento (real; sem real usa o marcado), adultos e crianças, e valores em R$.
+function weekly(from, to, restId = null) {
+  const rows = controlRange(from, to, restId);
+  const rests = db.prepare(`SELECT id, code, name, color FROM restaurants WHERE active = 1 ${restId ? 'AND id = ' + Number(restId) : ''} ORDER BY id`).all();
+  const prices = db.prepare('SELECT * FROM prices').all();
+  const price = (r, m) => prices.find((p) => p.restaurant_id === r && p.meal === m) || { price_adult: 0, price_child: 0 };
+  const zero = () => ({ prev_adt: 0, prev_chd: 0, marc_adt: 0, marc_chd: 0, real_adt: 0, real_chd: 0, pag_adt: 0, pag_chd: 0, valor_prev: 0, valor: 0, sem_real: 0, so_previsto: 0, fora_lista: 0, avulso: 0 });
+  const add = (t, r, pr) => {
+    const b = billedPax(r);
+    t.prev_adt += r.forecast_adults; t.prev_chd += r.forecast_children;
+    t.marc_adt += r.checked_adults; t.marc_chd += r.checked_children;
+    t.real_adt += r.real_adults || 0; t.real_chd += r.real_children || 0;
+    t.pag_adt += b.adults; t.pag_chd += b.children;
+    t.valor_prev += r.forecast_adults * pr.price_adult + r.forecast_children * pr.price_child;
+    t.valor += b.adults * pr.price_adult + b.children * pr.price_child;
+    if (b.basis !== 'real' && (r.forecast_adults + r.forecast_children + r.checked_adults + r.checked_children) > 0) t.sem_real++;
+    if (b.basis === 'previsto' && (r.forecast_adults + r.forecast_children) > 0) t.so_previsto = (t.so_previsto || 0) + 1;
+    t.fora_lista += r.fora_lista || 0; t.avulso += (r.walkin_adults || 0) + (r.walkin_children || 0);
+  };
+  const days = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) days.push(d);
+  const out = rests.map((rest) => {
+    const meals = MEALS.map((meal) => {
+      const pr = price(rest.id, meal);
+      const t = { meal, price_adult: pr.price_adult, price_child: pr.price_child, ...zero(), days: {} };
+      for (const r of rows.filter((x) => x.restaurant_id === rest.id && x.meal === meal)) {
+        add(t, r, pr);
+        const dd = (t.days[r.date] = t.days[r.date] || zero()); add(dd, r, pr);
+      }
+      return t;
+    }).filter((t) => t.prev_adt + t.prev_chd + t.marc_adt + t.marc_chd + t.real_adt + t.real_chd > 0 || t.price_adult > 0);
+    const tot = zero();
+    for (const m of meals) for (const k of Object.keys(tot)) tot[k] += m[k];
+    return { restaurant: rest, meals, total: tot };
+  });
+  const grand = zero();
+  for (const r of out) for (const k of Object.keys(grand)) grand[k] += r.total[k];
+  const rnd = (o) => { for (const k of ['valor', 'valor_prev']) o[k] = Math.round(o[k] * 100) / 100; };
+  for (const r of out) { rnd(r.total); r.meals.forEach((m) => { rnd(m); Object.values(m.days).forEach(rnd); }); }
+  rnd(grand);
+  return { from, to, days, restaurants: out, total: grand };
+}
+
+function weekRange(query) {
+  let from = isISODate(query.from) ? query.from : null;
+  if (!from) { const t = todayISO(); from = addDays(t, -((weekday(t) + 6) % 7)); } // segunda-feira desta semana
+  let to = isISODate(query.to) ? query.to : addDays(from, 6);
+  if (to < from) to = from;
+  if (to > addDays(from, 62)) to = addDays(from, 62);
+  return { from, to };
+}
+
+const WEEK_VIEW = ['admin', 'supervisor', 'refeicao', 'restaurante'];
+route('GET', '/api/control/week', { roles: WEEK_VIEW }, ({ query, user }) => {
+  const { from, to } = weekRange(query);
+  const restId = user.role === 'restaurante' ? user.restaurant_id : (Number(query.restaurant_id) || null);
+  return weekly(from, to, restId);
+});
+
+route('GET', '/api/control/week.xlsx', { roles: WEEK_VIEW }, ({ query, user, ip }) => {
+  const { from, to } = weekRange(query);
+  const restId = user.role === 'restaurante' ? user.restaurant_id : (Number(query.restaurant_id) || null);
+  const w = weekly(from, to, restId);
+  const br = (iso) => iso.split('-').reverse().join('/');
+  const H = (v) => ({ v, s: 3 });
+  const n = (v) => ({ v: Math.round((Number(v) || 0) * 100) / 100, s: 5 });
+  const rows = [[{ v: `CONTROLE DA DIVISÃO · ${br(from)} a ${br(to)}`, s: 1 }], [],
+    ['Restaurante', 'Refeição', 'Prev. ADT', 'Prev. CHD', 'Prev. total', 'Marc. ADT', 'Marc. CHD', 'Real ADT', 'Real CHD', 'Pagar ADT', 'Pagar CHD', 'Pagar total', 'R$ ADT', 'R$ CHD', 'Valor previsto', 'Valor a pagar', 'Diferença R$', 'Dias sem real'].map(H)];
+  for (const r of w.restaurants) {
+    for (const m of r.meals) rows.push([r.restaurant.name, MEAL_LABEL[m.meal], n(m.prev_adt), n(m.prev_chd), n(m.prev_adt + m.prev_chd), n(m.marc_adt), n(m.marc_chd), n(m.real_adt), n(m.real_chd), n(m.pag_adt), n(m.pag_chd), n(m.pag_adt + m.pag_chd), n(m.price_adult), n(m.price_child), n(m.valor_prev), n(m.valor), n(m.valor - m.valor_prev), n(m.sem_real)]);
+    const t = r.total;
+    rows.push([{ v: `Total ${r.restaurant.name}`, s: 4 }, { v: '', s: 4 }, ...[t.prev_adt, t.prev_chd, t.prev_adt + t.prev_chd, t.marc_adt, t.marc_chd, t.real_adt, t.real_chd, t.pag_adt, t.pag_chd, t.pag_adt + t.pag_chd, '', '', t.valor_prev, t.valor, t.valor - t.valor_prev, t.sem_real].map((v) => ({ v: v === '' ? null : Math.round(v * 100) / 100, s: 4 }))]);
+    rows.push([]);
+  }
+  const g = w.total;
+  rows.push([{ v: 'TOTAL GERAL', s: 4 }, { v: '', s: 4 }, ...[g.prev_adt, g.prev_chd, g.prev_adt + g.prev_chd, g.marc_adt, g.marc_chd, g.real_adt, g.real_chd, g.pag_adt, g.pag_chd, g.pag_adt + g.pag_chd, '', '', g.valor_prev, g.valor, g.valor - g.valor_prev, g.sem_real].map((v) => ({ v: v === '' ? null : Math.round(v * 100) / 100, s: 4 }))]);
+  // detalhe por dia
+  rows.push([], [{ v: 'POR DIA (pax a pagar: adultos / crianças)', s: 1 }], [H('Restaurante'), H('Refeição'), ...w.days.map((d) => H(br(d).slice(0, 5))), H('Total')]);
+  for (const r of w.restaurants) for (const m of r.meals) {
+    rows.push([r.restaurant.name, MEAL_LABEL[m.meal], ...w.days.map((d) => { const x = m.days[d]; return { v: x ? `${x.pag_adt} / ${x.pag_chd}` : '', s: 5 }; }), { v: `${m.pag_adt} / ${m.pag_chd}`, s: 4 }]);
+  }
+  audit(user, 'controle_semanal_exportado', { from, to }, ip);
+  const buf = buildXlsx({ name: 'Controle', rows, merges: [], freeze: { row: 3, col: 2 }, cols: [24, 14, ...Array(16).fill(11)] });
+  return { __raw: buf, headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="controle-divisao_${from}_a_${to}.xlsx"` } };
+});
+
+module.exports = { billing, controlRows, controlRange, weekly };

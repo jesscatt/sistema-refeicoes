@@ -1,17 +1,17 @@
 'use strict';
 // Regras de pensão e distribuição entre restaurantes.
 const { db, tx } = require('./db');
-const { BOARDS, MEALS, addDays, todayISO } = require('./util');
+const { BOARDS, MEALS, addDays } = require('./util');
 
 /*
- * Janela de cada refeição dentro da estadia (entrada E, saída S):
+ * Janela de cada refeição dentro da estadia (entrada E, saída S) — conferida com a planilha de divisão do resort:
  *  - Café:   do dia seguinte à entrada até o dia da saída   (E < dia <= S)
  *  - Almoço: do dia seguinte à entrada até o dia da saída   (E < dia <= S)
+ *            exceção "almoço na chegada" (grupos que chegam antes do almoço): E <= dia < S
  *  - Jantar: do dia da entrada até a véspera da saída        (E <= dia < S)
- * Pode ser ajustado aqui se a regra do hotel for diferente.
  */
 function inWindow(res, date, meal) {
-  if (meal === 'janta') return date >= res.checkin && date < res.checkout;
+  if (meal === 'janta' || (meal === 'almoco' && res.lunch_on_arrival)) return date >= res.checkin && date < res.checkout;
   return date > res.checkin && date <= res.checkout;
 }
 
@@ -26,15 +26,23 @@ function isEligible(res, date, meal) {
 function mealDates(res, meal) {
   if (!boardHas(res.board, meal) || res.status !== 'ativa') return [];
   const out = [];
-  let d = meal === 'janta' ? res.checkin : addDays(res.checkin, 1);
-  const last = meal === 'janta' ? addDays(res.checkout, -1) : res.checkout;
-  let guard = 0;
-  while (d <= last && guard++ < 400) { out.push(d); d = addDays(d, 1); }
+  let d = res.checkin, guard = 0;
+  while (d <= res.checkout && guard++ < 400) { if (inWindow(res, d, meal)) out.push(d); d = addDays(d, 1); }
   return out;
 }
 
-function restaurantsFor(meal) {
-  return db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap FROM restaurants WHERE active = 1 AND share_${meal} > 0 ORDER BY share_${meal} DESC, id`).all();
+function weekday(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+// Restaurantes que servem a refeição (percentual > 0) e não estão fechados naquele dia da semana
+function restaurantsFor(meal, date = null) {
+  const rows = db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap, closed_${meal} AS closed
+    FROM restaurants WHERE active = 1 AND share_${meal} > 0 ORDER BY share_${meal} DESC, id`).all();
+  if (!date) return rows;
+  const wd = String(weekday(date));
+  return rows.filter((r) => !String(r.closed || '').split(',').map((x) => x.trim()).includes(wd));
 }
 
 function paxLoads(date, meal) {
@@ -48,15 +56,33 @@ function paxLoads(date, meal) {
   return loads;
 }
 
-// Escolhe o restaurante mais "atrasado" em relação à sua meta percentual, respeitando capacidade.
-function pickRestaurant(rests, loads, pax) {
+// Quantas vezes o grupo já foi a cada restaurante nessa refeição, em outros dias (para alternar)
+function groupVisits(resNumber, meal, exceptDate) {
+  const v = {};
+  for (const r of db.prepare(`SELECT a.restaurant_id, COUNT(DISTINCT a.date) n FROM assignments a JOIN reservations r ON r.id = a.reservation_id
+      WHERE r.reservation_number = ? AND a.meal = ? AND a.date != ? AND r.status = 'ativa' GROUP BY a.restaurant_id`).all(resNumber, meal, exceptDate)) {
+    v[r.restaurant_id] = r.n;
+  }
+  return v;
+}
+
+// Peso do rodízio: quanto o sistema aceita se afastar da meta (em pax do grupo) para o grupo conhecer outro restaurante
+const ROTATION_WEIGHT = 0.6;
+
+/*
+ * Escolhe o restaurante para um grupo de `pax` pessoas:
+ *  1) respeita a capacidade cadastrada;
+ *  2) fica com o mais "atrasado" em relação à meta percentual;
+ *  3) prefere um restaurante que o grupo ainda não conheceu nessa refeição (rodízio).
+ */
+function pickRestaurant(rests, loads, pax, visits = {}) {
   const totalShare = rests.reduce((s, r) => s + r.share, 0) || 1;
   const totalAfter = rests.reduce((s, r) => s + (loads[r.id] || 0), 0) + pax;
   let pool = rests.filter((r) => !r.cap || (loads[r.id] || 0) + pax <= r.cap);
   if (!pool.length) pool = rests; // todos cheios: mantém a proporção e sinaliza lotação na tela
   let best = null, bestScore = -Infinity;
   for (const r of pool) {
-    const score = (r.share / totalShare) * totalAfter - (loads[r.id] || 0);
+    const score = (r.share / totalShare) * totalAfter - (loads[r.id] || 0) - ROTATION_WEIGHT * pax * (visits[r.id] || 0);
     if (score > bestScore + 1e-9) { best = r; bestScore = score; }
   }
   return best;
@@ -66,15 +92,29 @@ function hasAttendance(resId, date, meal) {
   return !!db.prepare('SELECT 1 FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(resId, date, meal);
 }
 
-// Garante que as atribuições de uma reserva batem com a pensão e as datas atuais.
+// Pax do grupo (todos os quartos ativos da reserva que têm essa refeição nesse dia)
+function groupPax(resNumber, date, meal) {
+  return db.prepare(`SELECT * FROM reservations WHERE reservation_number = ? AND status = 'ativa'`).all(resNumber)
+    .filter((r) => isEligible(r, date, meal)).reduce((s, r) => s + r.adults + r.children, 0);
+}
+
+// Restaurante onde o grupo já está nesse dia/refeição (outro quarto da mesma reserva)
+function groupRestaurant(resNumber, date, meal, exceptResId) {
+  const r = db.prepare(`SELECT a.restaurant_id FROM assignments a JOIN reservations r ON r.id = a.reservation_id
+    WHERE r.reservation_number = ? AND a.date = ? AND a.meal = ? AND r.status = 'ativa' AND r.id != ?
+    ORDER BY a.locked DESC, a.id LIMIT 1`).get(resNumber, date, meal, exceptResId);
+  return r ? r.restaurant_id : null;
+}
+
+// Garante que as atribuições de um quarto batem com a pensão e as datas atuais.
 function syncReservation(resId) {
   const res = db.prepare('SELECT * FROM reservations WHERE id = ?').get(resId);
   if (!res) return;
   const pax = res.adults + res.children;
   for (const meal of MEALS) {
     const dates = new Set(mealDates(res, meal));
-    const rests = restaurantsFor(meal);
-    const pref = res.pref_restaurant_id && rests.find((r) => r.id === res.pref_restaurant_id);
+    const allRests = restaurantsFor(meal);
+    const pref = res.pref_restaurant_id && allRests.find((r) => r.id === res.pref_restaurant_id);
     const existing = db.prepare('SELECT * FROM assignments WHERE reservation_id = ? AND meal = ?').all(resId, meal);
     for (const a of existing) {
       const attended = hasAttendance(resId, a.date, meal);
@@ -84,53 +124,68 @@ function syncReservation(resId) {
       }
       dates.delete(a.date);
       if (attended) continue;
+      const rests = restaurantsFor(meal, a.date);
       if (pref && a.restaurant_id !== pref.id && !a.locked) {
         db.prepare('UPDATE assignments SET restaurant_id = ?, locked = 1, origin = ? WHERE id = ?').run(pref.id, res.source, a.id);
-      } else if (!rests.find((r) => r.id === a.restaurant_id) && rests.length) {
-        // restaurante deixou de servir essa refeição
+      } else if (!rests.find((r) => r.id === a.restaurant_id) && rests.length && !a.locked) {
+        // restaurante deixou de servir essa refeição nesse dia
         const loads = paxLoads(a.date, meal);
         loads[a.restaurant_id] = Math.max(0, (loads[a.restaurant_id] || 0) - pax);
-        db.prepare('UPDATE assignments SET restaurant_id = ?, locked = 0 WHERE id = ?').run(pickRestaurant(rests, loads, pax).id, a.id);
+        db.prepare('UPDATE assignments SET restaurant_id = ? WHERE id = ?').run(pickRestaurant(rests, loads, pax).id, a.id);
       }
     }
     for (const date of dates) {
-      let rest, locked = 0, origin = 'auto';
-      if (pref) { rest = pref; locked = 1; origin = res.source; }
+      let restId, locked = 0, origin = 'auto';
+      if (pref) { restId = pref.id; locked = 1; origin = res.source; }
       else {
-        if (!rests.length) continue;
-        rest = pickRestaurant(rests, paxLoads(date, meal), pax);
+        restId = groupRestaurant(res.reservation_number, date, meal, res.id);
+        if (!restId) {
+          const rests = restaurantsFor(meal, date);
+          if (!rests.length) continue;
+          const gp = Math.max(pax, groupPax(res.reservation_number, date, meal));
+          restId = pickRestaurant(rests, paxLoads(date, meal), gp, groupVisits(res.reservation_number, meal, date)).id;
+        }
       }
       db.prepare('INSERT INTO assignments(reservation_id, date, meal, restaurant_id, locked, origin) VALUES (?,?,?,?,?,?)')
-        .run(resId, date, meal, rest.id, locked, origin);
+        .run(resId, date, meal, restId, locked, origin);
     }
   }
 }
 
-// Redistribui (para o dia/refeição) quem não está travado e ainda não foi marcado.
+/*
+ * Redistribui um dia/refeição. A unidade é o GRUPO (todos os quartos da mesma reserva vão juntos).
+ * Quartos travados ou já marcados ficam onde estão e "puxam" o resto do grupo para lá.
+ */
 function rebalance(date, meal) {
-  const rests = restaurantsFor(meal);
+  const rests = restaurantsFor(meal, date);
   if (!rests.length) return { moved: 0 };
   return tx(() => {
     const rows = db.prepare(`
-      SELECT a.id, a.restaurant_id, a.locked, r.adults + r.children pax,
+      SELECT a.id, a.restaurant_id, a.locked, r.reservation_number num, r.adults + r.children pax,
         EXISTS(SELECT 1 FROM attendance t WHERE t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal) attended
       FROM assignments a JOIN reservations r ON r.id = a.reservation_id
       WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa'`).all(date, meal);
     const loads = {};
-    const free = [];
+    const groups = new Map();
     for (const r of rows) {
-      if (r.locked || r.attended) loads[r.restaurant_id] = (loads[r.restaurant_id] || 0) + r.pax;
-      else free.push(r);
+      if (!groups.has(r.num)) groups.set(r.num, { num: r.num, fixed: null, free: [], pax: 0 });
+      const g = groups.get(r.num);
+      if (r.locked || r.attended) {
+        loads[r.restaurant_id] = (loads[r.restaurant_id] || 0) + r.pax;
+        if (!g.fixed) g.fixed = r.restaurant_id;
+      } else { g.free.push(r); g.pax += r.pax; }
     }
-    // grupos maiores primeiro -> divisão mais equilibrada
-    free.sort((a, b) => b.pax - a.pax || a.id - b.id);
-    let moved = 0;
     const upd = db.prepare('UPDATE assignments SET restaurant_id = ? WHERE id = ?');
-    for (const r of free) {
-      const best = pickRestaurant(rests, loads, r.pax);
-      loads[best.id] = (loads[best.id] || 0) + r.pax;
-      if (best.id !== r.restaurant_id) { upd.run(best.id, r.id); moved++; }
-    }
+    let moved = 0;
+    const place = (g, restId) => {
+      loads[restId] = (loads[restId] || 0) + g.pax;
+      for (const r of g.free) if (r.restaurant_id !== restId) { upd.run(restId, r.id); moved++; }
+    };
+    const list = [...groups.values()].filter((g) => g.free.length);
+    // grupos presos a um restaurante primeiro; depois os maiores -> divisão mais equilibrada
+    for (const g of list.filter((x) => x.fixed)) place(g, g.fixed);
+    const rest = list.filter((x) => !x.fixed).sort((a, b) => b.pax - a.pax || String(a.num).localeCompare(String(b.num)));
+    for (const g of rest) place(g, pickRestaurant(rests, loads, g.pax, groupVisits(g.num, meal, date)).id);
     return { moved };
   });
 }
@@ -139,17 +194,21 @@ function isPublished(date, meal) {
   return !!db.prepare('SELECT 1 FROM meal_lists WHERE date = ? AND meal = ?').get(date, meal);
 }
 
-// Após uma importação: sincroniza as reservas. Quem já tinha restaurante continua onde está
-// (para não mudar cartões já entregues); só os novos dias/reservas são distribuídos,
-// grupos maiores primeiro. Para refazer a divisão de um dia use rebalance().
+// Após uma importação: sincroniza os quartos. Quem já tinha restaurante continua onde está
+// (para não mudar cartões já entregues); só os novos dias/quartos são distribuídos,
+// grupos maiores primeiro e todos os quartos do grupo em sequência.
 function syncMany(resIds) {
-  const pax = db.prepare('SELECT adults + children p FROM reservations WHERE id = ?');
-  const ordered = [...new Set(resIds)].map((id) => ({ id, p: (pax.get(id) || { p: 0 }).p })).sort((a, b) => b.p - a.p);
-  tx(() => { for (const { id } of ordered) syncReservation(id); });
+  const info = db.prepare('SELECT reservation_number num, adults + children p FROM reservations WHERE id = ?');
+  const items = [...new Set(resIds)].map((id) => ({ id, ...(info.get(id) || { num: '', p: 0 }) }));
+  const gp = {};
+  for (const it of items) gp[it.num] = (gp[it.num] || 0) + it.p;
+  items.sort((a, b) => gp[b.num] - gp[a.num] || String(a.num).localeCompare(String(b.num)) || b.p - a.p);
+  tx(() => { for (const { id } of items) syncReservation(id); });
 }
 
 // Resumo de um dia/refeição por restaurante
 function daySummary(date, meal) {
+  const open = new Set(restaurantsFor(meal, date).map((r) => r.id));
   const rests = db.prepare(`SELECT id, code, name, color, share_${meal} share, cap_${meal} cap FROM restaurants WHERE active = 1 ORDER BY id`).all();
   const asg = db.prepare(`
     SELECT a.restaurant_id, COUNT(*) reservas, SUM(r.adults) adults, SUM(r.children) children
@@ -165,7 +224,7 @@ function daySummary(date, meal) {
     const t = att.find((x) => x.restaurant_id === r.id) || { reservas: 0, adults: 0, children: 0, fora: 0 };
     const pax = a.adults + a.children;
     return {
-      ...r, serves: r.share > 0,
+      ...r, serves: open.has(r.id), closed_today: r.share > 0 && !open.has(r.id),
       reservas: a.reservas, adults: a.adults, children: a.children, pax,
       pct: total ? pax / total : 0,
       checked_reservas: t.reservas, checked_pax: t.adults + t.children, fora_lista: t.fora,
@@ -174,4 +233,4 @@ function daySummary(date, meal) {
   });
 }
 
-module.exports = { inWindow, boardHas, isEligible, mealDates, restaurantsFor, pickRestaurant, syncReservation, syncMany, rebalance, isPublished, daySummary, paxLoads };
+module.exports = { inWindow, boardHas, isEligible, mealDates, restaurantsFor, pickRestaurant, syncReservation, syncMany, rebalance, isPublished, daySummary, paxLoads, groupVisits, weekday };

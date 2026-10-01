@@ -1,8 +1,9 @@
 'use strict';
 const { route, HttpError } = require('../http');
 const { db, tx, audit } = require('../db');
-const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS, roomMatch, roomKey } = require('../util');
-const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible } = require('../meals');
+const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS, roomMatch, roomKey, roomSort: roomSortKey, addDays } = require('../util');
+const { buildXlsx, colName } = require('../xlsx-write');
+const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible, restaurantsFor, weekday } = require('../meals');
 const { publishList, currentMeal } = require('../publish');
 const { restMap } = require('./reservations');
 
@@ -64,22 +65,30 @@ route('POST', '/api/distribution/rebalance', { roles: MANAGE }, ({ body, user, i
   return r;
 });
 
+// Move o GRUPO inteiro (todos os quartos da reserva nesse dia/refeição), exceto quem já foi marcado.
+// Com body.only_room = true move só aquele quarto.
 route('POST', '/api/distribution/move', { roles: MANAGE }, ({ body, user, ip }) => {
   const a = db.prepare('SELECT a.*, r.reservation_number FROM assignments a JOIN reservations r ON r.id = a.reservation_id WHERE a.id = ?').get(body.assignment_id);
   if (!a) throw new HttpError(404, 'Registro não encontrado.');
   const rest = db.prepare(`SELECT * FROM restaurants WHERE id = ? AND active = 1`).get(body.restaurant_id);
   if (!rest) throw new HttpError(400, 'Restaurante inválido.');
-  if (!(rest[`share_${a.meal}`] > 0)) throw new HttpError(400, `${rest.name} não serve ${MEAL_LABEL[a.meal].toLowerCase()}.`);
+  if (!restaurantsFor(a.meal, a.date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest.name} não serve ${MEAL_LABEL[a.meal].toLowerCase()} nesse dia.`);
   if (db.prepare('SELECT 1 FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(a.reservation_id, a.date, a.meal)) {
     throw new HttpError(409, 'Este cliente já foi marcado; não é possível mudar o restaurante.');
   }
-  db.prepare("UPDATE assignments SET restaurant_id = ?, locked = 1, origin = 'manual' WHERE id = ?").run(rest.id, a.id);
-  audit(user, 'cliente_movido', { reserva: a.reservation_number, date: a.date, meal: a.meal, de: a.restaurant_id, para: rest.id }, ip);
-  return { ok: true };
+  const targets = body.only_room ? [a] : db.prepare(`SELECT a.* FROM assignments a JOIN reservations r ON r.id = a.reservation_id
+    WHERE r.reservation_number = ? AND a.date = ? AND a.meal = ? AND r.status = 'ativa'
+    AND NOT EXISTS (SELECT 1 FROM attendance t WHERE t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal)`).all(a.reservation_number, a.date, a.meal);
+  const up = db.prepare("UPDATE assignments SET restaurant_id = ?, locked = 1, origin = 'manual' WHERE id = ?");
+  tx(() => { for (const t of targets) up.run(rest.id, t.id); });
+  audit(user, 'cliente_movido', { reserva: a.reservation_number, quartos: targets.length, date: a.date, meal: a.meal, de: a.restaurant_id, para: rest.id }, ip);
+  return { ok: true, moved: targets.length };
 });
 
 route('POST', '/api/distribution/unlock', { roles: MANAGE }, ({ body }) => {
-  db.prepare('UPDATE assignments SET locked = 0 WHERE id = ?').run(body.assignment_id);
+  const a = db.prepare('SELECT a.*, r.reservation_number FROM assignments a JOIN reservations r ON r.id = a.reservation_id WHERE a.id = ?').get(body.assignment_id);
+  if (!a) throw new HttpError(404, 'Registro não encontrado.');
+  db.prepare(`UPDATE assignments SET locked = 0 WHERE date = ? AND meal = ? AND reservation_id IN (SELECT id FROM reservations WHERE reservation_number = ?)`).run(a.date, a.meal, a.reservation_number);
   return { ok: true };
 });
 
@@ -101,6 +110,64 @@ route('GET', '/api/distribution/export.csv', { roles: [...VIEW, 'restaurante'] }
       rows.map((r) => [rm[r.restaurant_id].name, r.room, r.guest_name, r.reservation_number, r.board, r.adults, r.children, r.adults + r.children])),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="lista-${meal}-${date}.csv"` },
   };
+});
+
+// Planilha de divisão no formato usado pelo resort (uma coluna por refeição/restaurante/dia)
+const WEEKDAY = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+const MEAL_UP = { cafe: 'CAFÉ DA MANHÃ', almoco: 'ALMOÇO', janta: 'JANTAR' };
+route('GET', '/api/distribution/export.xlsx', { roles: [...VIEW] }, ({ query, user, ip }) => {
+  const from = isISODate(query.from) ? query.from : todayISO();
+  let to = isISODate(query.to) ? query.to : addDays(from, 4);
+  if (to < from) to = from;
+  if (to > addDays(from, 31)) to = addDays(from, 31);
+  const rests = db.prepare('SELECT * FROM restaurants WHERE active = 1 ORDER BY id').all();
+  const asg = db.prepare(`SELECT a.reservation_id, a.date, a.meal, a.restaurant_id, r.adults + r.children pax FROM assignments a
+    JOIN reservations r ON r.id = a.reservation_id WHERE r.status = 'ativa' AND a.date BETWEEN ? AND ?`).all(from, to);
+  const cell = new Map(); const slotTot = new Map(); const colTot = new Map();
+  for (const a of asg) {
+    cell.set(`${a.reservation_id}|${a.date}|${a.meal}`, a);
+    slotTot.set(`${a.date}|${a.meal}`, (slotTot.get(`${a.date}|${a.meal}`) || 0) + a.pax);
+    colTot.set(`${a.date}|${a.meal}|${a.restaurant_id}`, (colTot.get(`${a.date}|${a.meal}|${a.restaurant_id}`) || 0) + a.pax);
+  }
+  const cols = [];
+  for (let d = from; d <= to; d = addDays(d, 1)) {
+    for (const meal of MEALS) {
+      if (!slotTot.get(`${d}|${meal}`)) continue;
+      const open = restaurantsFor(meal, d);
+      const shareSum = open.reduce((s, r) => s + r.share, 0) || 1;
+      for (const r of rests) {
+        const isOpen = open.find((x) => x.id === r.id);
+        if (!isOpen && !colTot.get(`${d}|${meal}|${r.id}`)) continue;
+        const [, mm, dd] = d.split('-');
+        cols.push({ date: d, meal, rest: r, title: `${MEAL_UP[meal]} ${r.name.toUpperCase()} ${WEEKDAY[weekday(d)]} ${dd}/${mm}`,
+          meta: isOpen ? Math.round(slotTot.get(`${d}|${meal}`) * isOpen.share / shareSum) : null });
+      }
+    }
+  }
+  const resIds = [...new Set(asg.map((a) => a.reservation_id))];
+  const resv = resIds.length ? db.prepare(`SELECT * FROM reservations WHERE id IN (${resIds.map(() => '?').join(',')})`).all(...resIds) : [];
+  resv.sort((a, b) => a.checkin.localeCompare(b.checkin) || String(a.reservation_number).localeCompare(String(b.reservation_number), 'pt-BR', { numeric: true }) || roomSortKey(a.room).localeCompare(roomSortKey(b.room)));
+  const brd = (iso) => iso.split('-').reverse().join('/');
+  const FIRST = 7, HEAD = 3;
+  const rows = [];
+  rows[0] = [{ v: 'RESORT TERMAS ROMANAS', s: 1 }, null, null, null, null, null, null, ...cols.map((c) => ({ v: c.title, s: 2 }))];
+  rows[1] = [null, null, null, null, null, null, null, ...cols.map((c) => (c.meta === null ? { v: null, s: 6 } : { v: c.meta, s: 6 }))];
+  const last = HEAD + resv.length;
+  rows[2] = [...['Reserva', 'Entrada', 'Saída', 'Pensão', 'Apto', 'Pax', 'Chd'].map((v) => ({ v, s: 3 })),
+    ...cols.map((c, i) => ({ f: `SUM(${colName(FIRST + i)}${HEAD + 1}:${colName(FIRST + i)}${Math.max(last, HEAD + 1)})`, v: colTot.get(`${c.date}|${c.meal}|${c.rest.id}`) || 0, s: 4 }))];
+  for (const r of resv) {
+    const label = /^Reserva \d/.test(r.guest_name) ? r.reservation_number : `${r.reservation_number} ${r.guest_name}`;
+    rows.push([label, brd(r.checkin), brd(r.checkout), { v: r.board, s: 5 }, { v: r.room, s: 5 }, { v: r.adults + r.children, s: 5 }, { v: r.children || '-', s: 5 },
+      ...cols.map((c) => { const a = cell.get(`${r.id}|${c.date}|${c.meal}`); return a && a.restaurant_id === c.rest.id ? { v: a.pax, s: 5 } : { v: null, s: 5 }; })]);
+  }
+  const buf = buildXlsx({
+    name: `${brd(from).slice(0, 5)} a ${brd(to).slice(0, 5)}`.replace(/\//g, '-'),
+    rows, merges: ['A1:G2'], freeze: { row: 3, col: 7 }, heights: { 0: 58 },
+    cols: [30, 11, 11, 7, 7, 5, 5, ...cols.map(() => 12)],
+  });
+  audit(user, 'planilha_divisao_exportada', { from, to, quartos: resv.length }, ip);
+  const fname = `DIVISAO_${brd(from).slice(0, 5).replace('/', '-')}_a_${brd(to).slice(0, 5).replace('/', '-')}.xlsx`;
+  return { __raw: buf, headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Content-Disposition': `attachment; filename="${fname}"` } };
 });
 
 // ---------- Serviço no restaurante ----------
@@ -127,7 +194,7 @@ route('GET', '/api/service', { roles: SERVICE }, ({ query, user }) => {
   const walkins = db.prepare('SELECT * FROM walkins WHERE date = ? AND meal = ? AND restaurant_id = ? ORDER BY id DESC').all(date, meal, restId);
   const mt = db.prepare('SELECT * FROM meal_times WHERE meal = ?').get(meal);
   const pub = db.prepare('SELECT * FROM meal_lists WHERE date = ? AND meal = ?').get(date, meal);
-  return { date, meal, meal_time: mt, restaurant: rest, serves: rest[`share_${meal}`] > 0, published: pub || null, list, extras, walkins };
+  return { date, meal, meal_time: mt, restaurant: rest, serves: !!restaurantsFor(meal, date).find((x) => x.id === rest.id), published: pub || null, list, extras, walkins };
 });
 
 route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
@@ -168,7 +235,7 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
   const { date, meal } = dayMeal(body);
   const restId = restaurantFor(user, body.restaurant_id);
   const rest = db.prepare('SELECT * FROM restaurants WHERE id = ?').get(restId);
-  if (!rest || !(rest[`share_${meal}`] > 0)) throw new HttpError(400, `${rest ? rest.name : 'Este restaurante'} não serve ${MEAL_LABEL[meal].toLowerCase()}.`);
+  if (!rest || !restaurantsFor(meal, date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest ? rest.name : 'Este restaurante'} não serve ${MEAL_LABEL[meal].toLowerCase()}.`);
   const r = db.prepare('SELECT * FROM reservations WHERE id = ?').get(body.reservation_id);
   if (!r) throw new HttpError(404, 'Reserva não encontrada.');
   if (!isEligible(r, date, meal)) {
@@ -230,7 +297,7 @@ function notifFilter(user) {
   return { sql: '(n.role IS NULL OR n.role = ? OR ? = \'admin\') AND (n.restaurant_id IS NULL OR n.restaurant_id = ? OR ? != \'restaurante\')', args: [user.role, user.role, user.restaurant_id, user.role] };
 }
 
-route('GET', '/api/notifications', { allowPwChange: true }, ({ user, query }) => {
+route('GET', '/api/notifications', { allowPwChange: true, portal: true }, ({ user, query }) => {
   const f = notifFilter(user);
   const since = Number(query.since) || 0;
   const rows = db.prepare(`SELECT n.*, EXISTS(SELECT 1 FROM notification_reads x WHERE x.notification_id = n.id AND x.user_id = ?) read
@@ -239,7 +306,7 @@ route('GET', '/api/notifications', { allowPwChange: true }, ({ user, query }) =>
   return rows;
 });
 
-route('POST', '/api/notifications/read', ({ user, body }) => {
+route('POST', '/api/notifications/read', { portal: true }, ({ user, body }) => {
   const ids = Array.isArray(body.ids) ? body.ids.map(Number).filter(Boolean) : [];
   const ins = db.prepare('INSERT OR IGNORE INTO notification_reads(notification_id, user_id) VALUES (?,?)');
   tx(() => { for (const id of ids) ins.run(id, user.id); });
