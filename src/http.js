@@ -8,7 +8,7 @@ const { db } = require('./db');
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 14);
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 
-const PORTAL_ROLES = ['agencia', 'cliente'];
+const PORTAL_ROLES = ['agencia']; // Comercial: só as rotas marcadas com portal ou que listam o perfil
 
 class HttpError extends Error {
   constructor(status, message, extra) { super(message); this.status = status; this.extra = extra; }
@@ -94,9 +94,12 @@ function serveStatic(req, res, root) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) {
       // SPA: qualquer rota desconhecida volta para o index
-      return fs.readFile(path.join(root, 'index.html'), (e, data) => (e ? send(res, 404, 'Não encontrado') : send(res, 200, data, { 'Content-Type': MIME['.html'] })));
+      return fs.readFile(path.join(root, 'index.html'), (e, data) => (e ? send(res, 404, 'Não encontrado') : send(res, 200, data, { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' })));
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    // HTML/JS/CSS sempre da versão publicada (evita tela misturando arquivo novo com antigo após atualização)
+    const ext = path.extname(file);
+    const cache = ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-store' : 'public, max-age=86400';
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': cache });
     fs.createReadStream(file).pipe(res);
   });
 }

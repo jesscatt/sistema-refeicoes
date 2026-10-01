@@ -5,7 +5,7 @@ const { db, tx, hashPassword, audit, getSetting, setSetting } = require('../db')
 const { MEALS } = require('../util');
 
 const ADMIN = ['admin'];
-const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia', 'cliente'];
+const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'];
 
 // ---------- Usuários ----------
 route('GET', '/api/users', { roles: ADMIN }, () =>
@@ -19,11 +19,7 @@ function validUser(body, isNew) {
   if (!ROLES.includes(body.role)) throw new HttpError(400, 'Perfil inválido.');
   const restId = body.role === 'restaurante' ? Number(body.restaurant_id) : null;
   if (body.role === 'restaurante' && !db.prepare('SELECT 1 FROM restaurants WHERE id = ?').get(restId)) throw new HttpError(400, 'Escolha o restaurante do usuário.');
-  const agency = body.role === 'agencia' ? String(body.agency || '').trim() : null;
-  const resNum = ['agencia', 'cliente'].includes(body.role) ? String(body.reservation_number || '').trim().replace(/\./g, '') : null;
-  if (body.role === 'agencia' && !agency && !resNum) throw new HttpError(400, 'Informe o nome da agência como aparece na planilha (ou os números das reservas).');
-  if (body.role === 'cliente' && !resNum) throw new HttpError(400, 'Informe o número da reserva do cliente.');
-  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: agency || null, reservation_number: resNum || null };
+  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: null, reservation_number: null };
 }
 
 route('POST', '/api/users', { roles: ADMIN }, ({ body, user, ip }) => {

@@ -6,8 +6,7 @@ const ROLE_HELP = {
   refeicao: 'Importa planilhas, revisa e ajusta a divisão, publica listas, vê faturamento.',
   recepcao: 'Somente visualização: onde cada hóspede come e impressão dos cartões.',
   restaurante: 'Marca quem veio comer no seu restaurante e informa o número real.',
-  agencia: 'Vê só as reservas da agência. Pode trocar quarto, alterar nome, datas e pessoas, e remover quarto/hóspede.',
-  cliente: 'Vê só a própria reserva. Pode trocar quarto, alterar nome, datas e pessoas, e remover quarto/hóspede.',
+  agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de quarto e ajusta quartos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
 };
 
 export async function render(el) {
@@ -17,10 +16,10 @@ export async function render(el) {
       <div class="page-head"><div class="grow"><h1>Usuários</h1><p>${users.filter((u) => u.active).length} ativos</p></div>
         <button class="btn primary" id="new">${icon('plus')} Novo usuário</button></div>
       <div class="card"><div class="table-wrap"><table class="t">
-        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Vínculo</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Restaurante</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
         <tbody>${users.map((u) => `<tr>
           <td><b>${esc(u.name)}</b></td><td>${esc(u.username)}</td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span></td>
-          <td>${esc(u.restaurant_name || '')}${u.role === 'agencia' ? esc(u.agency || '') + (u.reservation_number ? ` <span class="muted small">+ ${esc(u.reservation_number)}</span>` : '') : ''}${u.role === 'cliente' ? 'reserva ' + esc(u.reservation_number || '') : ''}</td><td class="small muted">${esc(u.last_login_at || 'nunca')}</td>
+          <td>${esc(u.restaurant_name || '')}</td><td class="small muted">${esc(u.last_login_at || 'nunca')}</td>
           <td>${u.active ? '<span class="badge ok">ativo</span>' : '<span class="badge danger">inativo</span>'}${u.must_change_password ? ' <span class="badge warn">trocar senha</span>' : ''}</td>
           <td class="row" style="justify-content:flex-end;gap:6px"><button class="btn sm" data-edit="${u.id}">Editar</button><button class="btn sm" data-reset="${u.id}">Nova senha</button></td></tr>`).join('')}</tbody>
       </table></div></div>
@@ -45,10 +44,9 @@ export async function render(el) {
       body: `<form class="form-grid" id="uf">
         <label class="f full">Nome<input class="input" name="name" value="${esc(u?.name || '')}" required></label>
         <label class="f">Usuário (login)<input class="input" name="username" value="${esc(u?.username || '')}" ${u ? 'disabled' : 'required'} autocomplete="off"></label>
-        <label class="f">Perfil<select class="input" name="role">${Object.entries(ROLE_LABEL).map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+        <label class="f">Perfil<select class="input" name="role">${Object.entries(ROLE_LABEL).filter(([k]) => k !== 'cliente').map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="f" id="restf">Restaurante<select class="input" name="restaurant_id">${rests.map((r) => `<option value="${r.id}" ${u?.restaurant_id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label>
-        <label class="f" id="agf">Agência (como aparece na coluna Reserva)<input class="input" name="agency" value="${esc(u?.agency || '')}" placeholder="Ex.: SAUDADES TUR"></label>
-        <label class="f" id="resf"><span id="resl">Nº da reserva</span><input class="input" name="reservation_number" value="${esc(u?.reservation_number || '')}" placeholder="Ex.: 50893"></label>
+
         ${u ? `<label class="f">Situação<select class="input" name="active"><option value="1" ${u.active ? 'selected' : ''}>Ativo</option><option value="0" ${u.active ? '' : 'selected'}>Inativo</option></select></label>`
           : '<label class="f">Senha inicial (opcional)<input class="input" name="password" type="text" placeholder="em branco = gerar" autocomplete="off"></label>'}
         <p class="muted small full" id="rhelp"></p>
@@ -58,9 +56,6 @@ export async function render(el) {
     const role = m.querySelector('[name=role]');
     const sync = () => {
       m.querySelector('#restf').style.display = role.value === 'restaurante' ? '' : 'none';
-      m.querySelector('#agf').style.display = role.value === 'agencia' ? '' : 'none';
-      m.querySelector('#resf').style.display = ['agencia', 'cliente'].includes(role.value) ? '' : 'none';
-      m.querySelector('#resl').textContent = role.value === 'agencia' ? 'Reservas extras (opcional, separadas por vírgula)' : 'Nº da reserva';
       m.querySelector('#rhelp').textContent = ROLE_HELP[role.value];
     };
     role.addEventListener('change', sync); sync();

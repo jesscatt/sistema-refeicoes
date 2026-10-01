@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   status TEXT NOT NULL DEFAULT 'ativa' CHECK (status IN ('ativa','cancelada')),
   pref_restaurant_id INTEGER REFERENCES restaurants(id),
   lunch_on_arrival INTEGER NOT NULL DEFAULT 0,
+  guests TEXT NOT NULL DEFAULT '',
   notes TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -287,6 +288,21 @@ CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
       db.exec('ALTER TABLE users_v3 RENAME TO users');
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; } finally { db.exec('PRAGMA foreign_keys = ON'); }
+  }
+  // v4b: conferência das trocas de quarto (Comercial)
+  if (!cols('room_changes').includes('validated_at')) {
+    db.exec('ALTER TABLE room_changes ADD COLUMN validated_at TEXT');
+    db.exec('ALTER TABLE room_changes ADD COLUMN validated_by INTEGER REFERENCES users(id)');
+    db.exec('ALTER TABLE room_changes ADD COLUMN validation_note TEXT');
+  }
+  // v4: nomes dos hóspedes do quarto (rooming list), um por linha
+  if (!cols('reservations').includes('guests')) db.exec("ALTER TABLE reservations ADD COLUMN guests TEXT NOT NULL DEFAULT ''");
+  // usuário de teste antigo do portal da agência vira o Comercial de teste
+  db.exec("UPDATE users SET name = 'Comercial (teste)', agency = NULL WHERE username = 'agencia' AND role = 'agencia' AND name = 'Saudades Tur'");
+  // perfil Cliente final foi retirado: desativa quem existir
+  if (db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'cliente' AND active = 1").get().n) {
+    db.exec("UPDATE users SET active = 0 WHERE role = 'cliente'");
+    db.exec("DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role = 'cliente')");
   }
   if (!cols('reservations').includes('lunch_on_arrival')) db.exec('ALTER TABLE reservations ADD COLUMN lunch_on_arrival INTEGER NOT NULL DEFAULT 0');
   // Dias da semana em que o restaurante NÃO serve a refeição (0 = domingo ... 6 = sábado), ex.: "3" = fechado na quarta

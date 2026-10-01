@@ -5,13 +5,13 @@ const root = document.getElementById('root');
 // Menu por perfil
 const NAV = [
   { path: 'painel', label: 'Painel', icon: 'home', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
-  { path: 'minhas', label: 'Minhas reservas', icon: 'book', roles: ['agencia', 'cliente'] },
+  { path: 'minhas', label: 'Quartos e rooming list', icon: 'book', roles: ['agencia'] },
   { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: ['admin', 'refeicao', 'restaurante'] },
   { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: ['admin', 'supervisor', 'refeicao'] },
   { path: 'recepcao', label: 'Recepção · Cartões', icon: 'card', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
   { path: 'reservas', label: 'Reservas', icon: 'book', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
   { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: ['admin', 'refeicao'] },
-  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante'] },
+  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'] },
   { sep: 'Controle' },
   { path: 'semana', label: 'Controle da divisão', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
   { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
@@ -43,7 +43,7 @@ const PAGES = {
 };
 
 function homeFor(role) {
-  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : ['agencia', 'cliente'].includes(role) ? 'minhas' : 'painel';
+  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : role === 'agencia' ? 'minhas' : 'painel';
 }
 
 // ---------- Login ----------
@@ -100,7 +100,7 @@ function renderShell() {
       <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${n.label}</span></a>`)).join('')}</nav>
       <div class="me">
         <b>${esc(state.me.name)}</b>
-        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}${role === 'agencia' && state.me.agency ? ' · ' + esc(state.me.agency) : ''}${role === 'cliente' && state.me.reservation_number ? ' · reserva ' + esc(state.me.reservation_number) : ''}</span>
+        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}</span>
         <div class="row"><button id="btn-pw">Senha</button><button id="btn-out">Sair</button></div>
       </div>
     </aside>

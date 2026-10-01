@@ -1,6 +1,6 @@
 'use strict';
 const { route, HttpError } = require('../http');
-const { db, tx, audit } = require('../db');
+const { db, tx, audit, notify } = require('../db');
 const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS, roomMatch, roomKey, roomSort: roomSortKey, addDays } = require('../util');
 const { buildXlsx, colName } = require('../xlsx-write');
 const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible, restaurantsFor, weekday } = require('../meals');
@@ -49,7 +49,7 @@ route('GET', '/api/dashboard', ({ query }) => {
 route('GET', '/api/distribution', { roles: VIEW }, ({ query }) => {
   const { date, meal } = dayMeal(query);
   const rows = db.prepare(`
-    SELECT a.id assignment_id, a.restaurant_id, a.locked, a.origin, r.id reservation_id, r.reservation_number, r.guest_name, r.room,
+    SELECT a.id assignment_id, a.restaurant_id, a.locked, a.origin, r.id reservation_id, r.reservation_number, r.guest_name, r.guests, r.room,
       r.board, r.adults, r.children, t.restaurant_id att_restaurant_id, t.status att_status
     FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     LEFT JOIN attendance t ON t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal
@@ -178,7 +178,7 @@ route('GET', '/api/service', { roles: SERVICE }, ({ query, user }) => {
   if (!rest) throw new HttpError(404, 'Restaurante não encontrado.');
   const rm = restMap();
   const list = db.prepare(`
-    SELECT r.id reservation_id, r.reservation_number, r.guest_name, r.room, r.board, r.adults, r.children,
+    SELECT r.id reservation_id, r.reservation_number, r.guest_name, r.guests, r.room, r.board, r.adults, r.children,
       t.id attendance_id, t.restaurant_id att_restaurant_id, t.status att_status, t.created_at att_at, t.adults att_adults, t.children att_children
     FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     LEFT JOIN attendance t ON t.reservation_id = a.reservation_id AND t.date = a.date AND t.meal = a.meal
@@ -187,7 +187,7 @@ route('GET', '/api/service', { roles: SERVICE }, ({ query, user }) => {
     .map((x) => ({ ...x, att_restaurant: x.att_restaurant_id ? rm[x.att_restaurant_id] : null }));
   const extras = db.prepare(`
     SELECT t.id attendance_id, t.created_at att_at, t.adults att_adults, t.children att_children, t.assigned_restaurant_id,
-      r.id reservation_id, r.reservation_number, r.guest_name, r.room, r.board
+      r.id reservation_id, r.reservation_number, r.guest_name, r.guests, r.room, r.board
     FROM attendance t JOIN reservations r ON r.id = t.reservation_id
     WHERE t.date = ? AND t.meal = ? AND t.restaurant_id = ? AND t.status = 'fora_lista' ORDER BY t.id DESC`).all(date, meal, restId)
     .map((x) => ({ ...x, assigned_restaurant: x.assigned_restaurant_id ? rm[x.assigned_restaurant_id] : null }));
@@ -205,7 +205,8 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
   const rm = restMap();
   const match = roomMatch('room', q);
   const rows = db.prepare(`SELECT * FROM reservations WHERE checkin <= ? AND checkout >= ?
-    AND (${match.sql} OR reservation_number = ? OR guest_name LIKE ?) ORDER BY status, room_sort(room) LIMIT 30`).all(date, date, ...match.args, q, `%${q}%`);
+    AND (${match.sql} OR reservation_number = ? OR norm_txt(guest_name) LIKE '%' || norm_txt(?) || '%' OR norm_txt(guests) LIKE '%' || norm_txt(?) || '%')
+    ORDER BY status, room_sort(room) LIMIT 30`).all(date, date, ...match.args, q, q, q);
   const results = rows.map((r) => {
     const a = db.prepare('SELECT * FROM assignments WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
     const t = db.prepare('SELECT * FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
@@ -217,7 +218,7 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
     else if (a && a.restaurant_id === restId) { state = 'na_lista'; message = 'Está na lista deste restaurante.'; }
     else { state = 'outro_restaurante'; message = `Lista de ${a ? rm[a.restaurant_id].name : 'nenhum restaurante'}. Se marcar aqui fica como FORA DA LISTA.`; }
     return {
-      reservation_id: r.id, reservation_number: r.reservation_number, guest_name: r.guest_name, room: r.room, board: r.board,
+      reservation_id: r.id, reservation_number: r.reservation_number, guest_name: r.guest_name, guests: r.guests, room: r.room, board: r.board,
       adults: r.adults, children: r.children, state, message,
       assigned_restaurant: a ? rm[a.restaurant_id] : null, attendance: t ? { ...t, restaurant: rm[t.restaurant_id] } : null,
     };
@@ -250,7 +251,11 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
     const ins = db.prepare(`INSERT INTO attendance(reservation_id, date, meal, restaurant_id, assigned_restaurant_id, status, adults, children, room, user_id)
       VALUES (?,?,?,?,?,?,?,?,?,?)`).run(r.id, date, meal, restId, a ? a.restaurant_id : null, status, adults, children, r.room, user.id);
     audit(user, 'refeicao_marcada', { reserva: r.reservation_number, quarto: r.room, date, meal, restaurante: rest.code, status }, ip);
-    return { id: Number(ins.lastInsertRowid), status };
+    const assignedName = a && status === 'fora_lista' ? (db.prepare('SELECT name FROM restaurants WHERE id = ?').get(a.restaurant_id) || {}).name : null;
+    if (status === 'fora_lista' && a) {
+      notify({ role: 'restaurante', restaurant_id: a.restaurant_id, kind: 'fora_lista', title: `Quarto ${r.room} comeu em ${rest.name}`, body: `${MEAL_LABEL[meal]} ${date.slice(8)}/${date.slice(5, 7)}: estava na sua lista e foi registrado fora da lista em ${rest.name}. Não marque de novo.`, link: `#/servico?date=${date}&meal=${meal}` });
+    }
+    return { id: Number(ins.lastInsertRowid), status, assigned_restaurant: assignedName };
   } catch (e) {
     if (String(e.message).includes('UNIQUE')) {
       const t = db.prepare('SELECT t.*, x.name FROM attendance t JOIN restaurants x ON x.id = t.restaurant_id WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);

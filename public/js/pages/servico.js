@@ -58,6 +58,7 @@ export async function render(el) {
             <button data-t="avulso" class="${st.tab === 'avulso' ? 'on' : ''}">Pagos à parte (${data.walkins.length})</button>
           </div>
           <div class="grow"></div>
+          <button class="btn sm primary" id="fora">${icon('plus')} Fora da lista</button>
           <button class="btn sm" id="walk">${icon('plus')} Consumo à parte</button>
         </div>
         <div id="tab-body">${tabBody()}</div>
@@ -66,6 +67,7 @@ export async function render(el) {
     el.querySelector('#rest')?.addEventListener('change', (e) => { st.restaurant_id = e.target.value; load().catch(fail); });
     el.querySelectorAll('#tabs [data-t]').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.t; draw(); }));
     el.querySelector('#walk').onclick = () => walkinModal({});
+    el.querySelector('#fora').onclick = () => foraModal();
     el.querySelector('#csv').onclick = () => download(`/api/distribution/export.csv?date=${data.date}&meal=${data.meal}&restaurant_id=${r.id}`);
     el.querySelector('#print').onclick = printList;
     const q = el.querySelector('#q');
@@ -93,15 +95,16 @@ export async function render(el) {
         return `<div class="item ${here ? 'done' : ''} ${other ? 'other' : ''}" data-res="${g.reservation_id}" data-att="${here ? g.attendance_id : ''}" ${other ? 'data-other' : ''}>
           <span class="tick">${icon('check')}</span>
           <span class="room">${roomHtml(g.room)}</span>
-          <span style="min-width:0"><span class="nm">${esc(g.guest_name)}</span><br><span class="muted small">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)} ${other ? ` · <b style="color:var(--danger)">foi ao ${esc(g.att_restaurant.name)}</b>` : ''}</span></span>
+          <span style="min-width:0"><span class="nm">${esc(g.guest_name)}</span>${guestLine(g)}<br><span class="muted small">${paxTxt(g.adults, g.children)} · ${boardTag(g.board)} ${other ? ` · <b style="color:var(--danger)">foi ao ${esc(g.att_restaurant.name)}</b>` : ''}</span></span>
           <span class="muted small">${here ? `✓ ${esc(g.att_at.slice(11, 16))}${g.att_adults + g.att_children !== g.adults + g.children ? ` · ${g.att_adults + g.att_children} pax` : ''}` : ''}</span>
         </div>`;
       }).join('')}</div>`;
     }
     if (st.tab === 'fora') {
-      if (!data.extras.length) return '<div class="empty">Nenhum cliente fora da lista.</div>';
-      return `<div class="table-wrap"><table class="t"><thead><tr><th>Quarto</th><th>Nome</th><th>Pax</th><th>Era do</th><th>Hora</th><th></th></tr></thead><tbody>
-        ${data.extras.map((x) => `<tr><td class="room">${roomHtml(x.room)}</td><td>${esc(x.guest_name)}</td><td>${paxTxt(x.att_adults, x.att_children)}</td><td>${restTag(x.assigned_restaurant)}</td><td>${esc(x.att_at.slice(11, 16))}</td>
+      const head = `<div class="row" style="padding:12px 16px;border-bottom:1px solid var(--line)"><span class="muted small grow">Hóspedes da lista de outro restaurante que comeram aqui. Ficam registrados aqui e não podem ser marcados de novo em nenhum restaurante.</span><button class="btn sm primary" data-fora>${icon('plus')} Fora da lista · nº do apto</button></div>`;
+      if (!data.extras.length) return head + '<div class="empty">Nenhum cliente fora da lista.</div>';
+      return head + `<div class="table-wrap"><table class="t"><thead><tr><th>Quarto</th><th>Nome</th><th>Pax</th><th>Deveria comer em</th><th>Hora</th><th></th></tr></thead><tbody>
+        ${data.extras.map((x) => `<tr><td class="room">${roomHtml(x.room)}</td><td>${esc(x.guest_name)}${guestLine(x)}</td><td>${paxTxt(x.att_adults, x.att_children)}</td><td>${restTag(x.assigned_restaurant)}</td><td>${esc(x.att_at.slice(11, 16))}</td>
         <td><button class="btn sm ghost" data-undo="${x.attendance_id}">${icon('undo')} Desfazer</button></td></tr>`).join('')}</tbody></table></div>`;
     }
     if (!data.walkins.length) return '<div class="empty">Nenhum consumo pago à parte registrado.</div>';
@@ -120,6 +123,7 @@ export async function render(el) {
       mark(Number(it.dataset.res));
     }));
     el.querySelectorAll('[data-undo]').forEach((b) => b.addEventListener('click', async () => { if (await confirmBox('Desfazer esta marcação?', 'Desfazer')) unmark(b.dataset.undo); }));
+    el.querySelector('[data-fora]')?.addEventListener('click', () => foraModal());
     el.querySelectorAll('[data-delwalk]').forEach((b) => b.addEventListener('click', async () => {
       try { await del('/api/walkins/' + b.dataset.delwalk); await load(); } catch (e) { fail(e); }
     }));
@@ -128,7 +132,7 @@ export async function render(el) {
   async function mark(reservation_id, adults, children) {
     try {
       const r = await post('/api/attendance', { reservation_id, date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, adults, children });
-      toast(r.status === 'fora_lista' ? 'Marcado como FORA DA LISTA.' : 'Presença registrada.', r.status === 'fora_lista' ? 'notif' : 'ok');
+      toast(r.status === 'fora_lista' ? `Registrado FORA DA LISTA aqui${r.assigned_restaurant ? ` (deveria comer em ${r.assigned_restaurant})` : ''}. Não pode ser marcado de novo.` : 'Presença registrada.', r.status === 'fora_lista' ? 'notif' : 'ok');
       st.q = '';
       await load();
     } catch (e) { fail(e); load().catch(() => {}); }
@@ -153,7 +157,7 @@ export async function render(el) {
       const here = x.attendance && x.attendance.restaurant_id === data.restaurant.id;
       return `<div class="result ${x.state}" data-res="${x.reservation_id}">
         <span class="room">${roomHtml(x.room)}</span>
-        <div style="min-width:0"><b>${esc(x.guest_name)}</b> <span class="muted small">· reserva ${esc(x.reservation_number)} · ${boardTag(x.board)} · ${paxTxt(x.adults, x.children)}</span>
+        <div style="min-width:0"><b>${esc(x.guest_name)}</b>${guestLine(x)} <span class="muted small">· reserva ${esc(x.reservation_number)} · ${boardTag(x.board)} · ${paxTxt(x.adults, x.children)}</span>
           <div class="msg">${esc(x.message)}</div></div>
         <div class="act row">
           ${canMark ? `
@@ -174,6 +178,53 @@ export async function render(el) {
     box.querySelectorAll('[data-undo2]').forEach((b) => b.addEventListener('click', () => unmark(b.dataset.undo2)));
     box.querySelectorAll('[data-walkres]').forEach((b) => b.addEventListener('click', () => walkinModal({ room: b.dataset.room, reservation_id: Number(b.dataset.walkres) })));
     box.querySelectorAll('[data-walkroom]').forEach((b) => b.addEventListener('click', () => walkinModal({ room: b.dataset.walkroom })));
+  }
+
+  function guestLine(g) {
+    const n = String(g.guests || '').split('\n').filter(Boolean);
+    return n.length ? `<div class="small muted" style="white-space:normal">${n.map(esc).join(', ')}</div>` : '';
+  }
+
+  // "Fora da lista": digita o apto, mostra onde o hóspede deveria comer e registra aqui
+  function foraModal() {
+    const { el: m, close } = modal({
+      title: `Fora da lista · ${MEAL_FULL[data.meal]} · ${esc(data.restaurant.name)}`,
+      body: `<form id="ff" class="row" style="flex-wrap:nowrap"><input class="input" name="q" placeholder="Nº do apto (ex.: 101A)" autocomplete="off" style="font-size:20px" autofocus><button class="btn primary">${icon('search')} Buscar</button></form>
+        <div id="fr" style="margin-top:14px"></div>`,
+    });
+    const input = m.querySelector('[name=q]');
+    setTimeout(() => input.focus(), 50);
+    m.querySelector('#ff').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+      const box = m.querySelector('#fr');
+      let r;
+      try { r = await get(`/api/service/search?q=${encodeURIComponent(q)}&${qs()}`); } catch (err) { fail(err); return; }
+      let html = r.moved.map((x) => `<div class="banner info">${icon('swap')}<span><b>Troca de quarto:</b> ${esc(x.guest_name)} saiu do ${esc(x.old_room)} e está agora no <b>${esc(x.new_room)}</b>. Busque pelo quarto novo.</span></div>`).join('');
+      if (r.notFound) html += `<div class="banner danger">${icon('alert')}<span>${esc(r.notFound)} Se não é hóspede com pensão, registre como consumo à parte.</span></div>`;
+      html += r.results.map((x) => {
+        const head = `<div class="row" style="gap:10px"><span class="room" style="font-size:22px">${roomHtml(x.room)}</span><div class="grow" style="min-width:0"><b>${esc(x.guest_name)}</b>${guestLine(x)}<div class="small muted">reserva ${esc(x.reservation_number)} · ${boardTag(x.board)} · ${paxTxt(x.adults, x.children)}</div></div></div>`;
+        if (x.state === 'outro_restaurante') return `<div class="result outro_restaurante" style="grid-template-columns:1fr;margin-bottom:10px" data-res="${x.reservation_id}">${head}
+          <div class="banner warn" style="margin:10px 0 0"><span>Deveria comer em: ${restTag(x.assigned_restaurant)}</span></div>
+          <div class="row" style="margin-top:10px"><div><span class="stepper-l">Adultos</span>${stepper('a', x.adults, x.adults)}</div>${x.children ? `<div><span class="stepper-l">Crianças</span>${stepper('c', x.children, x.children)}</div>` : ''}
+          <div class="grow"></div><button class="btn lg primary" data-go>${icon('check')} Registrar fora da lista aqui</button></div></div>`;
+        if (x.state === 'na_lista') return `<div class="result na_lista" style="grid-template-columns:1fr;margin-bottom:10px" data-res="${x.reservation_id}">${head}<div class="msg">Está na lista deste restaurante — não é fora da lista.</div>
+          <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn olive" data-go>${icon('check')} Marcar presença</button></div></div>`;
+        return `<div class="result ${x.state}" style="grid-template-columns:1fr;margin-bottom:10px">${head}<div class="msg">${esc(x.message)}</div>
+          ${x.state === 'sem_refeicao' ? `<div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn" data-walk="${x.reservation_id}" data-room="${esc(x.room)}">Registrar consumo à parte</button></div>` : ''}</div>`;
+      }).join('');
+      box.innerHTML = html;
+      box.querySelectorAll('.stepper').forEach(bindStepper);
+      box.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', async () => {
+        const card = b.closest('[data-res]');
+        const a = card.querySelector('.stepper[data-k="a"]'), c = card.querySelector('.stepper[data-k="c"]');
+        close();
+        await mark(Number(card.dataset.res), a ? Number(a.dataset.v) : undefined, c ? Number(c.dataset.v) : 0);
+        st.tab = 'fora'; draw();
+      }));
+      box.querySelectorAll('[data-walk]').forEach((b) => b.addEventListener('click', () => { close(); walkinModal({ room: b.dataset.room, reservation_id: Number(b.dataset.walk) }); }));
+    });
   }
 
   function stepper(k, v, max) {

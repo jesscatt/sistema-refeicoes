@@ -76,7 +76,7 @@ export const pct = (v) => `${Math.round((v || 0) * 1000) / 10}%`.replace('.', ',
 export const MEALS = ['cafe', 'almoco', 'janta'];
 export const MEAL_LABEL = { cafe: 'Café', almoco: 'Almoço', janta: 'Jantar' };
 export const MEAL_FULL = { cafe: 'Café da manhã', almoco: 'Almoço', janta: 'Jantar' };
-export const ROLE_LABEL = { admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição', recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Agência', cliente: 'Cliente final' };
+export const ROLE_LABEL = { admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição', recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial', cliente: 'Cliente final (desativado)' };
 
 export function restTag(r) {
   if (!r) return '<span class="rest-tag none">—</span>';

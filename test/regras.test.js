@@ -165,35 +165,63 @@ test('divisão vinda da planilha é lida e aplicada', () => {
   assert.equal(a.code, 'PAR');
 });
 
-test('portal: agência e cliente só veem e mexem nas próprias reservas', async () => {
+test('Comercial: rooming list, trocas e permissões', async () => {
   const http = require('node:http');
   const { hashPassword } = require('../src/db');
   require('../src/routes/auth'); require('../src/routes/reservations'); require('../src/routes/service');
   require('../src/routes/control'); require('../src/routes/admin'); require('../src/routes/portal');
   const { handle } = require('../src/http');
   const { apiKeyAuth } = require('../src/routes/integration');
-  db.prepare("INSERT INTO users(username, name, password_hash, role, agency) VALUES ('ag1', 'Agência', ?, 'agencia', 'grupo teste')").run(hashPassword('senha-123'));
-  db.prepare("INSERT INTO users(username, name, password_hash, role, reservation_number) VALUES ('cl1', 'Cliente', ?, 'cliente', '88001')").run(hashPassword('senha-123'));
-  const srv = http.createServer((q, s) => handle(q, s, __dirname, apiKeyAuth)).listen(0);
+  const { addDays, todayISO } = require('../src/util');
+  const t = todayISO();
+  upsertReservations([0, 1, 2].map((i) => ({ reservation_number: '99001 AGENCIA TESTE', checkin: t, checkout: addDays(t, 3), room: `${701 + i}A`, board: 'MAP', pax: 2, children: 0 })));
+  db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('com1', 'Comercial', ?, 'agencia')").run(hashPassword('senha-123'));
+  db.prepare("INSERT INTO users(username, name, password_hash, role, restaurant_id) VALUES ('rest1', 'Rest', ?, 'restaurante', 2)").run(hashPassword('senha-123'));
+  const srv = http.createServer((q, s2) => handle(q, s2, __dirname, apiKeyAuth)).listen(0);
   const base = `http://127.0.0.1:${srv.address().port}`;
   const login = async (u) => { const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: 'senha-123' }) }); return r.headers.get('set-cookie').split(';')[0]; };
-  const H = (c) => ({ cookie: c, 'x-requested-with': 'fetch', 'content-type': 'application/json' });
+  const H = (c, extra = {}) => ({ cookie: c, 'x-requested-with': 'fetch', 'content-type': 'application/json', ...extra });
   try {
-    const ag = await login('ag1');
-    const list = await (await fetch(base + '/api/portal/reservations?past=1', { headers: H(ag) })).json();
-    assert.ok(list.rows.length >= 10 && list.rows.every((r) => r.reservation_number === '77001'), 'agência vê só o grupo dela');
-    assert.equal((await fetch(base + '/api/dashboard', { headers: H(ag) })).status, 403);
-    assert.equal((await fetch(base + '/api/reservations', { headers: H(ag) })).status, 403);
-    const cl = await login('cl1');
-    const mine = await (await fetch(base + '/api/portal/reservations?past=1', { headers: H(cl) })).json();
-    assert.equal(mine.rows.length, 1);
-    // cliente não acessa reserva de outro
-    assert.equal((await fetch(base + '/api/portal/reservations/' + list.rows[0].id, { headers: H(cl) })).status, 404);
-    // pensão não muda pelo portal
-    const id = mine.rows[0].id;
-    await fetch(base + '/api/portal/reservations/' + id, { method: 'PUT', headers: H(cl), body: JSON.stringify({ board: 'CM', adults: 1 }) });
-    const after = db.prepare('SELECT board, adults FROM reservations WHERE id = ?').get(id);
-    assert.equal(after.board, 'FAP');
-    assert.equal(after.adults, 1);
+    const c = await login('com1');
+    // vê todas as reservas, não acessa o resto do sistema
+    const list = await (await fetch(base + '/api/portal/reservations?q=99001', { headers: H(c) })).json();
+    assert.equal(list.rows.length, 3);
+    assert.equal((await fetch(base + '/api/dashboard', { headers: H(c) })).status, 403);
+    assert.equal((await fetch(base + '/api/distribution', { headers: H(c) })).status, 403);
+    // rooming list: uma linha por hóspede, quarto mesclado, idade -> criança; 1 quarto novo; 1 quarto fora
+    const csv = 'Quarto;Nome do hóspede;Idade\n701A;Maria Silva;40\n;João Silva;42\n;Pedro Silva;7\n702A;Ana Souza;30\n705A;Carlos Lima;50\n705A;Rita Lima;48\n';
+    const prev = await (await fetch(base + '/api/portal/rooming/preview', { method: 'POST', headers: H(c, { 'content-type': 'application/octet-stream', 'x-filename': 'rl.csv', 'x-reservation': '99001' }), body: Buffer.from(csv) })).json();
+    const byRoom = Object.fromEntries(prev.items.map((i) => [i.room, i]));
+    assert.equal(byRoom['701A'].action, 'atualizar');
+    assert.deepEqual([byRoom['701A'].adults, byRoom['701A'].children], [2, 1]);
+    assert.equal(byRoom['702A'].adults, 1);
+    assert.equal(byRoom['705A'].action, 'novo');
+    assert.equal(prev.missing.length, 1); // 703A não veio
+    const groups = prev.items.map((i) => ({ reservation_number: i.reservation_number, room: i.room, names: i.names, adults: i.adults, children: i.children }));
+    const res = await (await fetch(base + '/api/portal/rooming/commit', { method: 'POST', headers: H(c), body: JSON.stringify({ groups, remove_ids: [prev.missing[0].id], reservation_number: '99001' }) })).json();
+    assert.deepEqual([res.updated, res.created, res.removed], [2, 1, 1]);
+    const r705 = db.prepare("SELECT * FROM reservations WHERE reservation_number = '99001' AND room = '705A'").get();
+    assert.equal(r705.board, 'MAP');
+    assert.equal(r705.guests, 'Carlos Lima\nRita Lima');
+    assert.equal(db.prepare("SELECT status FROM reservations WHERE reservation_number = '99001' AND room = '703A'").get().status, 'cancelada');
+    // troca de quarto pelo Comercial, conferência e desfazer
+    const r701 = db.prepare("SELECT id FROM reservations WHERE reservation_number = '99001' AND room = '701A'").get();
+    const up = await fetch(base + '/api/portal/reservations/' + r701.id, { method: 'PUT', headers: H(c), body: JSON.stringify({ room: '799A', board: 'FAP' }) });
+    assert.equal(up.status, 200);
+    assert.equal(db.prepare('SELECT board FROM reservations WHERE id = ?').get(r701.id).board, 'MAP', 'pensão não muda pelo Comercial');
+    const ch = db.prepare('SELECT id FROM room_changes WHERE reservation_id = ? ORDER BY id DESC').get(r701.id);
+    const undo = await fetch(base + `/api/room-changes/${ch.id}/validate`, { method: 'POST', headers: H(c), body: JSON.stringify({ undo: true }) });
+    assert.equal(undo.status, 200);
+    assert.equal(db.prepare('SELECT room FROM reservations WHERE id = ?').get(r701.id).room, '701A');
+    // fora da lista: registrado num restaurante, não marca de novo em lugar nenhum
+    const a = db.prepare("SELECT * FROM assignments WHERE reservation_id = ? AND meal = 'janta' AND date = ?").get(r701.id, t);
+    const other = db.prepare('SELECT id FROM restaurants WHERE id != ? AND share_janta > 0 LIMIT 1').get(a.restaurant_id).id;
+    db.prepare('UPDATE users SET restaurant_id = ? WHERE username = ?').run(other, 'rest1');
+    const rc = await login('rest1');
+    const m1 = await (await fetch(base + '/api/attendance', { method: 'POST', headers: H(rc), body: JSON.stringify({ reservation_id: r701.id, date: t, meal: 'janta' }) })).json();
+    assert.equal(m1.status, 'fora_lista');
+    assert.ok(m1.assigned_restaurant);
+    const m2 = await fetch(base + '/api/attendance', { method: 'POST', headers: H(rc), body: JSON.stringify({ reservation_id: r701.id, date: t, meal: 'janta' }) });
+    assert.equal(m2.status, 409);
   } finally { srv.close(); }
 });

@@ -44,8 +44,8 @@ route('GET', '/api/reservations', { roles: VIEW }, ({ query }) => {
   const where = [], args = [];
   if (query.q) {
     const rm = roomMatch('r.room', query.q);
-    where.push(`(r.reservation_number LIKE ? OR r.guest_name LIKE ? OR ${rm.sql})`);
-    args.push(`%${query.q}%`, `%${query.q}%`, ...rm.args);
+    where.push(`(r.reservation_number LIKE ? OR norm_txt(r.guest_name) LIKE '%' || norm_txt(?) || '%' OR norm_txt(r.guests) LIKE '%' || norm_txt(?) || '%' OR ${rm.sql})`);
+    args.push(`%${query.q}%`, query.q, query.q, ...rm.args);
   }
   if (query.date && isISODate(query.date)) { where.push('r.checkin <= ? AND r.checkout >= ?'); args.push(query.date, query.date); }
   if (query.status) { where.push('r.status = ?'); args.push(query.status); }
@@ -113,6 +113,7 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
       for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title, body: bodyTxt, link: '#/trocas' });
     }
     const loa = body.lunch_on_arrival === undefined ? ex.lunch_on_arrival : (body.lunch_on_arrival ? 1 : 0);
+    if (body.guests !== undefined) db.prepare('UPDATE reservations SET guests = ? WHERE id = ?').run(String(body.guests).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).slice(0, 20).join('\n'), ex.id);
     db.prepare(`UPDATE reservations SET guest_name=?, checkin=?, checkout=?, room=?, board=?, adults=?, children=?, notes=?, lunch_on_arrival=?,
       updated_at = datetime('now','localtime') WHERE id = ?`)
       .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, body.notes ?? ex.notes, loa, ex.id);
@@ -196,11 +197,35 @@ route('GET', '/api/import/modelo.csv', { roles: EDIT }, () => ({
 }));
 
 // ---------- Trocas de quarto ----------
-route('GET', '/api/room-changes', ({ query }) => {
+route('GET', '/api/room-changes', { portal: true }, ({ query }) => {
   const days = Math.min(Number(query.days) || 7, 90);
-  return db.prepare(`SELECT c.*, r.reservation_number, r.guest_name, u.name user_name FROM room_changes c
-    JOIN reservations r ON r.id = c.reservation_id LEFT JOIN users u ON u.id = c.user_id
-    WHERE c.created_at >= datetime('now','localtime', ?) ORDER BY c.id DESC`).all(`-${days} days`);
+  const pend = query.pending === '1' ? 'AND c.validated_at IS NULL' : '';
+  return db.prepare(`SELECT c.*, r.reservation_number, r.guest_name, r.guests, r.room current_room, r.status, u.name user_name, v.name validated_by_name FROM room_changes c
+    JOIN reservations r ON r.id = c.reservation_id LEFT JOIN users u ON u.id = c.user_id LEFT JOIN users v ON v.id = c.validated_by
+    WHERE c.created_at >= datetime('now','localtime', ?) ${pend} ORDER BY c.id DESC`).all(`-${days} days`);
+});
+
+// Comercial confere a troca (ok) ou desfaz (volta o quarto antigo)
+const VALIDATE = ['admin', 'refeicao', 'agencia'];
+route('POST', '/api/room-changes/:id/validate', { roles: VALIDATE }, ({ params, body, user, ip }) => {
+  const c = db.prepare('SELECT c.*, r.room current_room, r.reservation_number, r.guest_name FROM room_changes c JOIN reservations r ON r.id = c.reservation_id WHERE c.id = ?').get(params.id);
+  if (!c) throw new HttpError(404, 'Troca não encontrada.');
+  const note = body.note ? String(body.note).slice(0, 300) : null;
+  if (body.undo) {
+    if (roomKey(c.current_room) !== roomKey(c.new_room)) throw new HttpError(409, 'O quarto já mudou de novo depois desta troca; ajuste pela reserva.');
+    tx(() => {
+      db.prepare("UPDATE reservations SET room = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(c.old_room, c.reservation_id);
+      db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id, validated_at, validated_by, validation_note) VALUES (?,?,?,?,?,datetime(\'now\',\'localtime\'),?,?)')
+        .run(c.reservation_id, c.new_room, c.old_room, 'desfeita', user.id, user.id, note || 'troca desfeita');
+      db.prepare("UPDATE room_changes SET validated_at = datetime('now','localtime'), validated_by = ?, validation_note = ? WHERE id = ?").run(user.id, 'desfeita' + (note ? ': ' + note : ''), c.id);
+      for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title: `Troca desfeita: ${c.new_room} → ${c.old_room}`, body: `${c.guest_name} (reserva ${c.reservation_number}) volta para o quarto ${c.old_room}`, link: '#/trocas' });
+    });
+    audit(user, 'troca_quarto_desfeita', { reserva: c.reservation_number, de: c.new_room, para: c.old_room, obs: note }, ip);
+    return { ok: true, undone: true };
+  }
+  db.prepare("UPDATE room_changes SET validated_at = datetime('now','localtime'), validated_by = ?, validation_note = ? WHERE id = ?").run(user.id, note, c.id);
+  audit(user, 'troca_quarto_conferida', { reserva: c.reservation_number, de: c.old_room, para: c.new_room, obs: note }, ip);
+  return { ok: true };
 });
 
 // ---------- Recepção: onde cada hóspede come em cada dia ----------
@@ -214,7 +239,7 @@ route('GET', '/api/reception', { roles: VIEW }, ({ query }) => {
   return {
     date,
     rows: res.map((r) => ({
-      id: r.id, reservation_number: r.reservation_number, guest_name: r.guest_name, room: r.room, board: r.board,
+      id: r.id, reservation_number: r.reservation_number, guest_name: r.guest_name, guests: r.guests, room: r.room, board: r.board,
       adults: r.adults, children: r.children, checkin: r.checkin, checkout: r.checkout,
       arriving: r.checkin === date, leaving: r.checkout === date,
       old_room: (recent.find((c) => c.reservation_id === r.id) || {}).old_room || null,

@@ -42,7 +42,7 @@ Testes das regras de negócio: `npm test`.
 2. No serviço, em **Settings → Volumes**, adicione um volume montado em `/app/data` (é onde fica o banco; sem isso os dados somem a cada atualização).
 3. Em **Variables**, defina `ADMIN_PASSWORD`, `DEV_PASSWORD` e `COOKIE_SECURE=1`.
 4. Em **Settings → Networking**, clique em **Generate Domain** para ter o link.
-5. Opcional: `SEED_DEMO=1` cria os usuários de teste (inclusive `agencia` e `cliente`, senha `demo1234`) e, só em banco vazio, reservas de exemplo. Antes de importar as planilhas reais, use *Configurações → Começar do zero* para apagar as reservas de teste.
+5. Opcional: `SEED_DEMO=1` cria os usuários de teste (inclusive `comercial`, senha `demo1234`) e, só em banco vazio, reservas de exemplo. Antes de importar as planilhas reais, use *Configurações → Começar do zero* para apagar as reservas de teste.
 
 Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes-data:/app/data refeicoes` (o volume é informado no `docker run`; o Dockerfile não declara `VOLUME` porque o Railway não aceita).
 
@@ -55,8 +55,7 @@ Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes
 | **Refeição** | Importa planilhas, revisa a divisão, move clientes, publica listas, informa o real, vê faturamento. |
 | **Recepção** | Só visualiza onde cada hóspede come em cada dia e imprime os cartões. |
 | **Restaurante** | Marca quem veio comer no seu restaurante, informa o número real do dia e vê o controle semanal dele. |
-| **Agência** | Vê só as reservas da agência (pelo nome que aparece na coluna Reserva). Pode trocar quarto, alterar nome, datas e pessoas e remover quarto/hóspede. Não muda a pensão. |
-| **Cliente final** | Mesmo que a agência, mas só para a própria reserva (vinculada pelo número). |
+| **Comercial** | Equipe comercial (todas as reservas): envia o **rooming list** das agências, confere as **trocas de quarto** (ou desfaz), troca quarto, ajusta nomes e pessoas, inclui e remove quartos do grupo. Não muda a pensão nem a divisão. |
 
 ## Regras principais
 
@@ -90,6 +89,16 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 **Controle previsto × real** — Uma planilha por restaurante e mês: previsto (da distribuição), marcado (das marcações) e real (digitado pelo restaurante), com diferença e totais do mês.
 
 **Faturamento** — Por restaurante × refeição × adulto/criança. Base: o real informado; sem real, o marcado. A supervisão fecha o mês (os números ficam congelados e o controle daquele mês trava).
+
+## Rooming list (Comercial)
+
+*Quartos e rooming list → Enviar rooming list*: escolha a reserva/grupo e envie a planilha da agência (.xlsx ou .csv) com **Quarto** e **Nome** (uma linha por hóspede, ou por quarto). Aceita quarto só na primeira linha (células mescladas), coluna Reserva opcional, coluna Idade (até 11 anos = criança) ou Adultos/Crianças. Antes de gravar mostra: quartos que serão atualizados, quartos novos (entram no grupo com a mesma pensão e datas) e quartos do grupo que não vieram na lista (marque os que saíram). Recepção, refeições e restaurantes são avisados. Modelo em *Enviar rooming list → Modelo*.
+
+Os nomes aparecem na recepção, no restaurante (dá para buscar pelo nome do hóspede), na reserva e no cartão impresso.
+
+**Trocas de quarto**: cada troca fica "a conferir" até o Comercial clicar em *Conferir* ou *Desfazer* (volta o quarto antigo e avisa todos).
+
+**Fora da lista (restaurante)**: botão *Fora da lista* → digita o nº do apto → mostra onde o hóspede deveria comer → registra no restaurante atual. O restaurante de origem é avisado e o hóspede não pode ser marcado de novo naquela refeição em nenhum restaurante.
 
 ## Controle da divisão (pagamento dos restaurantes)
 

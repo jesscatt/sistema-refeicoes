@@ -54,6 +54,6 @@ route('GET', '/api/meta', { allowPwChange: true, portal: true }, () => ({
   meals: MEAL_LABEL,
   roles: {
     admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição',
-    recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Agência', cliente: 'Cliente final',
+    recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial',
   },
 }));

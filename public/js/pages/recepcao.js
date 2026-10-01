@@ -15,7 +15,7 @@ export async function render(el) {
 
   function rows() {
     const q = st.q.trim().toLowerCase();
-    return d.rows.filter((r) => (!q || roomMatches(r.room, q) || r.guest_name.toLowerCase().includes(q) || r.reservation_number.includes(q))
+    return d.rows.filter((r) => (!q || roomMatches(r.room, q) || r.guest_name.toLowerCase().includes(q) || String(r.guests || '').toLowerCase().includes(q) || r.reservation_number.includes(q))
       && (st.filter === 'todos' || (st.filter === 'chegadas' && r.arriving) || (st.filter === 'saidas' && r.leaving) || (st.filter === 'trocas' && r.old_room)));
   }
 
@@ -28,7 +28,7 @@ export async function render(el) {
         ${dateBar({ date: d.date })}
       </div>
       <div class="row" style="margin-bottom:14px">
-        <div class="search-big grow" style="max-width:420px;min-width:240px">${icon('search')}<input id="q" class="" style="font-size:16px;padding:11px 14px 11px 48px" placeholder="Quarto e torre (101A), nome ou reserva" value="${esc(st.q)}"></div>
+        <div class="search-big grow" style="max-width:420px;min-width:240px">${icon('search')}<input id="q" class="" style="font-size:16px;padding:11px 14px 11px 48px" placeholder="Quarto (101A), hóspede ou reserva" value="${esc(st.q)}"></div>
         <div class="seg" id="flt">
           ${[['todos', `Todos (${d.rows.length})`], ['chegadas', `Chegadas (${n((r) => r.arriving)})`], ['saidas', `Saídas (${n((r) => r.leaving)})`], ['trocas', `Trocaram quarto (${n((r) => r.old_room)})`]]
             .map(([k, l]) => `<button data-f="${k}" class="${st.filter === k ? 'on' : ''}">${l}</button>`).join('')}
@@ -40,7 +40,7 @@ export async function render(el) {
         <thead><tr><th>Quarto</th><th>Hóspede</th><th>Pax</th><th>Pensão</th><th>Estadia</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
         <tbody>${list.map((r) => `<tr class="click" data-id="${r.id}">
           <td class="room">${roomHtml(r.room)}${r.old_room ? `<div class="small" style="color:var(--primary-d);font-weight:600">era ${esc(r.old_room)}</div>` : ''}</td>
-          <td><b>${esc(r.guest_name)}</b><div class="muted small">reserva ${esc(r.reservation_number)}</div></td>
+          <td><b>${esc(r.guest_name)}</b>${r.guests ? `<div class="small">${esc(r.guests.split('\n').join(', '))}</div>` : ''}<div class="muted small">reserva ${esc(r.reservation_number)}</div></td>
           <td>${paxTxt(r.adults, r.children)}</td>
           <td>${boardTag(r.board)}</td>
           <td class="small">${esc(br(r.checkin).slice(0, 5))} → ${esc(br(r.checkout).slice(0, 5))} ${r.arriving ? '<span class="badge info">chega</span>' : ''}${r.leaving ? '<span class="badge warn">sai</span>' : ''}</td>

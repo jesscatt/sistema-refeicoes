@@ -16,9 +16,8 @@ const users = [
   ['digiordana', 'Di Giordana', 'restaurante', 'DG'],
   ['paradiso', 'Paradiso', 'restaurante', 'PAR'],
   ['maestro', 'Churrascaria Maestro', 'restaurante', 'MAE'],
-  // portal: agência vinculada pelo nome que aparece na coluna Reserva; cliente vinculado ao nº da reserva
-  ['agencia', 'Saudades Tur', 'agencia', null, { agency: 'SAUDADES TUR' }],
-  ['cliente', 'Nelson Lucas Perez Pereira', 'cliente', null, { reservation_number: '57834' }],
+  // Comercial: valida quartos, trocas e envia os rooming lists das agências
+  ['comercial', 'Comercial', 'agencia', null],
 ];
 for (const [username, name, role, code, link = {}] of users) {
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) continue;
@@ -38,7 +37,7 @@ const today = todayISO();
 const records = [];
 // Dados de exemplo só entram em banco vazio (não mistura com reservas reais já importadas)
 const hasData = db.prepare('SELECT COUNT(*) n FROM reservations').get().n > 0;
-// grupos de exemplo (vários quartos na mesma reserva), com os mesmos vínculos dos usuários do portal
+// grupos de exemplo (vários quartos na mesma reserva)
 for (let i = 0; i < 8; i++) records.push({ reservation_number: '55778 SAUDADES TUR', checkin: addDays(today, -1), checkout: addDays(today, 2), room: `${201 + i}${'ABC'[i % 3]}`, board: 'FAP', adults: 2, children: i % 3 === 0 ? 1 : 0 });
 for (let i = 0; i < 6; i++) records.push({ reservation_number: '50893 ANR TUR', checkin: today, checkout: addDays(today, 3), room: `${301 + i}C`, board: 'FAP', adults: 2, children: 0 });
 records.push({ reservation_number: '57834 NELSON LUCAS PEREZ PEREIRA', checkin: addDays(today, -1), checkout: addDays(today, 3), room: '410B', board: 'FAP', adults: 2, children: 0 });
@@ -55,4 +54,4 @@ for (let i = 0; i < 90; i++) {
 }
 if (hasData) console.log('Demo: banco já tem reservas; só os usuários de teste foram conferidos.');
 else { const r = upsertReservations(records, { source: 'excel' }); console.log(`Demo: ${r.inserted} quartos de exemplo criados.`); }
-console.log('Usuários: admin/admin1234 · dev/dev12345 · supervisao, refeicao, recepcao, digiordana, paradiso, maestro, agencia, cliente (senha demo1234)');
+console.log('Usuários: admin/admin1234 · dev/dev12345 · supervisao, refeicao, recepcao, digiordana, paradiso, maestro, comercial (senha demo1234)');
