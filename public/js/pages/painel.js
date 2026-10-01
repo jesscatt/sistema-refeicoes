@@ -1,4 +1,4 @@
-import { get, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, canSee, state } from '../ui.js';
+import { get, put, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, canSee, state, modal, toast, fail } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -7,13 +7,14 @@ export async function render(el) {
 
   async function load() {
     syncParams(st, ['date']);
-    const [d, notifs] = await Promise.all([get('/api/dashboard?date=' + st.date), get('/api/notifications').catch(() => [])]);
+    const [d, notifs, rd] = await Promise.all([get('/api/dashboard?date=' + st.date), get('/api/notifications').catch(() => []), get('/api/restaurants/day?date=' + st.date)]);
     const boards = Object.fromEntries(d.boards.map((b) => [b.board, b]));
     el.innerHTML = `
       <div class="page-head">
         <div class="grow"><h1>Painel geral</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40)</p></div>
         ${dateBar({ date: st.date })}
       </div>
+      ${openCard(rd)}
       <div class="stats">
         <div class="card stat"><div class="k">Hospedados</div><div class="v">${d.inhouse.adults + d.inhouse.children}<small>pax · ${d.inhouse.reservas} reservas</small></div></div>
         <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>adt</small> ${d.inhouse.children}<small>chd</small></div></div>
@@ -39,6 +40,52 @@ export async function render(el) {
           : '<div class="empty">Nenhuma troca registrada.</div>'}
       </div>`;
     bindDateBar(el, st, load);
+    el.querySelectorAll('[data-rday]').forEach((b) => b.addEventListener('click', () => toggleDay(rd, b.dataset.rday, b.dataset.meal)));
+  }
+
+  const REASON = { fechado_semana: 'fechado neste dia da semana', fechado_dia: 'fechado nesta data', aberto_excecao: 'aberto excepcionalmente' };
+  function openCard(rd) {
+    const edit = can('admin', 'refeicao') && rd.date >= today();
+    const isToday = rd.date === today();
+    const openCount = rd.restaurants.filter((r) => r.meals.some((m) => m.open)).length;
+    return `<div class="card" style="margin-bottom:18px">
+      <div class="card-head">${icon('plate')}<h3 class="grow">Restaurantes abertos ${isToday ? 'hoje' : 'em ' + esc(dayLabel(rd.date))}</h3>
+        <span class="muted small">${openCount} de ${rd.restaurants.length} em funcionamento${edit ? ' · clique na refeição para abrir ou fechar' : ''}</span></div>
+      <div class="open-grid">${rd.restaurants.map((r) => `
+        <div class="open-rest" style="--c:${esc(r.color)}">
+          <div class="open-name">${restDot(r)}<b>${esc(r.name)}</b>${r.meals.some((m) => m.open) ? '<span class="badge ok">aberto</span>' : '<span class="badge danger">fechado</span>'}</div>
+          <div class="open-meals">${r.meals.map((m) => {
+            const cls = !m.serves ? 'na' : m.open ? 'on' : 'off';
+            const tip = !m.serves ? 'não serve esta refeição' : (REASON[m.reason] || 'aberto') + (m.note ? ' · ' + m.note : '');
+            const tag = edit && m.serves ? 'button' : 'div';
+            return `<${tag} class="om ${cls}" title="${esc(tip)}" ${edit && m.serves ? `data-rday="${r.id}" data-meal="${m.meal}"` : ''}>
+              <span class="om-l">${mealIcon(m.meal)} ${esc(m.label)}</span>
+              <span class="om-s">${!m.serves ? 'não serve' : m.open ? `${m.start} – ${m.end}` : 'fechado'}</span>
+              ${m.serves && (m.note || (m.reason && m.reason !== 'nao_serve')) ? `<span class="om-n">${esc(m.note || REASON[m.reason] || '')}</span>` : ''}
+            </${tag}>`;
+          }).join('')}</div>
+        </div>`).join('')}</div>
+    </div>`;
+  }
+
+  function toggleDay(rd, restId, meal) {
+    const r = rd.restaurants.find((x) => String(x.id) === String(restId));
+    const m = r.meals.find((x) => x.meal === meal);
+    const closing = m.open;
+    const { el: md, close } = modal({
+      title: `${closing ? 'Fechar' : 'Abrir'} ${esc(r.name)} · ${esc(m.label)}`,
+      body: `<p style="margin-top:0">${esc(dayLabel(rd.date))} · ${m.start} – ${m.end}</p>
+        ${closing ? '<p class="muted small">Os apartamentos ainda não atendidos neste restaurante serão redistribuídos entre os restaurantes abertos, mantendo os grupos juntos. Todos os perfis recebem o aviso.</p>' : '<p class="muted small">O restaurante volta a receber hóspedes nesta refeição. Se a lista ainda não foi liberada, a distribuição é refeita.</p>'}
+        <label class="f">Motivo / observação<input class="input" name="note" placeholder="${closing ? 'Ex.: manutenção, evento fechado' : 'Ex.: alta ocupação'}" value="${esc(m.note || '')}"></label>`,
+      foot: `<button class="btn" data-close>Cancelar</button><button class="btn ${closing ? 'danger' : 'primary'}" data-ok>${closing ? 'Fechar restaurante' : 'Abrir restaurante'}</button>`,
+    });
+    md.querySelector('[data-ok]').onclick = async () => {
+      try {
+        const res = await put('/api/restaurants/day', { date: rd.date, meal, restaurant_id: r.id, open: !closing, note: md.querySelector('[name=note]').value });
+        toast(`${r.name} ${closing ? 'fechado' : 'aberto'}${res.moved ? ` · ${res.moved} apto(s) redistribuído(s)` : ''}.`);
+        close(); load();
+      } catch (e) { fail(e); }
+    };
   }
 
   function mealCard(m, date) {

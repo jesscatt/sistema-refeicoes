@@ -70,7 +70,7 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 **Almoço na chegada** — Grupos que chegam antes do almoço almoçam no dia da entrada (e não no dia da saída). Detectado sozinho quando a planilha de divisão traz almoço no dia da chegada; também dá para marcar na reserva.
 
-**Restaurante fechado** — Em *Configurações* marque os dias da semana em que cada restaurante não serve cada refeição; a parte dele vai para os outros abertos.
+**Restaurantes abertos** — O *Painel geral* mostra a todos os perfis quais restaurantes estão abertos no dia, por refeição e horário. Administração e Refeições abrem ou fecham um restaurante numa data clicando na refeição (com motivo); os apartamentos ainda não atendidos são redistribuídos entre os abertos, mantendo os grupos juntos, e todos recebem o aviso. Fechamentos fixos por dia da semana ficam em *Configurações*.
 
 **Divisão** — Almoço e jantar: Di Giordana 60%, Paradiso 20%, Maestro 20%. Café: Di Giordana 60%, Paradiso 40% (Maestro não serve). A divisão é por pax (adultos + crianças), grupos inteiros no mesmo restaurante, respeitando a capacidade quando cadastrada. Percentuais e capacidades ficam em *Configurações*.
 

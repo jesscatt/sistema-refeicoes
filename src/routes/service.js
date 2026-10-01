@@ -3,7 +3,7 @@ const { route, HttpError } = require('../http');
 const { db, tx, audit, notify } = require('../db');
 const { MEALS, MEAL_LABEL, isISODate, todayISO, toCSV, BOARDS, roomMatch, roomKey, roomSort: roomSortKey, addDays } = require('../util');
 const { buildXlsx, colName } = require('../xlsx-write');
-const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible, restaurantsFor, weekday } = require('../meals');
+const { daySummary, rebalance, isPublished, boardHas, inWindow, isEligible, restaurantsFor, restaurantStatus, weekday } = require('../meals');
 const { publishList, currentMeal } = require('../publish');
 const { restMap } = require('./reservations');
 
@@ -43,6 +43,55 @@ route('GET', '/api/dashboard', { portal: true }, ({ query }) => {
   const roomChanges = db.prepare(`SELECT c.*, r.guest_name, r.reservation_number FROM room_changes c JOIN reservations r ON r.id = c.reservation_id
     ORDER BY c.id DESC LIMIT 8`).all();
   return { date, current: currentMeal(), meals, inhouse, arrivals, departures, boards, roomChanges };
+});
+
+// ---------- Restaurantes abertos no dia (Painel geral, todos os perfis) ----------
+route('GET', '/api/restaurants/day', { portal: true }, ({ query }) => {
+  const date = isISODate(query.date) ? query.date : todayISO();
+  const times = db.prepare('SELECT * FROM meal_times ORDER BY sort').all();
+  const rests = db.prepare('SELECT id, code, name, color FROM restaurants WHERE active = 1 ORDER BY id').all();
+  const st = Object.fromEntries(MEALS.map((m) => [m, restaurantStatus(m, date)]));
+  return {
+    date,
+    restaurants: rests.map((r) => ({
+      ...r,
+      meals: times.map((t) => {
+        const x = st[t.meal].find((y) => y.id === r.id);
+        return { meal: t.meal, label: t.label, start: t.start, end: t.end, serves: x.serves, open: x.open, reason: x.reason, note: x.note };
+      }),
+    })),
+  };
+});
+
+// Fechar ou reabrir um restaurante numa refeição/data (Administração e Refeição)
+route('PUT', '/api/restaurants/day', { roles: MANAGE }, ({ body, user, ip }) => {
+  const date = body.date, meal = body.meal, restId = Number(body.restaurant_id);
+  if (!isISODate(date) || !MEALS.includes(meal)) throw new HttpError(400, 'Data ou refeição inválida.');
+  if (date < todayISO()) throw new HttpError(400, 'Não é possível alterar dias anteriores.');
+  const cur = restaurantStatus(meal, date).find((r) => r.id === restId);
+  if (!cur) throw new HttpError(404, 'Restaurante não encontrado.');
+  if (!cur.serves) throw new HttpError(400, `${cur.name} não serve ${MEAL_LABEL[meal].toLowerCase()}. Ajuste a divisão em Configurações.`);
+  const open = !!body.open;
+  const note = body.note ? String(body.note).slice(0, 200) : null;
+  if (!open && restaurantStatus(meal, date).filter((r) => r.open && r.id !== restId).length === 0) {
+    throw new HttpError(400, `Nenhum outro restaurante estaria aberto para o ${MEAL_LABEL[meal].toLowerCase()} desse dia.`);
+  }
+  let moved = 0;
+  tx(() => {
+    db.prepare(`INSERT INTO restaurant_days(date, restaurant_id, meal, is_open, note, updated_by, updated_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))
+      ON CONFLICT(date, restaurant_id, meal) DO UPDATE SET is_open = excluded.is_open, note = excluded.note, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
+      .run(date, restId, meal, open ? 1 : 0, note, user.id);
+    if (!open) {
+      // hóspedes ainda não atendidos saem do restaurante fechado (inclusive os travados)
+      db.prepare(`UPDATE assignments SET locked = 0 WHERE date = ? AND meal = ? AND restaurant_id = ?
+        AND NOT EXISTS (SELECT 1 FROM attendance t WHERE t.reservation_id = assignments.reservation_id AND t.date = assignments.date AND t.meal = assignments.meal)`).run(date, meal, restId);
+    }
+  });
+  if (!open || !isPublished(date, meal)) moved = rebalance(date, meal).moved;
+  const d = `${date.slice(8)}/${date.slice(5, 7)}`;
+  notify({ kind: 'restaurant_day', title: `${cur.name} ${open ? 'aberto' : 'fechado'} no ${MEAL_LABEL[meal].toLowerCase()} de ${d}`, body: `${note ? note + ' · ' : ''}${moved ? `${moved} apto(s) redistribuído(s) entre os restaurantes abertos.` : 'Distribuição mantida.'}`, link: `#/painel?date=${date}` });
+  audit(user, open ? 'restaurante_aberto_dia' : 'restaurante_fechado_dia', { date, meal, restaurante: cur.code, obs: note, redistribuidos: moved }, ip);
+  return { ok: true, moved };
 });
 
 // ---------- Distribuição ----------

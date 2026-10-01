@@ -230,3 +230,34 @@ test('Comercial: rooming list, trocas e permissões', async () => {
     assert.equal(m2.status, 409);
   } finally { srv.close(); }
 });
+
+test('fechar restaurante numa data redistribui os hóspedes', async () => {
+  const http = require('node:http');
+  const { hashPassword } = require('../src/db');
+  const { handle } = require('../src/http');
+  const { apiKeyAuth } = require('../src/routes/integration');
+  const { addDays, todayISO } = require('../src/util');
+  const d0 = addDays(todayISO(), 5);
+  upsertReservations([0, 1, 2, 3, 4, 5].map((i) => ({ reservation_number: `66${i} DIA`, checkin: d0, checkout: addDays(d0, 2), room: `${801 + i}B`, board: 'FAP', pax: 2, children: 0 })));
+  const day = addDays(d0, 1);
+  const mae = db.prepare("SELECT id FROM restaurants WHERE code = 'MAE'").get().id;
+  db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('ref9', 'Ref', ?, 'refeicao')").run(hashPassword('senha-123'));
+  db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('rec9', 'Rec', ?, 'recepcao')").run(hashPassword('senha-123'));
+  const srv = http.createServer((q, s2) => handle(q, s2, __dirname, apiKeyAuth)).listen(0);
+  const base = `http://127.0.0.1:${srv.address().port}`;
+  const login = async (u) => (await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: 'senha-123' }) })).headers.get('set-cookie').split(';')[0];
+  const H = (c) => ({ cookie: c, 'x-requested-with': 'fetch', 'content-type': 'application/json' });
+  try {
+    const rec = await login('rec9');
+    const view = await (await fetch(base + '/api/restaurants/day?date=' + day, { headers: H(rec) })).json();
+    assert.equal(view.restaurants.length, 3, 'todos veem os restaurantes do dia');
+    assert.equal((await fetch(base + '/api/restaurants/day', { method: 'PUT', headers: H(rec), body: JSON.stringify({ date: day, meal: 'janta', restaurant_id: mae, open: false }) })).status, 403);
+    const ref = await login('ref9');
+    const r = await fetch(base + '/api/restaurants/day', { method: 'PUT', headers: H(ref), body: JSON.stringify({ date: day, meal: 'janta', restaurant_id: mae, open: false, note: 'manutenção' }) });
+    assert.equal(r.status, 200);
+    const left = db.prepare("SELECT COUNT(*) n FROM assignments WHERE date = ? AND meal = 'janta' AND restaurant_id = ?").get(day, mae).n;
+    assert.equal(left, 0, 'ninguém fica no restaurante fechado');
+    const st = (await (await fetch(base + '/api/restaurants/day?date=' + day, { headers: H(rec) })).json()).restaurants.find((x) => x.id === mae).meals.find((m) => m.meal === 'janta');
+    assert.equal(st.open, false); assert.equal(st.note, 'manutenção');
+  } finally { srv.close(); }
+});

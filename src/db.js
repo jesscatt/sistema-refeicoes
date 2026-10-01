@@ -207,6 +207,18 @@ CREATE TABLE IF NOT EXISTS api_keys (
   last_used_at TEXT
 );
 
+-- Abertura/fechamento de restaurante numa data específica (sobrepõe os dias fixos da semana)
+CREATE TABLE IF NOT EXISTS restaurant_days (
+  date TEXT NOT NULL,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  meal TEXT NOT NULL,
+  is_open INTEGER NOT NULL,
+  note TEXT,
+  updated_by INTEGER REFERENCES users(id),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  PRIMARY KEY (date, restaurant_id, meal)
+);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT

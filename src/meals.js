@@ -36,13 +36,27 @@ function weekday(iso) {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
-// Restaurantes que servem a refeição (percentual > 0) e não estão fechados naquele dia da semana
-function restaurantsFor(meal, date = null) {
-  const rows = db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap, closed_${meal} AS closed
-    FROM restaurants WHERE active = 1 AND share_${meal} > 0 ORDER BY share_${meal} DESC, id`).all();
-  if (!date) return rows;
+// Situação de cada restaurante numa refeição/data: serve? aberto? por quê?
+function restaurantStatus(meal, date) {
   const wd = String(weekday(date));
-  return rows.filter((r) => !String(r.closed || '').split(',').map((x) => x.trim()).includes(wd));
+  const over = new Map(db.prepare('SELECT * FROM restaurant_days WHERE date = ? AND meal = ?').all(date, meal).map((o) => [o.restaurant_id, o]));
+  return db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap, closed_${meal} AS closed FROM restaurants WHERE active = 1 ORDER BY id`).all().map((r) => {
+    const serves = r.share > 0;
+    const weekly = String(r.closed || '').split(',').map((x) => x.trim()).includes(wd);
+    const o = over.get(r.id);
+    let open = serves && !weekly, reason = !serves ? 'nao_serve' : weekly ? 'fechado_semana' : null;
+    if (serves && o) { open = !!o.is_open; reason = o.is_open ? (weekly ? 'aberto_excecao' : null) : 'fechado_dia'; }
+    return { ...r, serves, open, reason, note: o ? o.note : null };
+  });
+}
+
+// Restaurantes que servem a refeição (percentual > 0) e estão abertos naquela data
+function restaurantsFor(meal, date = null) {
+  if (!date) {
+    return db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap, closed_${meal} AS closed
+      FROM restaurants WHERE active = 1 AND share_${meal} > 0 ORDER BY share_${meal} DESC, id`).all();
+  }
+  return restaurantStatus(meal, date).filter((r) => r.open).sort((a, b) => b.share - a.share || a.id - b.id);
 }
 
 function paxLoads(date, meal) {
@@ -233,4 +247,4 @@ function daySummary(date, meal) {
   });
 }
 
-module.exports = { inWindow, boardHas, isEligible, mealDates, restaurantsFor, pickRestaurant, syncReservation, syncMany, rebalance, isPublished, daySummary, paxLoads, groupVisits, weekday };
+module.exports = { restaurantStatus, inWindow, boardHas, isEligible, mealDates, restaurantsFor, pickRestaurant, syncReservation, syncMany, rebalance, isPublished, daySummary, paxLoads, groupVisits, weekday };
