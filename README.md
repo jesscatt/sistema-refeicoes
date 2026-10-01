@@ -48,14 +48,18 @@ Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes
 
 ## Perfis
 
-| Perfil | O que faz |
+Todos entram pelo **Painel** (aberturas das refeições do dia e avisos).
+
+| Perfil | Acessa |
 |---|---|
-| **Administrador** | Tudo: usuários, restaurantes, horários, chaves de API, logs, reabrir mês. |
-| **Supervisão** | Vê tudo, cadastra valores das refeições, **fecha o faturamento** e exporta os relatórios oficiais (só ela e o admin). |
-| **Refeição** | Importa planilhas, revisa a divisão, move clientes, publica listas, informa o real, vê faturamento. |
-| **Recepção** | Só visualiza onde cada hóspede come em cada dia e imprime os cartões. |
-| **Restaurante** | Marca quem veio comer no seu restaurante, informa o número real do dia e vê o controle semanal dele. |
-| **Comercial** | Equipe comercial (todas as reservas): envia o **rooming list** das agências, confere as **trocas de quarto** (ou desfaz), troca quarto, ajusta nomes e pessoas, inclui e remove quartos do grupo. Não muda a pensão nem a divisão. |
+| **Administrador** (`admin`, `dev`) | Tudo. |
+| **Refeição** | Tudo, menos Usuários e Configurações (e a tela da recepção): marcação, distribuição, reservas, importação, rooming list, trocas, controle da divisão, previsto × real, faturamento, IA e logs. |
+| **Supervisão** | Faturamento, previsão (Controle da divisão e Previsto × Real), Distribuição, Assistente IA e Logs. Fecha o mês e cadastra valores. |
+| **Comercial** | Trocas de quarto (conferir/desfazer), Quartos e rooming list, e onde cada hóspede vai comer. Não muda a pensão nem a divisão. |
+| **Recepção** | Onde cada hóspede vai comer (com cartões para imprimir). Só visualiza. |
+| **Restaurante** | Painel e as marcações do próprio restaurante (lista, fora da lista, consumo à parte). |
+
+O número real de cada refeição (Previsto × Real) é lançado pelo setor de Refeições.
 
 ## Regras principais
 

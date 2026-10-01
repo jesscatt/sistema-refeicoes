@@ -1,4 +1,4 @@
-import { api, post, esc, icon, fail, toast, boardTag, br, download, roomHtml } from '../ui.js';
+import { api, post, esc, icon, fail, toast, boardTag, br, download, roomHtml, canSee } from '../ui.js';
 
 export async function render(el) {
   let preview = null;
@@ -126,7 +126,7 @@ export async function render(el) {
         <p class="muted">${r.inserted} quartos novos · ${r.updated} atualizados · ${r.unchanged} sem mudança${r.cancelled ? ` · ${r.cancelled} cancelados` : ''}${r.errors.length ? ` · ${r.errors.length} com erro` : ''}</p>
         ${r.distApplied ? `<p>Divisão da planilha aplicada em ${r.distApplied} refeições${r.distSkipped ? ` (${r.distSkipped} não aplicadas porque a pensão não inclui)` : ''}.</p>` : ''}
         ${r.roomChanges.length ? `<p>${r.roomChanges.length} troca(s) de quarto registradas e avisadas.</p>` : ''}
-        <div class="row" style="justify-content:center;margin-top:16px"><a class="btn" href="#/distribuicao">Ver distribuição</a><a class="btn" href="#/recepcao">Ver recepção</a><button class="btn primary" id="again">Importar outra</button></div></div>`;
+        <div class="row" style="justify-content:center;margin-top:16px">${canSee('distribuicao') ? '<a class="btn" href="#/distribuicao">Ver distribuição</a>' : ''}${canSee('recepcao') ? '<a class="btn" href="#/recepcao">Onde cada hóspede come</a>' : ''}<button class="btn primary" id="again">Importar outra</button></div></div>`;
       el.querySelector('#again').onclick = drawStart;
     } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Importar'; }
   }

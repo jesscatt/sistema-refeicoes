@@ -102,7 +102,7 @@ route('POST', '/api/admin/reset-reservations', { roles: ADMIN }, ({ body, user, 
 });
 
 // ---------- Logs ----------
-route('GET', '/api/audit', { roles: ['admin', 'supervisor'] }, ({ query }) => {
+route('GET', '/api/audit', { roles: ['admin', 'supervisor', 'refeicao'] }, ({ query }) => {
   const where = [], args = [];
   if (query.q) { where.push('(action LIKE ? OR details LIKE ? OR username LIKE ?)'); args.push(`%${query.q}%`, `%${query.q}%`, `%${query.q}%`); }
   if (query.from) { where.push('created_at >= ?'); args.push(query.from); }

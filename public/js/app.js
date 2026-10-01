@@ -1,26 +1,26 @@
-import { state, esc, get, post, api, toast, fail, icon, mealIcon, MEAL_FULL, ROLE_LABEL, modal } from './ui.js';
+import { state, esc, get, post, api, toast, fail, icon, mealIcon, MEAL_FULL, ROLE_LABEL, modal, PAGE_ROLES } from './ui.js';
 
 const root = document.getElementById('root');
 
-// Menu por perfil
+// Menu por perfil (o servidor confere as mesmas permissões em cada rota)
 const NAV = [
-  { path: 'painel', label: 'Painel', icon: 'home', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
-  { path: 'minhas', label: 'Quartos e rooming list', icon: 'book', roles: ['agencia'] },
-  { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: ['admin', 'refeicao', 'restaurante'] },
-  { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: ['admin', 'supervisor', 'refeicao'] },
-  { path: 'recepcao', label: 'Recepção · Cartões', icon: 'card', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
-  { path: 'reservas', label: 'Reservas', icon: 'book', roles: ['admin', 'supervisor', 'refeicao', 'recepcao'] },
-  { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: ['admin', 'refeicao'] },
-  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'] },
+  { path: 'painel', label: 'Painel', icon: 'home', roles: PAGE_ROLES.painel },
+  { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: PAGE_ROLES.servico },
+  { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: PAGE_ROLES.distribuicao },
+  { path: 'recepcao', label: 'Onde cada hóspede come', icon: 'card', roles: PAGE_ROLES.recepcao },
+  { path: 'reservas', label: 'Reservas', icon: 'book', roles: PAGE_ROLES.reservas },
+  { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: PAGE_ROLES.importar },
+  { path: 'minhas', label: 'Quartos e rooming list', icon: 'users', roles: PAGE_ROLES.minhas },
+  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: PAGE_ROLES.trocas },
   { sep: 'Controle' },
-  { path: 'semana', label: 'Controle da divisão', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
-  { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] },
-  { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: ['admin', 'supervisor', 'refeicao'] },
-  { path: 'ia', label: 'Assistente IA', icon: 'spark', roles: ['admin', 'supervisor', 'refeicao'] },
-  { sep: 'Administração', roles: ['admin', 'supervisor'] },
-  { path: 'usuarios', label: 'Usuários', icon: 'users', roles: ['admin'] },
-  { path: 'config', label: 'Configurações', icon: 'gear', roles: ['admin'] },
-  { path: 'logs', label: 'Logs', icon: 'log', roles: ['admin', 'supervisor'] },
+  { path: 'semana', label: 'Controle da divisão', icon: 'coin', roles: PAGE_ROLES.semana },
+  { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: PAGE_ROLES.controle },
+  { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: PAGE_ROLES.faturamento },
+  { path: 'ia', label: 'Assistente IA', icon: 'spark', roles: PAGE_ROLES.ia },
+  { sep: 'Administração' },
+  { path: 'usuarios', label: 'Usuários', icon: 'users', roles: PAGE_ROLES.usuarios },
+  { path: 'config', label: 'Configurações', icon: 'gear', roles: PAGE_ROLES.config },
+  { path: 'logs', label: 'Logs', icon: 'log', roles: PAGE_ROLES.logs },
 ];
 
 const PAGES = {
@@ -42,8 +42,8 @@ const PAGES = {
   senha: () => import('./pages/senha.js'),
 };
 
-function homeFor(role) {
-  return role === 'restaurante' ? 'servico' : role === 'recepcao' ? 'recepcao' : role === 'agencia' ? 'minhas' : 'painel';
+function homeFor() {
+  return 'painel'; // todos começam pelo painel (aberturas do dia e avisos)
 }
 
 // ---------- Login ----------

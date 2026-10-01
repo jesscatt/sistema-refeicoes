@@ -88,13 +88,13 @@ function billing(month) {
   return { month, lines: out, total: +total.toFixed(2) };
 }
 
-route('GET', '/api/control', { roles: ['admin', 'supervisor', 'refeicao', 'restaurante'] }, ({ query, user }) => {
+route('GET', '/api/control', { roles: ['admin', 'supervisor', 'refeicao'] }, ({ query, user }) => {
   const month = checkMonth(query.month);
   const restId = user.role === 'restaurante' ? user.restaurant_id : (Number(query.restaurant_id) || null);
   return { month, restaurant_id: restId, closed: closure(month), rows: controlRows(month, restId) };
 });
 
-route('PUT', '/api/control', { roles: ['admin', 'refeicao', 'restaurante'] }, ({ body, user, ip }) => {
+route('PUT', '/api/control', { roles: ['admin', 'refeicao'] }, ({ body, user, ip }) => {
   if (!isISODate(body.date) || !MEALS.includes(body.meal)) throw new HttpError(400, 'Data ou refeição inválida.');
   const restId = user.role === 'restaurante' ? user.restaurant_id : Number(body.restaurant_id);
   if (!restId) throw new HttpError(400, 'Informe o restaurante.');
@@ -227,7 +227,7 @@ function weekRange(query) {
   return { from, to };
 }
 
-const WEEK_VIEW = ['admin', 'supervisor', 'refeicao', 'restaurante'];
+const WEEK_VIEW = ['admin', 'supervisor', 'refeicao'];
 route('GET', '/api/control/week', { roles: WEEK_VIEW }, ({ query, user }) => {
   const { from, to } = weekRange(query);
   const restId = user.role === 'restaurante' ? user.restaurant_id : (Number(query.restaurant_id) || null);

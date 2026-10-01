@@ -15,7 +15,7 @@ const { normalizeRecord, splitReservation } = require('../importer');
 const { readSpreadsheet } = require('../xlsx');
 const { stayPlan } = require('./reservations');
 
-const PORTAL = ['agencia'];
+const PORTAL = ['admin', 'refeicao', 'agencia'];
 
 // O Comercial trabalha com todas as reservas (sem vínculo a uma agência)
 function scope() {

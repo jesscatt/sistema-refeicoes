@@ -464,3 +464,10 @@ details.grp[open] > summary { background: var(--primary-l); }
 /* caixas de seleção com texto ao lado (não quebrar a linha) */
 label.row:has(> input[type="checkbox"]) { flex-wrap: nowrap; align-items: flex-start; }
 label.row > input[type="checkbox"] { margin-top: 3px; flex: none; width: 16px; height: 16px; accent-color: var(--primary); }
+/* avisos no painel */
+a.aviso { display: grid; gap: 2px; padding: 11px 18px; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+a.aviso:first-child { border-top: 0; }
+a.aviso:hover { background: var(--hover); }
+a.aviso.unread { border-left: 4px solid var(--primary); }
+a.aviso span { color: var(--ink-2); }
+a.aviso small { color: var(--muted); font-size: 12px; }

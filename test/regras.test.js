@@ -186,8 +186,10 @@ test('Comercial: rooming list, trocas e permissões', async () => {
     // vê todas as reservas, não acessa o resto do sistema
     const list = await (await fetch(base + '/api/portal/reservations?q=99001', { headers: H(c) })).json();
     assert.equal(list.rows.length, 3);
-    assert.equal((await fetch(base + '/api/dashboard', { headers: H(c) })).status, 403);
+    assert.equal((await fetch(base + '/api/dashboard', { headers: H(c) })).status, 200, 'todos veem o painel');
+    assert.equal((await fetch(base + '/api/reception', { headers: H(c) })).status, 200, 'Comercial vê onde cada hóspede come');
     assert.equal((await fetch(base + '/api/distribution', { headers: H(c) })).status, 403);
+    assert.equal((await fetch(base + '/api/billing', { headers: H(c) })).status, 403);
     // rooming list: uma linha por hóspede, quarto mesclado, idade -> criança; 1 quarto novo; 1 quarto fora
     const csv = 'Quarto;Nome do hóspede;Idade\n701A;Maria Silva;40\n;João Silva;42\n;Pedro Silva;7\n702A;Ana Souza;30\n705A;Carlos Lima;50\n705A;Rita Lima;48\n';
     const prev = await (await fetch(base + '/api/portal/rooming/preview', { method: 'POST', headers: H(c, { 'content-type': 'application/octet-stream', 'x-filename': 'rl.csv', 'x-reservation': '99001' }), body: Buffer.from(csv) })).json();
@@ -218,6 +220,9 @@ test('Comercial: rooming list, trocas e permissões', async () => {
     const other = db.prepare('SELECT id FROM restaurants WHERE id != ? AND share_janta > 0 LIMIT 1').get(a.restaurant_id).id;
     db.prepare('UPDATE users SET restaurant_id = ? WHERE username = ?').run(other, 'rest1');
     const rc = await login('rest1');
+    assert.equal((await fetch(base + '/api/dashboard', { headers: H(rc) })).status, 200);
+    assert.equal((await fetch(base + '/api/control/week', { headers: H(rc) })).status, 403, 'restaurante: só painel e marcações');
+    assert.equal((await fetch(base + '/api/room-changes/1/validate', { method: 'POST', headers: H(rc), body: '{}' })).status, 403);
     const m1 = await (await fetch(base + '/api/attendance', { method: 'POST', headers: H(rc), body: JSON.stringify({ reservation_id: r701.id, date: t, meal: 'janta' }) })).json();
     assert.equal(m1.status, 'fora_lista');
     assert.ok(m1.assigned_restaurant);

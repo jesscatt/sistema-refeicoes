@@ -8,7 +8,7 @@ const { publishList, currentMeal } = require('../publish');
 const { restMap } = require('./reservations');
 
 const MANAGE = ['admin', 'refeicao'];
-const VIEW = ['admin', 'supervisor', 'refeicao', 'recepcao'];
+const VIEW = ['admin', 'supervisor', 'refeicao'];
 const SERVICE = ['admin', 'refeicao', 'restaurante'];
 
 function dayMeal(query) {
@@ -29,7 +29,7 @@ function restaurantFor(user, requested) {
 }
 
 // ---------- Painel ----------
-route('GET', '/api/dashboard', ({ query }) => {
+route('GET', '/api/dashboard', { portal: true }, ({ query }) => {
   const date = isISODate(query.date) ? query.date : todayISO();
   const meals = db.prepare('SELECT * FROM meal_times ORDER BY sort').all().map((t) => ({
     ...t, published: isPublished(date, t.meal), restaurants: daySummary(date, t.meal),

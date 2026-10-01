@@ -1,4 +1,4 @@
-import { get, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, state } from '../ui.js';
+import { get, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, canSee, state } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -7,7 +7,7 @@ export async function render(el) {
 
   async function load() {
     syncParams(st, ['date']);
-    const d = await get('/api/dashboard?date=' + st.date);
+    const [d, notifs] = await Promise.all([get('/api/dashboard?date=' + st.date), get('/api/notifications').catch(() => [])]);
     const boards = Object.fromEntries(d.boards.map((b) => [b.board, b]));
     el.innerHTML = `
       <div class="page-head">
@@ -26,7 +26,13 @@ export async function render(el) {
         ${d.meals.map((m) => mealCard(m, d.date)).join('')}
       </div>
       <div class="card" style="margin-top:18px">
-        <div class="card-head">${icon('swap')}<h3 class="grow">Trocas de quarto recentes</h3><a class="btn sm" href="#/trocas">Ver todas</a></div>
+        <div class="card-head">${icon('bell')}<h3 class="grow">Avisos</h3><span class="muted small">listas liberadas, trocas de quarto, rooming lists e alterações</span></div>
+        ${notifs.length ? `<div>${notifs.slice(0, 10).map((n) => `<a class="aviso ${n.read ? '' : 'unread'}" href="${esc(n.link && canSee(n.link.replace(/^#\//, '').split('?')[0]) ? n.link : '#/painel')}">
+            <b>${esc(n.title)}</b>${n.body ? `<span>${esc(n.body)}</span>` : ''}<small>${esc(n.created_at.slice(8, 10) + '/' + n.created_at.slice(5, 7) + ' ' + n.created_at.slice(11, 16))}</small></a>`).join('')}</div>`
+          : '<div class="empty">Nenhum aviso nos últimos dias.</div>'}
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-head">${icon('swap')}<h3 class="grow">Trocas de quarto recentes</h3>${canSee('trocas') ? '<a class="btn sm" href="#/trocas">Ver todas</a>' : ''}</div>
         ${d.roomChanges.length ? `<div class="table-wrap"><table class="t"><tbody>${d.roomChanges.map((c) => `
           <tr><td class="room">${esc(c.old_room)} → ${esc(c.new_room)}</td><td>${esc(c.guest_name)} <span class="muted small">· reserva ${esc(c.reservation_number)}</span></td>
           <td class="muted small">${esc(c.created_at.slice(8, 10) + '/' + c.created_at.slice(5, 7) + ' ' + c.created_at.slice(11, 16))}</td></tr>`).join('')}</tbody></table></div>`
@@ -39,7 +45,7 @@ export async function render(el) {
     const serv = m.restaurants.filter((r) => r.serves || r.pax);
     const total = serv.reduce((s, r) => s + r.pax, 0);
     const checked = serv.reduce((s, r) => s + r.checked_pax, 0);
-    const link = can('admin', 'refeicao', 'supervisor') ? `#/distribuicao?date=${date}&meal=${m.meal}` : `#/recepcao?date=${date}`;
+    const link = canSee('distribuicao') ? `#/distribuicao?date=${date}&meal=${m.meal}` : canSee('servico') ? `#/servico?date=${date}&meal=${m.meal}` : canSee('recepcao') ? `#/recepcao?date=${date}` : '';
     return `<div class="card meal-card">
       <div class="top">
         <div class="meal-ico ${m.meal}">${mealIcon(m.meal)}</div>
@@ -58,7 +64,7 @@ export async function render(el) {
         ${m.published ? `<span class="badge ok">${icon('check')} Lista publicada</span>` : `<span class="badge warn">Lista às ${publishAt(m)}</span>`}
         <span class="grow" style="flex:1"></span>
         ${checked ? `<span class="muted">${checked} marcados</span>` : ''}
-        <a class="btn sm" href="${link}">Abrir</a>
+        ${link ? `<a class="btn sm" href="${link}">Abrir</a>` : ''}
       </div>
     </div>`;
   }

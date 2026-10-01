@@ -118,6 +118,27 @@ export function setHashParams(params) {
 
 export function can(...roles) { return state.me && roles.includes(state.me.role); }
 
+// Quem acessa cada página (o servidor confere as mesmas permissões em cada rota)
+const ALL = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'];
+export const PAGE_ROLES = {
+  painel: ALL,
+  servico: ['admin', 'refeicao', 'restaurante'],
+  distribuicao: ['admin', 'supervisor', 'refeicao'],
+  recepcao: ['admin', 'recepcao', 'agencia'],
+  reservas: ['admin', 'refeicao'],
+  importar: ['admin', 'refeicao'],
+  minhas: ['admin', 'refeicao', 'agencia'],
+  trocas: ['admin', 'refeicao', 'agencia'],
+  semana: ['admin', 'supervisor', 'refeicao'],
+  controle: ['admin', 'supervisor', 'refeicao'],
+  faturamento: ['admin', 'supervisor', 'refeicao'],
+  ia: ['admin', 'supervisor', 'refeicao'],
+  usuarios: ['admin'],
+  config: ['admin'],
+  logs: ['admin', 'supervisor', 'refeicao'],
+};
+export const canSee = (page) => !!state.me && (PAGE_ROLES[page] || []).includes(state.me.role);
+
 export function download(url) {
   const a = document.createElement('a');
   a.href = url; a.download = '';

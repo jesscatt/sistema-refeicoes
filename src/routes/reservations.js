@@ -6,7 +6,9 @@ const { syncReservation, boardHas, inWindow } = require('../meals');
 const { parseRows, upsertReservations, normalizeRecord, planImport, checkDistribution } = require('../importer');
 const { readSpreadsheet } = require('../xlsx');
 
-const VIEW = ['admin', 'supervisor', 'refeicao', 'recepcao'];
+const LIST = ['admin', 'refeicao'];                           // página Reservas
+const DETAIL = ['admin', 'refeicao', 'recepcao', 'agencia'];  // detalhe/cartão do hóspede
+const RECEPTION = ['admin', 'recepcao', 'agencia'];           // onde cada hóspede come
 const EDIT = ['admin', 'refeicao'];
 
 function restMap() {
@@ -40,7 +42,7 @@ function stayPlan(res) {
   return days;
 }
 
-route('GET', '/api/reservations', { roles: VIEW }, ({ query }) => {
+route('GET', '/api/reservations', { roles: LIST }, ({ query }) => {
   const where = [], args = [];
   if (query.q) {
     const rm = roomMatch('r.room', query.q);
@@ -70,7 +72,7 @@ route('GET', '/api/reservations/export.csv', { roles: ['admin', 'supervisor', 'r
   };
 });
 
-route('GET', '/api/reservations/:id', { roles: VIEW }, ({ params }) => {
+route('GET', '/api/reservations/:id', { roles: DETAIL }, ({ params }) => {
   const r = db.prepare('SELECT * FROM reservations WHERE id = ?').get(params.id);
   if (!r) throw new HttpError(404, 'Reserva não encontrada.');
   return {
@@ -229,7 +231,7 @@ route('POST', '/api/room-changes/:id/validate', { roles: VALIDATE }, ({ params, 
 });
 
 // ---------- Recepção: onde cada hóspede come em cada dia ----------
-route('GET', '/api/reception', { roles: VIEW }, ({ query }) => {
+route('GET', '/api/reception', { roles: RECEPTION }, ({ query }) => {
   const date = isISODate(query.date) ? query.date : todayISO();
   const rm = restMap();
   const res = db.prepare(`SELECT * FROM reservations WHERE status = 'ativa' AND checkin <= ? AND checkout >= ?
