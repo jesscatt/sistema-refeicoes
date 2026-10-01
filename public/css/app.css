@@ -511,7 +511,7 @@ button.wm:hover { outline: 2px solid var(--primary); }
 .wm.off { background: var(--danger-l); color: var(--danger); text-decoration: line-through; }
 .wm.na { background: transparent; color: var(--muted); opacity: .45; }
 .wk-note { font-size: 11px; color: var(--danger); margin-top: 3px; line-height: 1.2; }
-.lg { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
-.lg.on { background: var(--ok-l); border: 1px solid var(--ok); }
-.lg.off { background: var(--danger-l); border: 1px solid var(--danger); }
-.lg.na { background: var(--paper-2); border: 1px solid var(--line-2); }
+.leg { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
+.leg.on { background: var(--ok-l); border: 1px solid var(--ok); }
+.leg.off { background: var(--danger-l); border: 1px solid var(--danger); }
+.leg.na { background: var(--paper-2); border: 1px solid var(--line-2); }

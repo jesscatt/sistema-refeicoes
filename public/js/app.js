@@ -64,13 +64,9 @@ function renderLogin(msg = '') {
         <div class="banner danger ${msg ? '' : 'hidden'}" id="login-msg">${icon('alert')}<span>${esc(msg)}</span></div>
         <button class="btn primary lg" type="submit">Entrar</button>
       </form>
-      <div class="login-meals">
-        <span>${mealIcon('cafe')} 07:30–10:00</span><span>${mealIcon('almoco')} 12:00–14:30</span><span>${mealIcon('janta')} 19:00–22:30</span>
-      </div>
       </div>
     </div>
   </div>`;
-  root.querySelectorAll('.login-meals svg').forEach((s) => { s.style.width = '16px'; s.style.height = '16px'; });
   root.querySelector('#login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = new FormData(e.target);

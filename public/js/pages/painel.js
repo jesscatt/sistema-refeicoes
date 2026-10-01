@@ -53,7 +53,7 @@ export async function render(el) {
     const isThisWeek = wk.days.includes(wk.today);
     return `<div class="card" style="margin-bottom:18px">
       <div class="card-head">${icon('plate')}<h3 class="grow">Restaurantes abertos ${isThisWeek ? 'nesta semana' : 'na semana'} · ${br(wk.from)} a ${br(wk.to)}</h3>
-        <span class="row small muted" style="gap:10px"><span class="lg on"></span>aberto <span class="lg off"></span>fechado <span class="lg na"></span>não serve${edit ? ' · clique para abrir ou fechar' : ''}</span></div>
+        <span class="row small muted" style="gap:10px"><span class="leg on"></span>aberto <span class="leg off"></span>fechado <span class="leg na"></span>não serve${edit ? ' · clique para abrir ou fechar' : ''}</span></div>
       <div class="table-wrap"><table class="t week">
         <thead><tr><th>Restaurante</th>${wk.days.map((d) => `<th class="${d === wk.today ? 'today' : ''}">${wdOf(d)}<div>${br(d)}${d === wk.today ? ' · hoje' : ''}</div></th>`).join('')}</tr></thead>
         <tbody>${wk.restaurants.map((r) => `<tr>
