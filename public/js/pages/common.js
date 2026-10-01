@@ -25,11 +25,13 @@ export function bindDateBar(el, st, onChange) {
 
 export function readParams(def) {
   const p = hashParams();
-  return { ...def, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v)) };
+  const st = { ...def, ...Object.fromEntries(Object.entries(p).filter(([, v]) => v)) };
+  Object.defineProperty(st, '__page', { value: location.hash.split('?')[0].replace(/^#\/?/, ''), enumerable: false });
+  return st;
 }
 
 export function syncParams(st, keys) {
-  setHashParams(Object.fromEntries(keys.map((k) => [k, st[k]])));
+  setHashParams(Object.fromEntries(keys.map((k) => [k, st[k]])), st.__page);
 }
 
 export { dayLabel, br, MEAL_FULL, icon };

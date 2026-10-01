@@ -110,8 +110,9 @@ export function hashParams() {
   const q = location.hash.split('?')[1] || '';
   return Object.fromEntries(new URLSearchParams(q));
 }
-export function setHashParams(params) {
+export function setHashParams(params, page) {
   const base = location.hash.split('?')[0];
+  if (page && base.replace(/^#\/?/, '') !== page) return; // página que já não está aberta não mexe no endereço
   const q = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== '' && v != null)).toString();
   history.replaceState(null, '', base + (q ? '?' + q : ''));
 }

@@ -268,6 +268,7 @@ export async function render(el) {
 
   await load();
   timer = setInterval(() => {
+    if (!el.isConnected) { clearInterval(timer); return; }
     const busy = document.activeElement && document.activeElement.id === 'q' && st.q;
     if (!busy && !document.querySelector('.modal-bg')) load().catch(() => {});
   }, 20000);

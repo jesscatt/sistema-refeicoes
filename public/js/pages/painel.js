@@ -127,6 +127,6 @@ export async function render(el) {
   }
 
   await load();
-  timer = setInterval(() => { if (!document.querySelector('.modal-bg')) load().catch(() => {}); }, 60000);
+  timer = setInterval(() => { if (!el.isConnected) { clearInterval(timer); return; } if (!document.querySelector('.modal-bg')) load().catch(() => {}); }, 60000);
   return () => clearInterval(timer);
 }

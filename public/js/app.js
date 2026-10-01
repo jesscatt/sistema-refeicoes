@@ -164,6 +164,13 @@ function beep() {
   } catch {}
 }
 
+// Só navega pelo aviso se o perfil puder abrir a página (senão ficava indo para o Painel geral)
+function goLink(link) {
+  if (!link) return;
+  const p = link.replace(/^#\/?/, '').split('?')[0];
+  if ((PAGE_ROLES[p] || []).includes(state.me.role)) location.hash = link;
+}
+
 async function pollNotifs() {
   try {
     const rows = await get('/api/notifications?since=' + lastNotifId);
@@ -174,7 +181,7 @@ async function pollNotifs() {
       if (!firstPoll) {
         for (const n of fresh.filter((x) => !x.read).slice(0, 3)) {
           const t = toast(n.body || '', 'notif', n.title);
-          t.onclick = () => { if (n.link) location.hash = n.link; markRead([n.id]); t.remove(); };
+          t.onclick = () => { goLink(n.link); markRead([n.id]); t.remove(); };
           if ('Notification' in window && Notification.permission === 'granted') {
             try { new Notification(n.title, { body: n.body || '', icon: '/img/favicon.png', tag: 'refeicoes-' + n.id }); } catch {}
           }
@@ -213,7 +220,7 @@ function toggleNotifPanel() {
   p.querySelector('#n-perm')?.addEventListener('click', async () => { await Notification.requestPermission(); p.classList.add('hidden'); });
   p.querySelectorAll('.n[data-id]').forEach((el) => el.addEventListener('click', () => {
     markRead([Number(el.dataset.id)]);
-    if (el.dataset.link) location.hash = el.dataset.link;
+    goLink(el.dataset.link);
     p.classList.add('hidden');
   }));
 }
@@ -223,7 +230,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Rotas ----------
-let cleanup = null;
+let cleanup = null, routeSeq = 0;
 async function route() {
   if (!state.me) return;
   let path = (location.hash.replace(/^#\/?/, '').split('?')[0]) || '';
@@ -232,15 +239,23 @@ async function route() {
   if (!PAGES[path] || !allowed(path)) { location.replace('#/' + homeFor(state.me.role)); return; }
   document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.path === path));
   if (cleanup) { try { cleanup(); } catch {} cleanup = null; }
+  // Cada navegação tem seu próprio contêiner: uma página antiga que termine de carregar
+  // (ou cujo temporizador dispare) depois da troca não sobrescreve a página atual.
+  const seq = ++routeSeq;
   const page = document.getElementById('page');
-  page.innerHTML = '<div class="empty">Carregando…</div>';
+  const view = document.createElement('div');
+  view.innerHTML = '<div class="empty">Carregando…</div>';
+  page.replaceChildren(view);
   try {
     const mod = await PAGES[path]();
-    cleanup = (await mod.render(page)) || null;
+    if (seq !== routeSeq) return;
+    const done = (await mod.render(view)) || null;
+    if (seq !== routeSeq) { if (done) try { done(); } catch {} return; }
+    cleanup = done;
   } catch (e) {
-    page.innerHTML = `<div class="banner danger">${icon('alert')}<span>${esc(e.message)}</span></div>`;
+    if (seq === routeSeq) view.innerHTML = `<div class="banner danger">${icon('alert')}<span>${esc(e.message)}</span></div>`;
   }
-  window.scrollTo(0, 0);
+  if (seq === routeSeq) window.scrollTo(0, 0);
 }
 // (setHashParams usa replaceState, que não dispara hashchange; então todo hashchange é navegação)
 window.addEventListener('hashchange', route);
