@@ -96,6 +96,8 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 ## Rooming list (Comercial)
 
+Vale **apenas para reservas de grupo** (2 ou mais apartamentos no mesmo número de reserva). Reservas de um único apartamento não aparecem nessa tela nem podem receber rooming list; são ajustadas em *Reservas*.
+
 *Quartos e rooming list → Enviar rooming list*: escolha a reserva/grupo e envie a planilha da agência (.xlsx ou .csv) com **Quarto** e **Nome** (uma linha por hóspede, ou por quarto). Aceita quarto só na primeira linha (células mescladas), coluna Reserva opcional, coluna Idade (até 11 anos = criança) ou Adultos/Crianças. Antes de gravar mostra: quartos que serão atualizados, quartos novos (entram no grupo com a mesma pensão e datas) e quartos do grupo que não vieram na lista (marque os que saíram). Recepção, refeições e restaurantes são avisados. Modelo em *Enviar rooming list → Modelo*.
 
 Os nomes aparecem na recepção, no restaurante (dá para buscar pelo nome do hóspede), na reserva e no cartão impresso.

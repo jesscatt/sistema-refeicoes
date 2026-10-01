@@ -26,7 +26,7 @@ export async function render(el) {
     const noNames = (g) => g.rooms.filter((r) => !guestList(r.guests).length).length;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Rooming list</h1><p>Envio do rooming list das agências e conferência de apartamentos. Alterações de apartamento, hóspedes e quantidade de pessoas são comunicadas à recepção, ao setor de refeições e aos restaurantes. Pensão e distribuição são definidas pelo resort.</p></div>
+        <div class="grow"><h1>Rooming list</h1><p>Exclusivo para <b>reservas de grupo</b> (2 ou mais apartamentos na mesma reserva): envio do rooming list das agências e conferência de apartamentos. Alterações de apartamento, hóspedes e quantidade de pessoas são comunicadas à recepção, ao setor de refeições e aos restaurantes. Pensão e distribuição são definidas pelo resort.</p></div>
         <a class="btn" href="#/trocas">${icon('swap')} Trocas de apartamento</a>
         <button class="btn primary" id="rl">${icon('upload')} Enviar rooming list</button>
       </div>
@@ -34,7 +34,7 @@ export async function render(el) {
         <div class="search-big grow" style="max-width:420px;min-width:240px">${icon('search')}<input id="q" style="font-size:16px;padding:11px 14px 11px 48px" placeholder="Reserva, agência/grupo, hóspede ou quarto" value="${esc(st.q)}"></div>
         <label class="row small" style="gap:6px">Hospedados de <input type="date" class="input sm" id="from" value="${esc(st.from)}" style="width:auto"></label>
         <label class="row small" style="gap:6px">até <input type="date" class="input sm" id="to" value="${esc(st.to)}" style="width:auto"></label>
-        <span class="muted small">${groups.length} reserva(s) · ${data.rows.length} quarto(s)</span>
+        <span class="muted small">${groups.length} grupo(s) · ${data.rows.length} quarto(s)</span>
       </div></div>
       ${groups.length ? groups.map((g) => {
         const act = g.rooms.filter((r) => r.status === 'ativa');
@@ -62,7 +62,7 @@ export async function render(el) {
                 </td></tr>`;
             }).join('')}</tbody></table></div>
         </details>`;
-      }).join('') : `<div class="card empty">${icon('book')}<div>Nenhuma reserva no período${st.q ? ' para essa busca' : ''}.</div></div>`}`;
+      }).join('') : `<div class="card empty">${icon('book')}<div>Nenhum grupo no período${st.q ? ' para essa busca' : ''}. O rooming list considera apenas reservas de grupo (2 ou mais apartamentos).</div></div>`}`;
     const qi = el.querySelector('#q');
     qi.addEventListener('input', () => { clearTimeout(deb); deb = setTimeout(() => { st.q = qi.value; load().then(() => { const n = el.querySelector('#q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }).catch(fail); }, 300); });
     el.querySelector('#from').addEventListener('change', (e) => { if (e.target.value) { st.from = e.target.value; load().catch(fail); } });

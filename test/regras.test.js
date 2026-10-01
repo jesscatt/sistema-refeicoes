@@ -175,6 +175,7 @@ test('Comercial: rooming list, trocas e permissões', async () => {
   const { addDays, todayISO } = require('../src/util');
   const t = todayISO();
   upsertReservations([0, 1, 2].map((i) => ({ reservation_number: '99001 AGENCIA TESTE', checkin: t, checkout: addDays(t, 3), room: `${701 + i}A`, board: 'MAP', pax: 2, children: 0 })));
+  upsertReservations([{ reservation_number: '99002', checkin: t, checkout: addDays(t, 3), room: '710A', board: 'MAP', pax: 2, children: 0 }]);
   db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('com1', 'Comercial', ?, 'agencia')").run(hashPassword('senha-123'));
   db.prepare("INSERT INTO users(username, name, password_hash, role, restaurant_id) VALUES ('rest1', 'Rest', ?, 'restaurante', 2)").run(hashPassword('senha-123'));
   const srv = http.createServer((q, s2) => handle(q, s2, __dirname, apiKeyAuth)).listen(0);
@@ -186,6 +187,11 @@ test('Comercial: rooming list, trocas e permissões', async () => {
     // vê todas as reservas, não acessa o resto do sistema
     const list = await (await fetch(base + '/api/portal/reservations?q=99001', { headers: H(c) })).json();
     assert.equal(list.rows.length, 3);
+    // rooming list é só para grupos: reserva de um apartamento não aparece
+    const solo = await (await fetch(base + '/api/portal/reservations?q=99002', { headers: H(c) })).json();
+    assert.equal(solo.rows.length, 0);
+    const gl = await (await fetch(base + '/api/portal/groups', { headers: H(c) })).json();
+    assert.ok(gl.some((g) => g.reservation_number === '99001') && !gl.some((g) => g.reservation_number === '99002'));
     assert.equal((await fetch(base + '/api/dashboard', { headers: H(c) })).status, 200, 'todos veem o painel');
     assert.equal((await fetch(base + '/api/reception', { headers: H(c) })).status, 200, 'Comercial vê onde cada hóspede come');
     assert.equal((await fetch(base + '/api/distribution', { headers: H(c) })).status, 403);

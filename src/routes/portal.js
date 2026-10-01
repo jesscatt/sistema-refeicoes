@@ -17,15 +17,16 @@ const { stayPlan } = require('./reservations');
 
 const PORTAL = ['admin', 'refeicao', 'agencia'];
 
-// O Comercial trabalha com todas as reservas (sem vínculo a uma agência)
+// O rooming list é só para GRUPOS: reservas com 2 ou mais apartamentos (sem vínculo a uma agência)
+const GROUP_SQL = `r.reservation_number IN (SELECT reservation_number FROM reservations GROUP BY reservation_number HAVING COUNT(*) >= 2)`;
 function scope() {
-  return { sql: '1', args: [] };
+  return { sql: GROUP_SQL, args: [] };
 }
 
 function getOwn(user, id) {
   const sc = scope(user);
   const r = db.prepare(`SELECT * FROM reservations r WHERE r.id = ? AND ${sc.sql}`).get(id, ...sc.args);
-  if (!r) throw new HttpError(404, 'Reserva não encontrada.');
+  if (!r) throw new HttpError(404, 'Reserva não encontrada entre os grupos. O rooming list vale apenas para reservas de grupo.');
   return r;
 }
 
@@ -85,7 +86,7 @@ function matchRooming(user, groups, defaultRes = '') {
     let found = null;
     if (it.reservation_number) {
       const R = byNum.get(it.reservation_number);
-      if (!R) errs.push(`a reserva ${it.reservation_number} não foi encontrada (ou já encerrou)`);
+      if (!R) errs.push(`a reserva ${it.reservation_number} não é um grupo ativo (não encontrada, encerrada ou com um só apartamento)`);
       else found = R.rooms.find((x) => roomKey(x.room) === roomKey(it.room)) || null;
     } else if (it.room) {
       const all = resv.flatMap((R) => R.rooms.filter((x) => roomKey(x.room) === roomKey(it.room)));
@@ -215,7 +216,7 @@ route('GET', '/api/portal/reservations', { roles: PORTAL }, ({ query }) => {
   const from = /^\d{4}-\d{2}-\d{2}$/.test(query.from || '') ? query.from : addDays(todayISO(), -1);
   const to = /^\d{4}-\d{2}-\d{2}$/.test(query.to || '') ? query.to : addDays(todayISO(), 30);
   // reservas com qualquer quarto hospedado no período (traz o grupo inteiro)
-  where.push(`r.reservation_number IN (SELECT reservation_number FROM reservations WHERE checkout >= ? AND checkin <= ?)`);
+  where.push(`r.reservation_number IN (SELECT reservation_number FROM reservations WHERE checkout >= ? AND checkin <= ?)`, GROUP_SQL);
   args.push(from, to);
   if (query.status !== 'todas') where.push("r.status = 'ativa'");
   const rows = db.prepare(`SELECT r.*, (SELECT COUNT(*) FROM room_changes c WHERE c.reservation_id = r.id) room_changes,
