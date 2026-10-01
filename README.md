@@ -59,7 +59,7 @@ Todos entram pelo **Painel** (aberturas das refeições do dia e avisos).
 | **Recepção** | Onde cada hóspede vai comer (com cartões para imprimir). Só visualiza. |
 | **Restaurante** | Painel e as marcações do próprio restaurante (lista, fora da lista, consumo à parte). |
 
-O número real de cada refeição (Previsto × Real) é lançado pelo setor de Refeições.
+O realizado de cada refeição vem automaticamente dos registros dos restaurantes; não é digitado por ninguém.
 
 ## Regras principais
 
@@ -90,9 +90,9 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 **Troca de quarto** — Detectada na importação (mesma reserva, outro quarto) ou na edição manual; fica no histórico e avisa recepção, refeição e restaurantes.
 
-**Controle previsto × real** — Uma planilha por restaurante e mês: previsto (da distribuição), marcado (das marcações) e real (digitado pelo restaurante), com diferença e totais do mês.
+**Previsto x realizado** — Por restaurante e mês: previsto (da distribuição) e realizado (pax registrados pelos restaurantes, lista + fora da lista), calculado automaticamente e sem edição manual.
 
-**Faturamento** — Por restaurante × refeição × adulto/criança. Base: o real informado; sem real, o marcado. A supervisão fecha o mês (os números ficam congelados e o controle daquele mês trava).
+**Faturamento** — Por restaurante × refeição × adulto/criança. Base: o realizado (registros dos restaurantes). Refeição prevista sem nenhum registro aparece em alerta e não entra no valor. A supervisão fecha o mês (os números ficam congelados).
 
 ## Rooming list (Comercial)
 
@@ -106,7 +106,7 @@ Os nomes aparecem na recepção, no restaurante (dá para buscar pelo nome do h�
 
 ## Controle da divisão (pagamento dos restaurantes)
 
-Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, por restaurante e refeição, o pax previsto, marcado e real, quantos adultos e crianças pagar e o valor em R$ (com os valores de *Faturamento → Valores*). A diferença para a previsão aparece em vermelho quando passa do previsto. Base do pagamento: real informado → marcado no sistema → previsão. Exporta em Excel. O restaurante vê só o dele.
+Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, por restaurante e refeição, o pax previsto, marcado e real, quantos adultos e crianças pagar e o valor em R$ (com os valores de *Faturamento → Valores*). A diferença para a previsão aparece em vermelho quando passa do previsto. Base do pagamento: o realizado (registros dos restaurantes). Exporta em Excel. O restaurante vê só o dele.
 
 ## Importação da planilha
 

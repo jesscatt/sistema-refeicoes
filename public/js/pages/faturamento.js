@@ -20,18 +20,18 @@ export async function render(el) {
     const sum = (k) => b.lines.reduce((s, l) => s + l[k], 0);
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e pax (adulto/criança). Base de cálculo: o número <b>real</b> informado pelo restaurante; sem real, o <b>marcado</b> no sistema; se ninguém marcou, a <b>previsão</b> da divisão.</p></div>
+        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e pax (adulto/criança). Base de cálculo: o <b>realizado</b>, isto é, os pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         ${boss ? `<button class="btn" id="prices">${icon('coin')} Valores</button><button class="btn" id="csv">${icon('download')} Relatório oficial</button>` : ''}
         ${boss && !b.closed ? `<button class="btn primary" id="close">${icon('lock')} Fechar mês</button>` : ''}
         ${can('admin') && b.closed ? `<button class="btn danger" id="reopen">Reabrir mês</button>` : ''}
       </div>
       ${b.closed ? `<div class="banner info">${icon('lock')}<span>Mês fechado em ${esc(b.closed.closed_at)}${b.closed.closed_by_name ? ' por ' + esc(b.closed.closed_by_name) : ''}. Os números abaixo são os do fechamento${b.live && b.live.total !== b.total ? ` (hoje o sistema calcularia ${money(b.live.total)})` : ''}.</span></div>` : ''}
-      ${!b.closed && pending ? `<div class="banner warn">${icon('alert')}<span>${pending} dia(s)/refeição ainda sem o número real informado pelos restaurantes.</span></div>` : ''}
+      ${!b.closed && pending ? `<div class="banner warn">${icon('alert')}<span>${pending} refeição(ões) previstas sem nenhum registro dos restaurantes; elas não entram no faturamento.</span></div>` : ''}
       ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado. ${boss ? 'Clique em “Valores” para informar.' : 'Peça à supervisão para cadastrar os valores.'}</span></div>` : ''}
       <div class="stats">
         <div class="card stat"><div class="k">Total do mês</div><div class="v">${money(b.total)}</div></div>
-        <div class="card stat"><div class="k">Pax faturados</div><div class="v">${sum('billed_adults') + sum('billed_children')}<small>${sum('billed_adults')} adt · ${sum('billed_children')} chd</small></div></div>
+        <div class="card stat"><div class="k">Pax realizados</div><div class="v">${sum('billed_adults') + sum('billed_children')}<small>${sum('billed_adults')} adt · ${sum('billed_children')} chd</small></div></div>
         <div class="card stat"><div class="k">Previsto</div><div class="v">${sum('forecast_adults') + sum('forecast_children')}<small>pax</small></div></div>
         <div class="card stat"><div class="k">Consumo à parte</div><div class="v">${sum('walkin_adults') + sum('walkin_children')}<small>pax (fora da conta)</small></div></div>
       </div>
@@ -39,14 +39,14 @@ export async function render(el) {
         ${Object.values(byRest).map((x) => `<div class="b"><span class="row" style="gap:8px">${restDot(x.r)}<b>${esc(x.r.name)}</b></span><div class="track"><i style="width:${(x.value / maxV) * 100}%;background:${esc(x.r.color)}"></i></div><span class="num"><b>${money(x.value)}</b></span></div>`).join('')}
       </div></div>
       <div class="card"><div class="table-wrap"><table class="t">
-        <thead><tr><th>Restaurante</th><th>Refeição</th><th class="n">Previsto</th><th class="n">Marcado</th><th class="n">Real</th><th class="n">Faturado adt</th><th class="n">Faturado chd</th><th class="n">Valor adt</th><th class="n">Valor chd</th><th class="n">Total</th></tr></thead>
+        <thead><tr><th>Restaurante</th><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adt</th><th class="n">Realizado chd</th><th class="n">Dif. pax</th><th class="n">Valor adt</th><th class="n">Valor chd</th><th class="n">Total</th></tr></thead>
         <tbody>${b.lines.map((l) => `<tr>
           <td><span class="row" style="gap:8px">${restDot(l.restaurant)}${esc(l.restaurant.name)}</span></td><td>${MEAL_LABEL[l.meal]}</td>
-          <td class="n">${l.forecast_adults + l.forecast_children}</td><td class="n">${l.checked_adults + l.checked_children}</td><td class="n">${l.real_adults + l.real_children}</td>
-          <td class="n">${l.billed_adults}</td><td class="n">${l.billed_children}</td>
+          <td class="n">${l.forecast_adults + l.forecast_children}</td>
+          <td class="n">${l.billed_adults}</td><td class="n">${l.billed_children}</td><td class="n">${l.billed_adults + l.billed_children - l.forecast_adults - l.forecast_children}</td>
           <td class="n">${money(l.price_adult)}</td><td class="n">${money(l.price_child)}</td><td class="n"><b>${money(l.value)}</b></td></tr>`).join('')}</tbody>
-        <tfoot><tr><td colspan="2">Total</td><td class="n">${sum('forecast_adults') + sum('forecast_children')}</td><td class="n">${sum('checked_adults') + sum('checked_children')}</td><td class="n">${sum('real_adults') + sum('real_children')}</td>
-          <td class="n">${sum('billed_adults')}</td><td class="n">${sum('billed_children')}</td><td></td><td></td><td class="n">${money(b.total)}</td></tr></tfoot>
+        <tfoot><tr><td colspan="2">Total</td><td class="n">${sum('forecast_adults') + sum('forecast_children')}</td>
+          <td class="n">${sum('billed_adults')}</td><td class="n">${sum('billed_children')}</td><td class="n">${sum('billed_adults') + sum('billed_children') - sum('forecast_adults') - sum('forecast_children')}</td><td></td><td></td><td class="n">${money(b.total)}</td></tr></tfoot>
       </table></div></div>`;
     el.querySelector('#month').addEventListener('change', (e) => { if (e.target.value) { st.month = e.target.value; load().catch(fail); } });
     el.querySelector('#csv')?.addEventListener('click', () => download('/api/billing/export.csv?month=' + st.month));

@@ -30,7 +30,7 @@ export async function render(el) {
     const days = w.days;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Apuração semanal</h1><p>Total de pax (adultos e crianças) e valor a pagar por restaurante no período. Base do pagamento: o número <b>real</b> informado pelo restaurante; sem real, o que foi <b>marcado</b> no sistema; se ninguém marcou, a <b>previsão</b> da divisão.</p></div>
+        <div class="grow"><h1>Apuração semanal</h1><p>Total de pax (adultos e crianças) e valor a pagar por restaurante no período. Base do pagamento: o <b>realizado</b>, ou seja, os pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente. A <b>previsão</b> vem da distribuição.</p></div>
       </div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn sm ghost" id="prev" title="Semana anterior">‹</button>
@@ -43,13 +43,13 @@ export async function render(el) {
         <button class="btn" id="xlsx">${icon('download')} Exportar Excel</button>
       </div>
       ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado, então o R$ fica zerado. ${can('admin', 'supervisor') ? 'Cadastre em <a href="#/faturamento">Faturamento → Valores</a>.' : 'Peça à supervisão para cadastrar os valores.'}</span></div>` : ''}
-      ${pending ? `<div class="banner warn">${icon('alert')}<span><b>${pending} refeição(ões)</b> no período ainda sem o número real do restaurante${w.total.so_previsto ? ` (${w.total.so_previsto} delas sem nenhuma marcação, calculadas pela previsão)` : ''}. Para pagar pelo real, lance em <a href="#/controle">Previsto x realizado</a>.</span></div>` : ''}
+      ${pending ? `<div class="banner warn">${icon('alert')}<span><b>${pending} refeição(ões)</b> previstas no período sem nenhum registro do restaurante. Sem registro, a refeição não entra no valor a pagar.</span></div>` : ''}
 
       <div class="grid" style="grid-template-columns:repeat(${Math.min(Math.max(w.restaurants.length, 1), 3)}, minmax(0,1fr));margin-bottom:16px">
         ${w.restaurants.map((r) => { const t = r.total; return `
           <div class="card stat" style="border-top-color:${esc(r.restaurant.color)}">
             <div class="k" style="color:${esc(r.restaurant.color)}">${esc(r.restaurant.name)}</div>
-            <div class="v">${nf(t.pag_adt + t.pag_chd)}<small>pax a pagar</small></div>
+            <div class="v">${nf(t.pag_adt + t.pag_chd)}<small>pax realizados</small></div>
             <div class="row small" style="gap:14px;margin-top:2px"><span><b>${nf(t.pag_adt)}</b> adultos</span><span><b>${nf(t.pag_chd)}</b> crianças</span></div>
             <div class="row" style="margin-top:10px;align-items:baseline"><b style="font-size:20px">${money(t.valor)}</b><span class="small muted">previsto ${money(t.valor_prev)} · ${diff(t.valor - t.valor_prev, true)}</span></div>
           </div>`; }).join('')}
@@ -63,26 +63,24 @@ export async function render(el) {
         <div class="card" style="margin-bottom:16px">
           <div class="card-head" style="border-top:4px solid ${esc(r.restaurant.color)};border-radius:var(--radius) var(--radius) 0 0"><h3 class="grow">${restDot(r.restaurant)} ${esc(r.restaurant.name)}</h3></div>
           <div class="table-wrap"><table class="t">
-            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Marcado</th><th class="n">Real</th><th class="n">Pagar adt</th><th class="n">Pagar chd</th><th class="n">Pagar total</th><th class="n">Dif. pax</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
+            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adt</th><th class="n">Realizado chd</th><th class="n">Realizado total</th><th class="n">Dif. pax</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
             <tbody>${r.meals.map((m) => `<tr>
-              <td><b>${MEAL_LABEL[m.meal]}</b><div class="small muted">${money(m.price_adult)} adt · ${money(m.price_child)} chd${m.sem_real ? ` · <span style="color:#8a5a07">${m.sem_real} sem real</span>` : ''}</div></td>
+              <td><b>${MEAL_LABEL[m.meal]}</b><div class="small muted">${money(m.price_adult)} adt · ${money(m.price_child)} chd${m.sem_real ? ` · <span style="color:#8a5a07">${m.sem_real} sem registro</span>` : ''}</div></td>
               <td class="n">${nf(m.prev_adt + m.prev_chd)}<div class="small muted">${nf(m.prev_adt)} / ${nf(m.prev_chd)}</div></td>
-              <td class="n">${nf(m.marc_adt + m.marc_chd)}<div class="small muted">${nf(m.marc_adt)} / ${nf(m.marc_chd)}</div></td>
-              <td class="n">${nf(m.real_adt + m.real_chd)}<div class="small muted">${nf(m.real_adt)} / ${nf(m.real_chd)}</div></td>
               <td class="n">${nf(m.pag_adt)}</td><td class="n">${nf(m.pag_chd)}</td><td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b></td>
               <td class="n">${diff(m.pag_adt + m.pag_chd - m.prev_adt - m.prev_chd)}</td>
               <td class="n"><b>${money(m.valor)}</b></td><td class="n">${diff(m.valor - m.valor_prev, true)}</td></tr>`).join('') || '<tr><td colspan="10"><div class="empty">Sem refeições no período.</div></td></tr>'}</tbody>
-            <tfoot><tr><td>Total</td><td class="n">${nf(r.total.prev_adt + r.total.prev_chd)}</td><td class="n">${nf(r.total.marc_adt + r.total.marc_chd)}</td><td class="n">${nf(r.total.real_adt + r.total.real_chd)}</td>
+            <tfoot><tr><td>Total</td><td class="n">${nf(r.total.prev_adt + r.total.prev_chd)}</td>
               <td class="n">${nf(r.total.pag_adt)}</td><td class="n">${nf(r.total.pag_chd)}</td><td class="n">${nf(r.total.pag_adt + r.total.pag_chd)}</td><td class="n">${diff(r.total.pag_adt + r.total.pag_chd - r.total.prev_adt - r.total.prev_chd)}</td>
               <td class="n">${money(r.total.valor)}</td><td class="n">${diff(r.total.valor - r.total.valor_prev, true)}</td></tr></tfoot>
           </table></div>
           <details style="border-top:1px solid var(--line)"><summary style="padding:10px 18px;cursor:pointer;font-weight:600;font-size:14px">Ver por dia</summary>
             <div class="table-wrap"><table class="t">
               <thead><tr><th>Refeição</th>${days.map((d) => `<th class="n">${weekday(d)} ${br(d).slice(0, 5)}</th>`).join('')}<th class="n">Total</th></tr></thead>
-              <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} chd${x.so_previsto ? ' · prev.' : x.sem_real ? ' · marc.' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
+              <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} chd${x.sem_real ? ' · sem registro' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
                 <td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b><div class="small muted">${nf(m.pag_chd)} chd</div></td></tr>`).join('')}</tbody>
             </table></div>
-            <p class="small muted" style="padding:0 18px 12px">“marc.” = sem número real, usado o marcado no sistema · “prev.” = ninguém marcou, usada a previsão.</p>
+            <p class="small muted" style="padding:0 18px 12px">Pax realizados por dia (registros dos restaurantes). “sem registro” = refeição prevista sem nenhum registro.</p>
           </details>
         </div>`).join('')}`;
     const go = (from, to) => { st.from = from; st.to = to; load().catch(fail); };

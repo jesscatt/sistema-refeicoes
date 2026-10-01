@@ -272,3 +272,15 @@ test('semana dos restaurantes no painel', () => {
   const s = restaurantStatus('almoco', d).find((r) => r.id === mae);
   assert.equal(s.open, false); assert.equal(s.reason, 'fechado_dia');
 });
+
+test('realizado vem dos registros dos restaurantes e não é editável', () => {
+  const { controlRange, weekly } = require('../src/routes/control');
+  const r = db.prepare("SELECT r.id, a.date, a.restaurant_id FROM reservations r JOIN assignments a ON a.reservation_id = r.id WHERE r.reservation_number = '660' AND a.meal = 'almoco' LIMIT 1").get();
+  db.prepare("INSERT INTO attendance(reservation_id, date, meal, restaurant_id, status, adults, children) VALUES (?, ?, 'almoco', ?, 'presente', 2, 0)").run(r.id, r.date, r.restaurant_id);
+  db.prepare("INSERT OR REPLACE INTO control_real(date, restaurant_id, meal, real_adults, real_children) VALUES (?, ?, 'almoco', 999, 0)").run(r.date, r.restaurant_id);
+  const row = controlRange(r.date, r.date, r.restaurant_id).find((x) => x.meal === 'almoco');
+  assert.equal(row.real_adults, row.checked_adults, 'realizado = registros, ignora número digitado');
+  assert.ok(row.real_adults < 999);
+  const w = weekly(r.date, r.date, r.restaurant_id);
+  assert.equal(w.total.pag_adt, row.checked_adults);
+});
