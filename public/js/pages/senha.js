@@ -3,7 +3,7 @@ import { post, esc, icon, fail, toast, state } from '../ui.js';
 export async function render(el) {
   const forced = state.me.must_change_password;
   el.innerHTML = `
-    <div class="page-head"><div class="grow"><h1>Trocar senha</h1>${forced ? '<p>Por segurança, defina uma senha nova antes de continuar.</p>' : ''}</div></div>
+    <div class="page-head"><div class="grow"><h1>Alteração de senha</h1>${forced ? '<p>Por segurança, defina uma senha nova antes de continuar.</p>' : ''}</div></div>
     <div class="card pad" style="max-width:440px">
       <form id="pf" style="display:grid;gap:12px">
         <label class="f">Senha atual<input class="input" type="password" name="current" autocomplete="current-password" required></label>

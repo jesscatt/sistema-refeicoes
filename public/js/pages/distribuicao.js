@@ -19,7 +19,7 @@ export async function render(el) {
     const shareTot = serving.reduce((s, r) => s + r.share, 0) || 1;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Distribuição</h1><p>${MEAL_FULL[d.meal]} · ${esc(dayLabel(d.date))} · ${total} pax em ${d.rows.length} quartos</p></div>
+        <div class="grow"><h1>Distribuição de hóspedes</h1><p>${MEAL_FULL[d.meal]} · ${esc(dayLabel(d.date))} · ${total} pax em ${d.rows.length} quartos</p></div>
         ${dateBar({ date: d.date, meal: d.meal })}
       </div>
       <div class="row" style="margin-bottom:16px">

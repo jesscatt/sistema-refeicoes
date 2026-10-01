@@ -24,13 +24,13 @@ export async function render(el) {
     const n = (f) => d.rows.filter(f).length;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Recepção · onde cada hóspede come</h1><p>${esc(dayLabel(d.date))} · ${d.rows.length} reservas hospedadas. Toque no hóspede para ver a estadia inteira e imprimir o cartão.</p></div>
+        <div class="grow"><h1>Consulta de refeições</h1><p>${esc(dayLabel(d.date))} · ${d.rows.length} reservas hospedadas. Selecione o hóspede para consultar a estadia completa e imprimir o cartão de refeições.</p></div>
         ${dateBar({ date: d.date })}
       </div>
       <div class="row" style="margin-bottom:14px">
         <div class="search-big grow" style="max-width:420px;min-width:240px">${icon('search')}<input id="q" class="" style="font-size:16px;padding:11px 14px 11px 48px" placeholder="Quarto (101A), hóspede ou reserva" value="${esc(st.q)}"></div>
         <div class="seg" id="flt">
-          ${[['todos', `Todos (${d.rows.length})`], ['chegadas', `Chegadas (${n((r) => r.arriving)})`], ['saidas', `Saídas (${n((r) => r.leaving)})`], ['trocas', `Trocaram quarto (${n((r) => r.old_room)})`]]
+          ${[['todos', `Todos (${d.rows.length})`], ['chegadas', `Chegadas (${n((r) => r.arriving)})`], ['saidas', `Saídas (${n((r) => r.leaving)})`], ['trocas', `Trocaram de apartamento (${n((r) => r.old_room)})`]]
             .map(([k, l]) => `<button data-f="${k}" class="${st.filter === k ? 'on' : ''}">${l}</button>`).join('')}
         </div>
         <div class="grow"></div>

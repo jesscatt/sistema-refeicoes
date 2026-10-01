@@ -363,7 +363,7 @@ function upsertReservations(records, { source = 'excel', user = null, cancelMiss
     if (result.roomChanges.length) {
       const body = result.roomChanges.slice(0, 10).map((c) => `${c.guest_name}: ${c.old_room} → ${c.new_room}`).join(' · ')
         + (result.roomChanges.length > 10 ? ` (+${result.roomChanges.length - 10})` : '');
-      const title = `${result.roomChanges.length} troca(s) de quarto`;
+      const title = `${result.roomChanges.length} troca(s) de apartamento na importação`;
       for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title, body, link: '#/trocas' });
     }
   });

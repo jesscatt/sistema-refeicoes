@@ -110,7 +110,7 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
   tx(() => {
     if (roomKey(rec.room) !== roomKey(ex.room)) {
       db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id) VALUES (?,?,?,?,?)').run(ex.id, ex.room, rec.room, 'manual', user.id);
-      const title = `Troca de quarto: ${ex.room} → ${rec.room}`;
+      const title = `Troca de apartamento: ${ex.room} → ${rec.room}`;
       const bodyTxt = `${rec.guest_name} (reserva ${ex.reservation_number})`;
       for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title, body: bodyTxt, link: '#/trocas' });
     }
@@ -220,7 +220,7 @@ route('POST', '/api/room-changes/:id/validate', { roles: VALIDATE }, ({ params, 
       db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id, validated_at, validated_by, validation_note) VALUES (?,?,?,?,?,datetime(\'now\',\'localtime\'),?,?)')
         .run(c.reservation_id, c.new_room, c.old_room, 'desfeita', user.id, user.id, note || 'troca desfeita');
       db.prepare("UPDATE room_changes SET validated_at = datetime('now','localtime'), validated_by = ?, validation_note = ? WHERE id = ?").run(user.id, 'desfeita' + (note ? ': ' + note : ''), c.id);
-      for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title: `Troca desfeita: ${c.new_room} → ${c.old_room}`, body: `${c.guest_name} (reserva ${c.reservation_number}) volta para o quarto ${c.old_room}`, link: '#/trocas' });
+      for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title: `Troca de apartamento desfeita: ${c.new_room} → ${c.old_room}`, body: `${c.guest_name} (reserva ${c.reservation_number}) retorna ao apto ${c.old_room}`, link: '#/trocas' });
     });
     audit(user, 'troca_quarto_desfeita', { reserva: c.reservation_number, de: c.new_room, para: c.old_room, obs: note }, ip);
     return { ok: true, undone: true };

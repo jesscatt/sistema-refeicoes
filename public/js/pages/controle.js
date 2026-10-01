@@ -28,7 +28,7 @@ export async function render(el) {
     const diff = (real, prev) => { const x = real - prev; return `<span class="${x > 0 ? 'diff-pos' : x < 0 ? 'diff-neg' : ''}">${x > 0 ? '+' : ''}${x}</span>`; };
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Controle · previsto × real</h1><p>Uma planilha só: a <b>previsão</b> vem da distribuição, o <b>marcado</b> vem da marcação no restaurante e o <b>real</b> é o número que o restaurante informa. Somas do mês no rodapé.</p></div>
+        <div class="grow"><h1>Previsto x realizado</h1><p>Uma planilha só: a <b>previsão</b> vem da distribuição, o <b>marcado</b> vem da marcação no restaurante e o <b>real</b> é o número que o restaurante informa. Somas do mês no rodapé.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         ${can('restaurante') ? '' : `<select class="input sm" id="rest" style="width:auto">${state.meta.restaurants.map((r) => `<option value="${r.id}" ${r.id === rest.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>`}
         ${can('admin', 'supervisor') ? `<button class="btn" id="csv">${icon('download')} Relatório diário (todos)</button>` : ''}

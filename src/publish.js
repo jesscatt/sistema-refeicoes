@@ -18,7 +18,7 @@ function publishList(date, meal, user = null, auto = false) {
   const sum = daySummary(date, meal).filter((r) => r.serves);
   const mt = db.prepare('SELECT * FROM meal_times WHERE meal = ?').get(meal);
   const label = `${MEAL_LABEL[meal]} ${fmtDate(date)}`;
-  const verb = already ? 'atualizada' : 'pronta';
+  const verb = already ? 'atualizada' : 'liberada';
   for (const r of sum) {
     notify({
       role: 'restaurante', restaurant_id: r.id, kind: 'list_ready',

@@ -11,7 +11,7 @@ export async function render(el) {
     const boards = Object.fromEntries(d.boards.map((b) => [b.board, b]));
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Painel do dia</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40)</p></div>
+        <div class="grow"><h1>Painel geral</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40)</p></div>
         ${dateBar({ date: st.date })}
       </div>
       <div class="stats">
@@ -26,13 +26,13 @@ export async function render(el) {
         ${d.meals.map((m) => mealCard(m, d.date)).join('')}
       </div>
       <div class="card" style="margin-top:18px">
-        <div class="card-head">${icon('bell')}<h3 class="grow">Avisos</h3><span class="muted small">listas liberadas, trocas de quarto, rooming lists e alterações</span></div>
+        <div class="card-head">${icon('bell')}<h3 class="grow">Avisos</h3><span class="muted small">listas liberadas, trocas de apartamento, rooming lists e alterações</span></div>
         ${notifs.length ? `<div>${notifs.slice(0, 10).map((n) => `<a class="aviso ${n.read ? '' : 'unread'}" href="${esc(n.link && canSee(n.link.replace(/^#\//, '').split('?')[0]) ? n.link : '#/painel')}">
             <b>${esc(n.title)}</b>${n.body ? `<span>${esc(n.body)}</span>` : ''}<small>${esc(n.created_at.slice(8, 10) + '/' + n.created_at.slice(5, 7) + ' ' + n.created_at.slice(11, 16))}</small></a>`).join('')}</div>`
           : '<div class="empty">Nenhum aviso nos últimos dias.</div>'}
       </div>
       <div class="card" style="margin-top:18px">
-        <div class="card-head">${icon('swap')}<h3 class="grow">Trocas de quarto recentes</h3>${canSee('trocas') ? '<a class="btn sm" href="#/trocas">Ver todas</a>' : ''}</div>
+        <div class="card-head">${icon('swap')}<h3 class="grow">Trocas de apartamento recentes</h3>${canSee('trocas') ? '<a class="btn sm" href="#/trocas">Ver todas</a>' : ''}</div>
         ${d.roomChanges.length ? `<div class="table-wrap"><table class="t"><tbody>${d.roomChanges.map((c) => `
           <tr><td class="room">${esc(c.old_room)} → ${esc(c.new_room)}</td><td>${esc(c.guest_name)} <span class="muted small">· reserva ${esc(c.reservation_number)}</span></td>
           <td class="muted small">${esc(c.created_at.slice(8, 10) + '/' + c.created_at.slice(5, 7) + ' ' + c.created_at.slice(11, 16))}</td></tr>`).join('')}</tbody></table></div>`

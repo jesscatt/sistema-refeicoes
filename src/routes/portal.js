@@ -249,7 +249,7 @@ route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params,
     if (diff.room) {
       db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id) VALUES (?,?,?,?,?)').run(ex.id, ex.room, rec.room, 'agencia', user.id);
       for (const role of ['recepcao', 'restaurante', 'refeicao']) {
-        notify({ role, kind: 'room_change', title: `Troca de quarto: ${ex.room} → ${rec.room}`, body: `${ex.guest_name} (reserva ${ex.reservation_number}) · feita por ${who(user)}`, link: '#/trocas' });
+        notify({ role, kind: 'room_change', title: `Troca de apartamento: ${ex.room} → ${rec.room}`, body: `${ex.guest_name} (reserva ${ex.reservation_number}) · realizada por ${who(user)}`, link: '#/trocas' });
       }
     }
     db.prepare(`UPDATE reservations SET room=?, checkin=?, checkout=?, adults=?, children=?, guests=?, updated_at = datetime('now','localtime') WHERE id = ?`)
@@ -259,7 +259,7 @@ route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params,
     if (other.length) {
       const labels = { checkin: 'entrada', checkout: 'saída', adults: 'adultos', children: 'crianças' };
       for (const role of ['refeicao', 'recepcao']) {
-        notify({ role, kind: 'portal_change', title: `${who(user)} alterou a reserva ${ex.reservation_number}`, body: `Quarto ${rec.room}: ${other.map((k) => `${labels[k]} ${diff[k][0]} → ${diff[k][1]}`).join(' · ')}`, link: '#/reservas' });
+        notify({ role, kind: 'portal_change', title: `${who(user)} alterou a reserva ${ex.reservation_number}`, body: `Apto ${rec.room}: ${other.map((k) => `${labels[k]} ${diff[k][0]} → ${diff[k][1]}`).join(' · ')}`, link: '#/reservas' });
       }
     }
   });
@@ -283,7 +283,7 @@ function removeRoom(user, ex, reason, quiet = false) {
       .run(`[removido por ${who(user)}${reason ? ': ' + String(reason).slice(0, 200) : ''}]`, ex.id);
     syncReservation(ex.id);
     if (!quiet) for (const role of ['refeicao', 'recepcao', 'restaurante']) {
-      notify({ role, kind: 'portal_remove', title: `Quarto ${ex.room} removido da reserva ${ex.reservation_number}`, body: `${ex.guest_name} · ${ex.adults + ex.children} pax · feito por ${who(user)}${reason ? ` · motivo: ${String(reason).slice(0, 120)}` : ''}`, link: '#/reservas' });
+      notify({ role, kind: 'portal_remove', title: `Apto ${ex.room} removido da reserva ${ex.reservation_number}`, body: `${ex.guest_name} · ${ex.adults + ex.children} pax · feito por ${who(user)}${reason ? ` · motivo: ${String(reason).slice(0, 120)}` : ''}`, link: '#/reservas' });
     }
   });
 }

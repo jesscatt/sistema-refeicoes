@@ -253,7 +253,7 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
     audit(user, 'refeicao_marcada', { reserva: r.reservation_number, quarto: r.room, date, meal, restaurante: rest.code, status }, ip);
     const assignedName = a && status === 'fora_lista' ? (db.prepare('SELECT name FROM restaurants WHERE id = ?').get(a.restaurant_id) || {}).name : null;
     if (status === 'fora_lista' && a) {
-      notify({ role: 'restaurante', restaurant_id: a.restaurant_id, kind: 'fora_lista', title: `Quarto ${r.room} comeu em ${rest.name}`, body: `${MEAL_LABEL[meal]} ${date.slice(8)}/${date.slice(5, 7)}: estava na sua lista e foi registrado fora da lista em ${rest.name}. Não marque de novo.`, link: `#/servico?date=${date}&meal=${meal}` });
+      notify({ role: 'restaurante', restaurant_id: a.restaurant_id, kind: 'fora_lista', title: `Apto ${r.room} registrado fora da lista em ${rest.name}`, body: `${MEAL_LABEL[meal]} de ${date.slice(8)}/${date.slice(5, 7)}: hóspede da sua lista atendido em ${rest.name}. Não registrar novamente.`, link: `#/servico?date=${date}&meal=${meal}` });
     }
     return { id: Number(ins.lastInsertRowid), status, assigned_restaurant: assignedName };
   } catch (e) {

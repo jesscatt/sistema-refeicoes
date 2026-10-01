@@ -5,12 +5,12 @@ export async function render(el) {
 
   function drawStart() {
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Importar planilha de hóspedes</h1>
+      <div class="page-head"><div class="grow"><h1>Importação de reservas</h1>
         <p>Envie a planilha de divisão (.xlsx) ou o CSV do sistema do hotel. As colunas são reconhecidas pelo nome: Reserva (pode vir com o nome do grupo junto, ex.: “50893 ANR TUR”), Entrada, Saída, Pensão, Apto/Quarto, Pax e Chd. Se a planilha já tiver as colunas de divisão por restaurante, o sistema também lê.</p></div>
         <button class="btn" id="tpl">${icon('download')} Modelo de planilha</button></div>
       <label class="dropzone" id="dz">
         ${icon('upload')}
-        <h2 style="margin-top:8px">Arraste a planilha aqui</h2>
+        <h2 style="margin-top:8px">Arraste a planilha para esta área</h2>
         <p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p>
         <input type="file" id="file" accept=".xlsx,.csv,.txt" hidden>
       </label>
@@ -52,7 +52,7 @@ export async function render(el) {
     const shown = rows.filter((r) => filter === 'todos' || (filter === 'avisos' ? (r.notes && r.notes.length) || r.warning : filter === 'erros' ? r.errors.length : r.action === filter));
     const slotTxt = dist ? (() => { const s = [...dist.slots].sort((a, b) => a.date.localeCompare(b.date)); const f = s[0], l = s[s.length - 1]; return `de ${MEALN[f.meal]} ${br(f.date).slice(0, 5)} a ${MEALN[l.meal]} ${br(l.date).slice(0, 5)}`; })() : '';
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Conferir importação</h1><p>${esc(preview.filename)} · cabeçalho na linha ${preview.headerRow} · ${rows.length} quartos em ${preview.groups} reservas</p></div>
+      <div class="page-head"><div class="grow"><h1>Conferência da importação</h1><p>${esc(preview.filename)} · cabeçalho na linha ${preview.headerRow} · ${rows.length} quartos em ${preview.groups} reservas</p></div>
         <button class="btn" id="back">Escolher outro arquivo</button>
         <button class="btn primary" id="go">${icon('check')} Importar</button></div>
       <div class="stats">
@@ -126,7 +126,7 @@ export async function render(el) {
         <p class="muted">${r.inserted} quartos novos · ${r.updated} atualizados · ${r.unchanged} sem mudança${r.cancelled ? ` · ${r.cancelled} cancelados` : ''}${r.errors.length ? ` · ${r.errors.length} com erro` : ''}</p>
         ${r.distApplied ? `<p>Divisão da planilha aplicada em ${r.distApplied} refeições${r.distSkipped ? ` (${r.distSkipped} não aplicadas porque a pensão não inclui)` : ''}.</p>` : ''}
         ${r.roomChanges.length ? `<p>${r.roomChanges.length} troca(s) de quarto registradas e avisadas.</p>` : ''}
-        <div class="row" style="justify-content:center;margin-top:16px">${canSee('distribuicao') ? '<a class="btn" href="#/distribuicao">Ver distribuição</a>' : ''}${canSee('recepcao') ? '<a class="btn" href="#/recepcao">Onde cada hóspede come</a>' : ''}<button class="btn primary" id="again">Importar outra</button></div></div>`;
+        <div class="row" style="justify-content:center;margin-top:16px">${canSee('distribuicao') ? '<a class="btn" href="#/distribuicao">Distribuição de hóspedes</a>' : ''}${canSee('recepcao') ? '<a class="btn" href="#/recepcao">Consulta de refeições</a>' : ''}<button class="btn primary" id="again">Importar outra</button></div></div>`;
       el.querySelector('#again').onclick = drawStart;
     } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Importar'; }
   }

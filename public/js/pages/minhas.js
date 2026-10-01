@@ -26,8 +26,8 @@ export async function render(el) {
     const noNames = (g) => g.rooms.filter((r) => !guestList(r.guests).length).length;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Quartos e rooming list</h1><p>Envie o rooming list das agências (nomes por quarto), confira quartos e trocas. Ajustes de quarto, nomes e pessoas avisam a recepção, o setor de refeições e os restaurantes. A pensão e a divisão ficam com o resort.</p></div>
-        <a class="btn" href="#/trocas">${icon('swap')} Trocas de quarto</a>
+        <div class="grow"><h1>Rooming list</h1><p>Envio do rooming list das agências e conferência de apartamentos. Alterações de apartamento, hóspedes e quantidade de pessoas são comunicadas à recepção, ao setor de refeições e aos restaurantes. Pensão e distribuição são definidas pelo resort.</p></div>
+        <a class="btn" href="#/trocas">${icon('swap')} Trocas de apartamento</a>
         <button class="btn primary" id="rl">${icon('upload')} Enviar rooming list</button>
       </div>
       <div class="card pad" style="margin-bottom:14px"><div class="row">
@@ -87,7 +87,7 @@ export async function render(el) {
   function drawRooming() {
     const g = rl.groups.find((x) => x.reservation_number === rl.reservation);
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Enviar rooming list</h1><p>Planilha da agência (.xlsx ou .csv) com o <b>quarto</b> e o <b>nome</b> de cada hóspede — uma linha por hóspede ou por quarto. Se tiver coluna de idade, até 11 anos conta como criança.</p></div>
+      <div class="page-head"><div class="grow"><h1>Envio de rooming list</h1><p>Planilha da agência (.xlsx ou .csv) com o <b>quarto</b> e o <b>nome</b> de cada hóspede — uma linha por hóspede ou por quarto. Se tiver coluna de idade, até 11 anos conta como criança.</p></div>
         <button class="btn" id="back">Voltar</button><button class="btn" id="tpl">${icon('download')} Modelo</button></div>
       <div class="card pad" style="margin-bottom:14px">
         <label class="f" style="max-width:640px">Reserva / grupo deste rooming list
@@ -96,7 +96,7 @@ export async function render(el) {
           </select></label>
         ${g ? `<p class="small muted" style="margin:8px 0 0">Quartos novos entram nesse grupo com a mesma pensão e as mesmas datas (${esc(br(g.checkin))} → ${esc(br(g.checkout))}).</p>` : ''}
       </div>
-      ${rl.preview ? previewHtml() : `<label class="dropzone" id="dz">${icon('upload')}<h2>Arraste o rooming list aqui</h2><p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p><input type="file" id="file" accept=".xlsx,.csv,.txt" hidden></label>`}`;
+      ${rl.preview ? previewHtml() : `<label class="dropzone" id="dz">${icon('upload')}<h2>Arraste o rooming list para esta área</h2><p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p><input type="file" id="file" accept=".xlsx,.csv,.txt" hidden></label>`}`;
     el.querySelector('#back').onclick = () => { view = 'lista'; rl = null; load().catch(fail); };
     el.querySelector('#tpl').onclick = () => download('/api/portal/rooming/modelo.csv');
     el.querySelector('#res').addEventListener('change', async (e) => {

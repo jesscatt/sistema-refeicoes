@@ -14,7 +14,7 @@ const LABELS = {
 export async function render(el) {
   const st = { q: '', from: '', to: '' };
   el.innerHTML = `
-    <div class="page-head"><div class="grow"><h1>Logs de auditoria</h1><p>Tudo o que foi feito no sistema, por quem e quando (últimos 500 registros do filtro).</p></div></div>
+    <div class="page-head"><div class="grow"><h1>Auditoria</h1><p>Registro de todas as operações realizadas no sistema, com usuário e horário (últimos 500 registros do filtro).</p></div></div>
     <div class="card pad" style="margin-bottom:14px"><div class="row">
       <input class="input" id="q" placeholder="Buscar ação, usuário ou detalhe" style="max-width:320px">
       <label class="row small" style="gap:6px">De <input type="date" class="input sm" id="from" style="width:auto"></label>

@@ -4,7 +4,7 @@ const ROLE_HELP = {
   admin: 'Faz tudo: usuários, configurações, logs, reabrir mês.',
   supervisor: 'Vê tudo, cadastra valores, fecha o faturamento e gera os relatórios oficiais.',
   refeicao: 'Importa planilhas, revisa e ajusta a divisão, publica listas, vê faturamento.',
-  recepcao: 'Somente visualização: onde cada hóspede come e impressão dos cartões.',
+  recepcao: 'Consulta de refeições dos hóspedes e impressão dos cartões (somente leitura).',
   restaurante: 'Marca quem veio comer no seu restaurante e informa o número real.',
   agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de quarto e ajusta quartos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
 };

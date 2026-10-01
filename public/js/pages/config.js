@@ -66,7 +66,7 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
             <div class="full row"><button class="btn primary" type="submit">Salvar</button><span class="muted small">${integ.silbeck_last_sync ? `Última: ${esc(integ.silbeck_last_sync)} — ${esc(integ.silbeck_last_result || '')}` : 'Ainda não sincronizado.'}</span></div>
           </form>
           <p class="muted small" style="padding:0 18px">O formato da API do Silbeck ainda será definido; o sistema espera uma lista de reservas com os mesmos campos do exemplo ao lado. Também é possível o Silbeck <b>enviar</b> para <code>/api/v1/reservas</code> com uma chave própria.</p>
-          <div class="card-head" style="border-top:1px solid var(--line)"><h3 class="grow">Assistente IA</h3>${integ.ai_enabled ? '<span class="badge ok">ativo</span>' : '<span class="badge warn">não configurado</span>'}</div>
+          <div class="card-head" style="border-top:1px solid var(--line)"><h3 class="grow">Assistente de relatórios</h3>${integ.ai_enabled ? '<span class="badge ok">ativo</span>' : '<span class="badge warn">não configurado</span>'}</div>
           <p class="muted small" style="padding:0 18px 16px">Defina a variável de ambiente <code>ANTHROPIC_API_KEY</code> no servidor para ativar.</p>
         </div>
       </div>

@@ -4,23 +4,24 @@ const root = document.getElementById('root');
 
 // Menu por perfil (o servidor confere as mesmas permissões em cada rota)
 const NAV = [
-  { path: 'painel', label: 'Painel', icon: 'home', roles: PAGE_ROLES.painel },
-  { path: 'servico', label: 'Serviço / Marcação', icon: 'checklist', roles: PAGE_ROLES.servico },
-  { path: 'distribuicao', label: 'Distribuição', icon: 'split', roles: PAGE_ROLES.distribuicao },
-  { path: 'recepcao', label: 'Onde cada hóspede come', icon: 'card', roles: PAGE_ROLES.recepcao },
+  { path: 'painel', label: 'Painel geral', icon: 'home', roles: PAGE_ROLES.painel },
+  { sep: 'Operação' },
+  { path: 'servico', label: 'Registro de refeições', icon: 'checklist', roles: PAGE_ROLES.servico },
+  { path: 'distribuicao', label: 'Distribuição de hóspedes', icon: 'split', roles: PAGE_ROLES.distribuicao },
+  { path: 'recepcao', label: 'Consulta de refeições', icon: 'card', roles: PAGE_ROLES.recepcao },
   { path: 'reservas', label: 'Reservas', icon: 'book', roles: PAGE_ROLES.reservas },
-  { path: 'importar', label: 'Importar planilha', icon: 'upload', roles: PAGE_ROLES.importar },
-  { path: 'minhas', label: 'Quartos e rooming list', icon: 'users', roles: PAGE_ROLES.minhas },
-  { path: 'trocas', label: 'Trocas de quarto', icon: 'swap', roles: PAGE_ROLES.trocas },
-  { sep: 'Controle' },
-  { path: 'semana', label: 'Controle da divisão', icon: 'coin', roles: PAGE_ROLES.semana },
-  { path: 'controle', label: 'Previsto × Real', icon: 'sheet', roles: PAGE_ROLES.controle },
+  { path: 'importar', label: 'Importação de reservas', icon: 'upload', roles: PAGE_ROLES.importar },
+  { path: 'minhas', label: 'Rooming list', icon: 'users', roles: PAGE_ROLES.minhas },
+  { path: 'trocas', label: 'Trocas de apartamento', icon: 'swap', roles: PAGE_ROLES.trocas },
+  { sep: 'Gestão' },
+  { path: 'semana', label: 'Apuração semanal', icon: 'coin', roles: PAGE_ROLES.semana },
+  { path: 'controle', label: 'Previsto x realizado', icon: 'sheet', roles: PAGE_ROLES.controle },
   { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: PAGE_ROLES.faturamento },
-  { path: 'ia', label: 'Assistente IA', icon: 'spark', roles: PAGE_ROLES.ia },
+  { path: 'ia', label: 'Assistente de relatórios', icon: 'spark', roles: PAGE_ROLES.ia },
   { sep: 'Administração' },
   { path: 'usuarios', label: 'Usuários', icon: 'users', roles: PAGE_ROLES.usuarios },
   { path: 'config', label: 'Configurações', icon: 'gear', roles: PAGE_ROLES.config },
-  { path: 'logs', label: 'Logs', icon: 'log', roles: PAGE_ROLES.logs },
+  { path: 'logs', label: 'Auditoria', icon: 'log', roles: PAGE_ROLES.logs },
 ];
 
 const PAGES = {

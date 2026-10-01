@@ -10,7 +10,7 @@ export async function render(el) {
     const pend = rows.filter((c) => !c.validated_at).length;
     const fmt = (t) => t ? t.slice(8, 10) + '/' + t.slice(5, 7) + ' ' + t.slice(11, 16) : '';
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Trocas de quarto</h1><p>Clientes que mudaram de quarto. ${canValidate ? 'O Comercial confere cada troca (ou desfaz, se estiver errada). ' : ''}Na marcação do restaurante, digitar o quarto antigo mostra para onde o hóspede foi.</p></div>
+      <div class="page-head"><div class="grow"><h1>Trocas de apartamento</h1><p>Hóspedes que mudaram de apartamento. ${canValidate ? 'Cada troca deve ser conferida pelo Comercial, que pode confirmá-la ou desfazê-la. ' : ''}No registro de refeições, a consulta pelo apartamento anterior indica o apartamento atual.</p></div>
         <div class="seg" id="p">${[['1', `A conferir${st.pending ? ` (${pend})` : ''}`], ['', 'Todas']].map(([v, l]) => `<button data-v="${v}" class="${st.pending === v ? 'on' : ''}">${l}</button>`).join('')}</div>
         <div class="seg" id="d">${[['1', 'Hoje'], ['7', '7 dias'], ['30', '30 dias']].map(([v, l]) => `<button data-v="${v}" class="${st.days === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
       <div class="card"><div class="table-wrap"><table class="t">

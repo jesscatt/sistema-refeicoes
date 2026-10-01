@@ -30,7 +30,7 @@ export async function render(el) {
     const days = w.days;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Controle da divisão</h1><p>Total de pax (adultos e crianças) e valor a pagar por restaurante. Base do pagamento: o número <b>real</b> informado pelo restaurante; sem real, o que foi <b>marcado</b> no sistema; se ninguém marcou, a <b>previsão</b> da divisão.</p></div>
+        <div class="grow"><h1>Apuração semanal</h1><p>Total de pax (adultos e crianças) e valor a pagar por restaurante no período. Base do pagamento: o número <b>real</b> informado pelo restaurante; sem real, o que foi <b>marcado</b> no sistema; se ninguém marcou, a <b>previsão</b> da divisão.</p></div>
       </div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn sm ghost" id="prev" title="Semana anterior">‹</button>
@@ -43,7 +43,7 @@ export async function render(el) {
         <button class="btn" id="xlsx">${icon('download')} Exportar Excel</button>
       </div>
       ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado, então o R$ fica zerado. ${can('admin', 'supervisor') ? 'Cadastre em <a href="#/faturamento">Faturamento → Valores</a>.' : 'Peça à supervisão para cadastrar os valores.'}</span></div>` : ''}
-      ${pending ? `<div class="banner warn">${icon('alert')}<span><b>${pending} refeição(ões)</b> no período ainda sem o número real do restaurante${w.total.so_previsto ? ` (${w.total.so_previsto} delas sem nenhuma marcação, calculadas pela previsão)` : ''}. Para pagar pelo real, informe em <a href="#/controle">Previsto × Real</a>.</span></div>` : ''}
+      ${pending ? `<div class="banner warn">${icon('alert')}<span><b>${pending} refeição(ões)</b> no período ainda sem o número real do restaurante${w.total.so_previsto ? ` (${w.total.so_previsto} delas sem nenhuma marcação, calculadas pela previsão)` : ''}. Para pagar pelo real, lance em <a href="#/controle">Previsto x realizado</a>.</span></div>` : ''}
 
       <div class="grid" style="grid-template-columns:repeat(${Math.min(Math.max(w.restaurants.length, 1), 3)}, minmax(0,1fr));margin-bottom:16px">
         ${w.restaurants.map((r) => { const t = r.total; return `

@@ -84,7 +84,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .login-meals span { display: flex; align-items: center; gap: 6px; }
 
 /* ---------- Layout ---------- */
-.app { display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 272px 1fr; min-height: 100vh; }
 .side {
   background: radial-gradient(420px 380px at 50% 12%, #0a6ea3 0%, var(--blue) 45%, var(--blue-d) 75%, var(--blue-dd) 100%); color: #e3f0f8; padding: 18px 14px; position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
@@ -365,7 +365,7 @@ pre { background: var(--blue-dd); color: #d7e9f5; padding: 14px; border-radius: 
 }
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
-  .side { position: fixed; inset: 0 auto 0 0; width: 260px; z-index: 60; transform: translateX(-100%); transition: transform .2s; }
+  .side { position: fixed; inset: 0 auto 0 0; width: 280px; z-index: 60; transform: translateX(-100%); transition: transform .2s; }
   .app.menu-open .side { transform: none; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .35); }
   .burger { display: inline-grid; }
   .topbar { padding: 10px 16px; }
@@ -471,3 +471,8 @@ a.aviso:hover { background: var(--hover); }
 a.aviso.unread { border-left: 4px solid var(--primary); }
 a.aviso span { color: var(--ink-2); }
 a.aviso small { color: var(--muted); font-size: 12px; }
+
+.nav a { font-size: 14px; white-space: nowrap; }
+.nav a span { overflow: hidden; text-overflow: ellipsis; }
+.rest-line .nm { min-width: 0; }
+.rest-line .nm { white-space: normal; line-height: 1.2; }
