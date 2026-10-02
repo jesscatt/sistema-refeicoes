@@ -9,80 +9,84 @@
 <style>
   :root {
     --bg: #eaf2f7; --bg2: #ffffff; --card: #ffffff; --line: #d5e3ec;
-    --ink: #0b2a40; --muted: #5b7486; --blue: #035b8a; --teal: #00a3b6; --green: #1f9d57; --amber: #c27c00; --red: #c8463a; --track: #e3edf3;
+    --ink: #0b2a40; --muted: #4f6a7d; --blue: #035b8a; --teal: #00a3b6; --green: #1f9d57; --amber: #b87400; --red: #c8463a; --track: #e3edf3;
+    /* unidade proporcional à tela (16:9): usa a menor entre largura e altura para tudo caber sem rolagem */
+    --u: min(1vw, 1.78vh);
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
-  body { font-size: clamp(12px, 0.95vw, 22px); }
-  .tv { height: 100vh; display: grid; grid-template-rows: auto auto 1fr; gap: 1.1vw; padding: 0 1.8vw 1.4vw; background: var(--bg); }
-  header { display: flex; align-items: center; gap: 1.4vw; margin: 0 -1.8vw; padding: 1vw 1.8vw; color: #fff;
-    background: linear-gradient(90deg, #024a72, #035b8a 55%, #0a7ea1); border-bottom: .35vw solid var(--teal); }
-  header .s, header .clock span { color: #cfe6f3 !important; }
-  header img { height: 4.6vw; }
-  header .t { flex: 1; }
-  header h1 { margin: 0; font-size: 2.1em; font-weight: 800; letter-spacing: .01em; }
-  header .s { color: var(--muted); font-size: 1em; margin-top: .2em; }
+  body { font-size: max(13px, calc(var(--u) * 1.22)); }
+  .tv { height: 100vh; display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: calc(var(--u) * 1); padding: 0 calc(var(--u) * 1.4) calc(var(--u) * 1.1); }
+  header { display: flex; align-items: center; gap: calc(var(--u) * 1.4); margin: 0 calc(var(--u) * -1.4); padding: calc(var(--u) * .6) calc(var(--u) * 1.4); color: #fff;
+    background: linear-gradient(90deg, #024a72, #035b8a 55%, #0a7ea1); border-bottom: calc(var(--u) * .3) solid var(--teal); }
+  header img { height: calc(var(--u) * 4.2); }
+  header .t { flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 1.9em; font-weight: 800; line-height: 1.1; }
+  header .s { color: #cfe6f3; font-size: .95em; margin-top: .15em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .clock { text-align: right; }
-  .clock b { display: block; font-size: 2.6em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
-  .clock span { color: var(--muted); }
-  .months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1vw; }
-  .m { background: var(--card); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.3vw; position: relative; overflow: hidden; box-shadow: 0 .3vw 1vw rgba(3,91,138,.08); }
-  .m.cur { border: 2px solid var(--teal); }
-  .m .lbl { font-size: .95em; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; }
+  .clock b { display: block; font-size: 2.5em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .clock span { color: #cfe6f3; font-size: 1em; }
+  .months { display: grid; grid-template-columns: repeat(4, 1fr); gap: calc(var(--u) * 1); }
+  .m { background: var(--card); border: 1px solid var(--line); border-radius: calc(var(--u) * .9); padding: calc(var(--u) * .9) calc(var(--u) * 1.1); box-shadow: 0 .2em .8em rgba(3,91,138,.08); min-width: 0; }
+  .m.cur { border: 3px solid var(--teal); }
+  .m .lbl { font-size: 1em; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; display: flex; justify-content: space-between; }
   .m .lbl i { font-style: normal; color: var(--teal); }
-  .m .rev { font-size: 2.35em; font-weight: 800; margin: .35em 0 .2em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .m .rev small { font-size: .45em; color: var(--muted); font-weight: 600; margin-right: .2em; }
-  .occ { display: flex; align-items: center; gap: 1vw; }
-  .ring { width: 5.2vw; height: 5.2vw; flex: none; }
-  .ring circle { fill: none; stroke-width: 10; }
+  .m .rev { font-size: 2.75em; font-weight: 800; margin: .12em 0 .18em; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.1; }
+  .m .rev small { font-size: .42em; color: var(--muted); font-weight: 700; margin-right: .2em; }
+  .occ { display: flex; align-items: center; gap: .7em; }
+  .ring { width: 5em; height: 5em; flex: none; }
+  .ring circle { fill: none; stroke-width: 11; }
   .ring .bg { stroke: var(--track); }
   .ring .fg { stroke: var(--teal); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
-  .ring text { fill: var(--ink); font-size: 26px; font-weight: 800; text-anchor: middle; dominant-baseline: central; font-family: Inter, sans-serif; }
-  .occ .d { color: var(--muted); line-height: 1.55; }
+  .ring text { fill: var(--ink); font-size: 27px; font-weight: 800; text-anchor: middle; dominant-baseline: central; font-family: Inter, sans-serif; }
+  .occ .d { color: var(--muted); line-height: 1.35; font-size: .92em; min-width: 0; }
+  .occ .d div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .occ .d b { color: var(--ink); font-variant-numeric: tabular-nums; }
-  .m .na { color: var(--muted); margin-top: 1.4em; font-size: 1.1em; }
-  .bottom { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1vw; min-height: 0; }
-  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.4vw; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 .3vw 1vw rgba(3,91,138,.08); }
-  .panel h2 { color: var(--blue); }
-  .panel h2 { margin: 0 0 .7vw; font-size: 1.35em; text-transform: uppercase; letter-spacing: .1em; display: flex; justify-content: space-between; align-items: baseline; }
-  .panel h2 small { font-size: .62em; color: var(--muted); letter-spacing: .04em; text-transform: none; font-weight: 500; }
-  .goal { display: grid; grid-template-columns: 7.2em 1fr 8.6em 8.6em 8.6em 8.6em; align-items: center; gap: .8vw; padding: .55vw 0; border-bottom: 1px solid var(--line); }
-  .goal.head { padding: 0 0 .3vw; border-bottom: 2px solid var(--line); }
-  .goal.head div { color: var(--muted); font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; text-align: right; }
+  .occ .d .big { font-size: 1.05em; color: var(--ink); font-weight: 700; }
+  .m .na { color: var(--muted); margin-top: 1em; font-size: 1.1em; }
+  .bottom { display: grid; grid-template-columns: 1.32fr 1fr; gap: calc(var(--u) * 1); min-height: 0; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: calc(var(--u) * .9); padding: calc(var(--u) * .9) calc(var(--u) * 1.2); display: flex; flex-direction: column; min-height: 0; overflow: hidden; box-shadow: 0 .2em .8em rgba(3,91,138,.08); }
+  .panel h2 { color: var(--blue); margin: 0 0 .45em; font-size: 1.3em; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; align-items: baseline; gap: 1em; white-space: nowrap; }
+  .panel h2 small { font-size: .72em; color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  /* Metas: unidade (com barra de progresso abaixo) | valor real | antecipações | previsão | falta */
+  #goals { flex: 1; display: grid; grid-auto-rows: auto; align-content: space-between; min-height: 0; }
+  .goal { display: grid; grid-template-columns: minmax(0,.95fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.1fr); column-gap: .6em; align-items: center; gap: .8em; padding: .32em 0; border-bottom: 1px solid var(--line); }
+  .goal.head { padding: 0 0 .25em; border-bottom: 2px solid var(--line); }
+  .goal.head div { color: var(--muted); font-size: .8em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-align: right; }
   .goal.head div:first-child { text-align: left; }
-  .goal .v .note { display: block; color: var(--muted); font-size: .62em; font-weight: 600; margin-top: .1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .goal:last-child { border-bottom: 0; }
-  .goal .n { font-weight: 800; font-size: 1.2em; }
-  .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.12em; white-space: nowrap; }
-  .goal .v small { display: block; color: var(--muted); font-weight: 500; font-size: .7em; text-transform: uppercase; letter-spacing: .08em; }
-  .goal .v.miss { color: var(--amber); }
-  .goal .v.ok { color: var(--green); }
-  .bar { height: 1.05vw; background: var(--track); border-radius: 99px; overflow: hidden; position: relative; }
-  .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
+  .goal .n { font-weight: 800; font-size: 1.3em; display: flex; align-items: baseline; justify-content: space-between; gap: .4em; }
+  .goal .n em { font-style: normal; font-size: .7em; color: var(--muted); font-weight: 700; }
+  .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.2em; white-space: nowrap; }
+  .goal .v small.c, .sfoot b small.c, .r .val small.c { font-size: .62em; color: var(--muted); font-weight: 700; margin-right: .15em; }
+  .goal .v .note { display: block; color: var(--muted); font-size: .6em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .goal .v.miss { color: var(--amber); font-weight: 800; }
+  .goal .v.ok { color: var(--green); font-weight: 800; }
+  .bar { height: .45em; background: var(--track); border-radius: 99px; overflow: hidden; margin-top: .3em; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
   .bar i.done { background: linear-gradient(90deg, #1f8f55, var(--green)); }
-  .bar b { position: absolute; right: .5em; top: 50%; transform: translateY(-50%); font-size: .72em; color: var(--ink); }
-  .goal.total { margin-top: .3vw; border-top: 2px solid var(--teal); border-bottom: 0; background: #eef8fa; border-radius: .6vw; padding: .6vw .6vw; }
+  .goal.total { border-top: 2px solid var(--teal); border-bottom: 0; background: #eef8fa; border-radius: .5em; padding: .4em .5em; }
+  .goal.total .n, .goal.total .v { font-size: 1.28em; }
   .goal.total .n { color: var(--teal); }
-  .rank { flex: 1; display: flex; flex-direction: column; gap: .6vw; min-height: 0; }
-  .r { display: grid; grid-template-columns: 2.6em 1fr auto; align-items: center; gap: 1vw; background: #f6fafc; border: 1px solid var(--line); border-radius: .8vw; padding: .75vw 1vw; }
-  .r .pos { width: 2.3em; height: 2.3em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.15em; background: var(--track); }
+  /* Ranking: as linhas dividem o espaço disponível */
+  .rank { flex: 1; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .45em; min-height: 0; }
+  .r { display: grid; grid-template-columns: 2.4em 1fr auto; grid-template-rows: auto auto; align-items: center; column-gap: .8em; row-gap: .15em; background: #f6fafc; border: 1px solid var(--line); border-radius: .6em; padding: .15em .8em; min-height: 0; overflow: hidden; align-content: center; }
+  .r .pos { grid-row: 1 / 3; width: 2.2em; height: 2.2em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.1em; background: var(--track); }
   .r:nth-child(1) .pos { background: #d4a72c; color: #1d1600; }
   .r:nth-child(2) .pos { background: #b9c4cc; color: #1a2228; }
   .r:nth-child(3) .pos { background: #b0773f; color: #1c1006; }
   .r.zero .pos { background: var(--track) !important; color: var(--muted) !important; }
-  .r.zero { opacity: .7; }
-  .r .nm { font-weight: 800; font-size: 1.45em; }
-  .r .nm small { display: block; color: var(--muted); font-weight: 500; font-size: .55em; margin-top: .15em; }
-  .r .val { text-align: right; font-weight: 800; font-size: 1.55em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .r .val small { display: block; color: var(--muted); font-size: .5em; font-weight: 600; }
-  .r .rb { grid-column: 2 / 4; height: .5vw; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .r.zero { opacity: .65; }
+  .r .nm { font-weight: 800; font-size: 1.45em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+  .r .nm small { color: var(--muted); font-weight: 600; font-size: .55em; margin-left: .5em; }
+  .r .val { text-align: right; font-weight: 800; font-size: 1.6em; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.15; }
+  .r .rb { grid-column: 2 / 4; height: .4em; background: var(--track); border-radius: 99px; overflow: hidden; }
   .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
-  .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8vw; margin-top: .8vw; }
-  .sfoot div { background: #eef5f9; border-radius: .7vw; padding: .6vw .9vw; }
-  .sfoot span { display: block; color: var(--muted); font-size: .78em; text-transform: uppercase; letter-spacing: .08em; }
-  .sfoot b { font-size: 1.3em; font-variant-numeric: tabular-nums; }
-  .err { position: fixed; inset: auto 1vw 1vw auto; background: #fbe3e0; color: #8a2a20; border: 1px solid #f0b9b2; padding: .6em 1em; border-radius: .6em; display: none; }
+  .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; margin-top: .55em; flex: none; }
+  .sfoot div { background: #eef5f9; border-radius: .5em; padding: .35em .7em; }
+  .sfoot span { display: block; color: var(--muted); font-size: .8em; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .sfoot b { font-size: 1.35em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .err { position: fixed; inset: auto 1em 1em auto; background: #fbe3e0; color: #8a2a20; border: 1px solid #f0b9b2; padding: .6em 1em; border-radius: .6em; display: none; }
   .gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); text-align: center; color: var(--muted); font-size: 1.4em; }
   .gate b { color: var(--ink); display: block; font-size: 1.5em; margin-bottom: .4em; }
 </style>
@@ -108,6 +112,8 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const brl = (v) => (v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
   const brl0 = (v) => (v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
+  // valores grandes do painel: "R$" menor para dar espaço aos números
+  const money = (v) => (v == null ? '—' : '<small class="c">R$</small>' + Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
   const pct = (v, d = 1) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%');
   const mlabel = (m) => `${MES[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
   const dmy = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
@@ -127,27 +133,27 @@
       <div class="lbl"><span>${mlabel(m.month)}</span><i>${i === 0 ? 'mês atual' : '+' + i}</i></div>
       ${m.revenue == null ? '<div class="na">Relatório de previsão ainda não enviado.</div>' : `
       <div class="rev"><small>R$</small>${Number(m.revenue).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
-      <div class="occ">${ring(m.apts_pct)}<div class="d">Ocupação dos apartamentos<br><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias<br>Leitos <b>${pct(m.beds_pct)}</b> · Diária média <b>${brl0(m.adr_apt)}</b></div></div>`}
+      <div class="occ">${ring(m.apts_pct)}<div class="d"><div class="big">Ocupação: ${pct(m.apts_pct)}</div><div><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias</div><div>Diária média <b>${brl0(m.adr_apt)}</b></div></div></div>`}
     </div>`).join('');
     document.getElementById('mes-meta').textContent = mlabel(d.month);
     const row = (u, cls = '') => {
       const p = u.pct == null ? null : u.pct * 100;
-      return `<div class="goal ${cls}"><div class="n">${esc(u.label)}</div>
-        <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.min(100, p)}%"></i><b>${pct(p, 0)}</b>`}</div>
-        <div class="v">${u.value ? brl0(u.value) : '—'}</div>
-        <div class="v">${u.other ? brl0(u.other) : '—'}${u.other_note ? `<span class="note">${esc(u.other_note)}</span>` : ''}</div>
-        <div class="v">${brl0(u.goal)}</div>
-        <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : brl0(u.missing)}</div></div>`;
+      return `<div class="goal ${cls}"><div><div class="n">${esc(u.label)}${p == null ? '' : `<em>${pct(p, 0)}</em>`}</div>
+        <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.max(1, Math.min(100, p))}%"></i>`}</div></div>
+        <div class="v">${u.value ? money(u.value) : '—'}</div>
+        <div class="v">${u.other ? money(u.other) : '—'}${u.other_note ? `<span class="note">${esc(u.other_note)}</span>` : ''}</div>
+        <div class="v">${money(u.goal)}</div>
+        <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : money(u.missing)}</div></div>`;
     };
-    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div></div><div>Valor real (notas)</div><div>Antecipações</div><div>Previsão</div><div>Falta</div></div>`
+    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div>Valor real (notas)</div><div>Antecipações</div><div>Previsão</div><div>Falta</div></div>`
       + d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
     const s = d.sales, max = Math.max(1, ...s.ranking.map((r) => r.value));
-    document.getElementById('periodo').textContent = s.period_from ? `Walk-ins e reservas · ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from) + ' a ' + dmy(s.period_to)}` : 'Relatório de vendas ainda não enviado';
-    document.getElementById('rank').innerHTML = s.ranking.map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>
-      <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} room nights · ${r.apts.toLocaleString('pt-BR')} apartamentos` : 'Sem vendas no período'}</small></div>
-      <div class="val">${brl0(r.value)}</div><div class="rb"><i style="width:${(r.value / max) * 100}%"></i></div></div>`).join('');
-    document.getElementById('sfoot').innerHTML = `<div><span>Total da equipe</span><b>${brl0(s.total)}</b></div><div><span>Meta de vendas</span><b>${brl0(s.goal)}</b></div>
-      <div><span>Falta</span><b style="color:${s.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${s.goal == null ? '—' : s.missing === 0 ? 'Meta atingida' : brl0(s.missing)}</b></div>`;
+    document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';
+    document.getElementById('rank').innerHTML = s.ranking.slice(0, 6).map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>
+      <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} room nights · ${r.apts.toLocaleString('pt-BR')} apartamentos` : 'sem vendas no período'}</small></div>
+      <div class="val">${money(r.value)}</div><div class="rb"><i style="width:${(r.value / max) * 100}%"></i></div></div>`).join('');
+    document.getElementById('sfoot').innerHTML = `<div><span>Total da equipe</span><b>${money(s.total)}</b></div><div><span>Meta de vendas</span><b>${money(s.goal)}</b></div>
+      <div><span>Falta</span><b style="color:${s.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${s.goal == null ? '—' : s.missing === 0 ? 'Meta atingida' : money(s.missing)}</b></div>`;
     const gen = d.months.find((m) => m.generated_at);
     document.getElementById('sub').textContent = `Faturamento, ocupação, metas e vendas${gen ? ' · dados do Silbeck de ' + dmy(gen.generated_at) + ' às ' + gen.generated_at.slice(11, 16) : ''}`;
   }
