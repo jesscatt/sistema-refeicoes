@@ -5,7 +5,7 @@ const ROLE_HELP = {
   supervisor: 'Vê tudo, cadastra valores, fecha o faturamento e gera os relatórios oficiais.',
   refeicao: 'Importa planilhas, revisa e ajusta a divisão, publica listas, vê faturamento.',
   recepcao: 'Consulta de refeições dos hóspedes e impressão dos cartões (somente leitura).',
-  restaurante: 'Marca quem veio comer no seu restaurante e informa o número real.',
+  restaurante: 'Marca quem veio comer no seu restaurante, lança extras e (na Di Giordana) vouchers. Se for administrador do restaurante, vê também o controle semanal e os valores do mês.',
   agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de quarto e ajusta quartos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
 };
 
@@ -18,7 +18,7 @@ export async function render(el) {
       <div class="card"><div class="table-wrap"><table class="t">
         <thead><tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Restaurante</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
         <tbody>${users.map((u) => `<tr>
-          <td><b style="font-size:16px;letter-spacing:.06em">${esc(u.login_code || '—')}</b></td><td><b>${esc(u.name)}</b></td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span></td>
+          <td><b style="font-size:16px;letter-spacing:.06em">${esc(u.login_code || '—')}</b></td><td><b>${esc(u.name)}</b></td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span>${u.role === 'restaurante' && u.rest_admin ? ' <span class="badge info">administrador</span>' : ''}</td>
           <td>${esc(u.restaurant_name || '')}</td><td class="small muted">${esc(u.last_login_at || 'nunca')}</td>
           <td>${u.active ? '<span class="badge ok">ativo</span>' : '<span class="badge danger">inativo</span>'}${u.must_change_password ? ' <span class="badge warn">trocar senha</span>' : ''}</td>
           <td class="row" style="justify-content:flex-end;gap:6px"><button class="btn sm" data-edit="${u.id}">Editar</button><button class="btn sm" data-reset="${u.id}">Nova senha</button></td></tr>`).join('')}</tbody>
@@ -48,6 +48,7 @@ export async function render(el) {
         <label class="f">Login (número)<input class="input" name="login_code" inputmode="numeric" pattern="[0-9]{3,8}" value="${esc(u?.login_code || nextCode || '')}" required autocomplete="off" title="Somente números, de 3 a 8 dígitos"></label>
         <label class="f">Perfil<select class="input" name="role">${Object.entries(ROLE_LABEL).filter(([k]) => k !== 'cliente').map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="f" id="restf">Restaurante<select class="input" name="restaurant_id">${rests.map((r) => `<option value="${r.id}" ${u?.restaurant_id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label>
+        <label class="row full" id="radm" style="gap:8px;cursor:pointer"><input type="checkbox" name="rest_admin" ${u?.rest_admin ? 'checked' : ''}><span><b>Administrador do restaurante</b> — além das marcações, vê o controle semanal, os valores de cada semana e o total do mês do seu restaurante.</span></label>
 
         ${u ? `<label class="f">Situação<select class="input" name="active"><option value="1" ${u.active ? 'selected' : ''}>Ativo</option><option value="0" ${u.active ? '' : 'selected'}>Inativo</option></select></label>`
           : '<label class="f">Senha inicial (opcional)<input class="input" name="password" type="text" placeholder="em branco = gerar" autocomplete="off"></label>'}
@@ -58,12 +59,14 @@ export async function render(el) {
     const role = m.querySelector('[name=role]');
     const sync = () => {
       m.querySelector('#restf').style.display = role.value === 'restaurante' ? '' : 'none';
+      m.querySelector('#radm').style.display = role.value === 'restaurante' ? '' : 'none';
       m.querySelector('#rhelp').textContent = ROLE_HELP[role.value];
     };
     role.addEventListener('change', sync); sync();
     m.querySelector('[data-ok]').onclick = async () => {
       const f = Object.fromEntries(new FormData(m.querySelector('#uf')));
       if (f.active !== undefined) f.active = f.active === '1';
+      f.rest_admin = m.querySelector('[name=rest_admin]').checked;
       try {
         if (u) { await put('/api/users/' + u.id, f); toast('Usuário salvo.'); close(); }
         else { const r = await post('/api/users', f); close(); if (r.temp_password) showPw(`${f.name} (login ${r.login_code})`, r.temp_password); else toast(`Usuário criado · login ${r.login_code}.`); }

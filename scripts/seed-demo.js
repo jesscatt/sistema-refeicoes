@@ -16,14 +16,18 @@ const users = [
   ['digiordana', 'Di Giordana', 'restaurante', 'DG'],
   ['paradiso', 'Paradiso', 'restaurante', 'PAR'],
   ['maestro', 'Churrascaria Maestro', 'restaurante', 'MAE'],
+  // administradores dos restaurantes: veem o controle semanal e os valores
+  ['adm.digiordana', 'Administração Di Giordana', 'restaurante', 'DG', { rest_admin: 1 }],
+  ['adm.paradiso', 'Administração Paradiso', 'restaurante', 'PAR', { rest_admin: 1 }],
+  ['adm.maestro', 'Administração Churrascaria', 'restaurante', 'MAE', { rest_admin: 1 }],
   // Comercial: valida quartos, trocas e envia os rooming lists das agências
   ['comercial', 'Comercial', 'agencia', null],
 ];
 for (const [username, name, role, code, link = {}] of users) {
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) continue;
   const rest = code ? db.prepare('SELECT id FROM restaurants WHERE code = ?').get(code).id : null;
-  db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, agency, reservation_number) VALUES (?,?,?,?,?,?,?)')
-    .run(username, name, hashPassword('demo1234'), role, rest, link.agency || null, link.reservation_number || null);
+  db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, agency, reservation_number, rest_admin) VALUES (?,?,?,?,?,?,?,?)')
+    .run(username, name, hashPassword('demo1234'), role, rest, link.agency || null, link.reservation_number || null, link.rest_admin || 0);
 }
 assignLoginCodes();
 if (!process.env.SEED_DEMO) db.prepare("UPDATE users SET must_change_password = 0 WHERE username IN ('admin','dev')").run();
@@ -55,4 +59,4 @@ for (let i = 0; i < 90; i++) {
 }
 if (hasData) console.log('Demo: banco já tem reservas; só os usuários de teste foram conferidos.');
 else { const r = upsertReservations(records, { source: 'excel' }); console.log(`Demo: ${r.inserted} quartos de exemplo criados.`); }
-console.log('Logins: 100 admin (admin1234) · 101 dev (dev12345) · 200 supervisão · 300 refeição · 400 recepção · 501 Di Giordana · 502 Paradiso · 503 Maestro · 600 comercial (senha demo1234)');
+console.log('Logins: 100 admin (admin1234) · 101 dev (dev12345) · 200 supervisão · 300 refeição · 400 recepção · 501 Di Giordana · 502 Paradiso · 503 Maestro · 511/512/513 administradores dos restaurantes · 600 comercial (senha demo1234)');

@@ -1,4 +1,4 @@
-import { state, esc, get, post, api, toast, fail, icon, mealIcon, MEAL_FULL, ROLE_LABEL, modal, PAGE_ROLES } from './ui.js';
+import { state, esc, get, post, api, toast, fail, icon, mealIcon, MEAL_FULL, ROLE_LABEL, modal, PAGE_ROLES, hasRole } from './ui.js';
 
 const root = document.getElementById('root');
 
@@ -14,6 +14,7 @@ const NAV = [
   { path: 'minhas', label: 'Rooming list', icon: 'users', roles: PAGE_ROLES.minhas },
   { path: 'trocas', label: 'Trocas de apartamento', icon: 'swap', roles: PAGE_ROLES.trocas },
   { sep: 'Gestão' },
+  { path: 'financeiro', label: 'Controle de faturamento', labelFor: { rest_admin: 'Controle do restaurante' }, icon: 'sheet', roles: PAGE_ROLES.financeiro },
   { path: 'semana', label: 'Apuração semanal', icon: 'coin', roles: PAGE_ROLES.semana },
   { path: 'controle', label: 'Previsto x realizado', icon: 'sheet', roles: PAGE_ROLES.controle },
   { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: PAGE_ROLES.faturamento },
@@ -33,6 +34,7 @@ const PAGES = {
   reservas: () => import('./pages/reservas.js'),
   importar: () => import('./pages/importar.js'),
   trocas: () => import('./pages/trocas.js'),
+  financeiro: () => import('./pages/financeiro.js'),
   semana: () => import('./pages/semana.js'),
   controle: () => import('./pages/controle.js'),
   faturamento: () => import('./pages/faturamento.js'),
@@ -117,7 +119,7 @@ function renderLogin(msg = '') {
 // ---------- Estrutura ----------
 function renderShell() {
   const role = state.me.role;
-  const items = NAV.filter((n) => !n.roles || n.roles.includes(role));
+  const items = NAV.filter((n) => !n.roles || hasRole(n.roles));
   // remove separadores sem itens depois
   const nav = items.filter((n, i) => !n.sep || (items[i + 1] && !items[i + 1].sep));
   root.innerHTML = `
@@ -125,10 +127,10 @@ function renderShell() {
     <aside class="side">
       <div class="brand"><img src="/img/emblema-branco.png" alt=""><div><div class="t">Termas Romanas</div><div class="s">Controle de refeições</div></div></div>
       <div class="meander"></div>
-      <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${n.label}</span></a>`)).join('')}</nav>
+      <nav class="nav">${nav.map((n) => (n.sep ? `<div class="sep">${n.sep}</div>` : `<a href="#/${n.path}" data-path="${n.path}">${icon(n.icon)}<span>${(n.labelFor && Object.entries(n.labelFor).find(([k]) => hasRole([k]) && !hasRole(n.roles.filter((x) => x !== k)))?.[1]) || n.label}</span></a>`)).join('')}</nav>
       <div class="me">
         <b>${esc(state.me.name)}</b>
-        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}</span>
+        <span class="role">${ROLE_LABEL[role]}${state.me.restaurant ? ' · ' + esc(state.me.restaurant.name) : ''}${state.me.rest_admin ? ' · administrador' : ''}</span>
         <div class="row"><button id="btn-pw">Senha</button><button id="btn-out">Sair</button></div>
       </div>
     </aside>
@@ -266,7 +268,7 @@ async function route() {
   if (!state.me) return;
   let path = (location.hash.replace(/^#\/?/, '').split('?')[0]) || '';
   if (state.me.must_change_password) path = 'senha';
-  const allowed = (p) => p === 'senha' || NAV.some((n) => n.path === p && n.roles.includes(state.me.role));
+  const allowed = (p) => p === 'senha' || NAV.some((n) => n.path === p && hasRole(n.roles));
   if (!PAGES[path] || !allowed(path)) { location.replace('#/' + homeFor(state.me.role)); return; }
   document.querySelectorAll('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.path === path));
   if (cleanup) { try { cleanup(); } catch {} cleanup = null; }

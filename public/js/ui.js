@@ -118,6 +118,9 @@ export function setHashParams(params, page) {
 }
 
 export function can(...roles) { return state.me && roles.includes(state.me.role); }
+// Perfis efetivos: o administrador do restaurante é um usuário "restaurante" com acesso extra aos valores
+export const myRoles = () => (state.me ? [state.me.role, ...(state.me.role === 'restaurante' && state.me.rest_admin ? ['rest_admin'] : [])] : []);
+export const hasRole = (roles) => myRoles().some((r) => (roles || []).includes(r));
 
 // Quem acessa cada página (o servidor confere as mesmas permissões em cada rota)
 const ALL = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'];
@@ -130,6 +133,7 @@ export const PAGE_ROLES = {
   importar: ['admin', 'refeicao'],
   minhas: ['admin', 'refeicao', 'agencia'],
   trocas: ['admin', 'refeicao', 'agencia'],
+  financeiro: ['admin', 'supervisor', 'refeicao', 'rest_admin'],
   semana: ['admin', 'supervisor', 'refeicao'],
   controle: ['admin', 'supervisor', 'refeicao'],
   faturamento: ['admin', 'supervisor', 'refeicao'],
@@ -138,7 +142,7 @@ export const PAGE_ROLES = {
   config: ['admin'],
   logs: ['admin', 'supervisor', 'refeicao'],
 };
-export const canSee = (page) => !!state.me && (PAGE_ROLES[page] || []).includes(state.me.role);
+export const canSee = (page) => !!state.me && hasRole(PAGE_ROLES[page]);
 
 export function download(url) {
   const a = document.createElement('a');

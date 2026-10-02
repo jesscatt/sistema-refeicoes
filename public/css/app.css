@@ -522,3 +522,13 @@ button.wm:hover { outline: 2px solid var(--primary); }
 .login-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: #fff; font-weight: 700; flex: none; }
 .login-who b { display: block; font-size: 16px; color: var(--ink, #10324a); }
 .login-who small { color: var(--muted); }
+
+/* Controle de faturamento */
+table.fin td.n, table.fin th.n, table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.fin tr.sub td { color: var(--muted); font-size: 13px; background: #fafcfd; }
+table.fin tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
+.fin-total { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.fin-total div { display: flex; flex-direction: column; gap: 4px; }
+.fin-total span { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.fin-total b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.fin-total .hl b { color: var(--primary); font-size: 24px; }

@@ -13,6 +13,7 @@ require('./src/routes/control');
 require('./src/routes/admin');
 require('./src/routes/ia');
 require('./src/routes/portal');
+require('./src/routes/finance');
 const { apiKeyAuth, silbeckTick } = require('./src/routes/integration');
 const { handle } = require('./src/http');
 const { startScheduler } = require('./src/publish');

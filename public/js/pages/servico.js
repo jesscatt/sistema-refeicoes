@@ -5,13 +5,14 @@ export async function render(el) {
   const p = readParams({});
   const st = { date: p.date || null, meal: p.meal || null, restaurant_id: p.restaurant_id || (state.me.restaurant ? state.me.restaurant.id : ''), tab: 'lista', q: '' };
   if (!st.restaurant_id && !state.me.restaurant) st.restaurant_id = String(state.meta.restaurants[0].id);
-  let data = null, timer, searchSeq = 0;
+  let data = null, reg = { extras: [], vouchers: [], price: {} }, timer, searchSeq = 0;
 
   const qs = () => `date=${st.date || ''}&meal=${st.meal || ''}&restaurant_id=${st.restaurant_id || ''}`;
 
   async function load() {
     data = await get('/api/service?' + qs());
     st.date = data.date; st.meal = data.meal;
+    try { reg = await get(`/api/extras?date=${data.date}&meal=${data.meal}&restaurant_id=${data.restaurant.id}`); } catch { reg = { extras: [], vouchers: [], price: {} }; }
     syncParams(st, can('restaurante') ? ['date', 'meal'] : ['date', 'meal', 'restaurant_id']);
     draw();
   }
@@ -56,9 +57,13 @@ export async function render(el) {
             <button data-t="lista" class="${st.tab === 'lista' ? 'on' : ''}">Lista (${data.list.length})</button>
             <button data-t="fora" class="${st.tab === 'fora' ? 'on' : ''}">Fora da lista (${data.extras.length})</button>
             <button data-t="avulso" class="${st.tab === 'avulso' ? 'on' : ''}">Pagos à parte (${data.walkins.length})</button>
+            <button data-t="extra" class="${st.tab === 'extra' ? 'on' : ''}">Extras (${reg.extras.reduce((a, x) => a + x.adults + x.children, 0)})</button>
+            ${acceptsVoucher() ? `<button data-t="voucher" class="${st.tab === 'voucher' ? 'on' : ''}">Vouchers (${reg.vouchers.length})</button>` : ''}
           </div>
           <div class="grow"></div>
           <button class="btn sm primary" id="fora">${icon('plus')} Fora da lista</button>
+          ${acceptsVoucher() ? `<button class="btn sm primary" id="voucher">${icon('card')} Receber voucher</button>` : ''}
+          <button class="btn sm" id="extra">${icon('plus')} Extra</button>
           <button class="btn sm" id="walk">${icon('plus')} Consumo à parte</button>
         </div>
         <div id="tab-body">${tabBody()}</div>
@@ -67,6 +72,8 @@ export async function render(el) {
     el.querySelector('#rest')?.addEventListener('change', (e) => { st.restaurant_id = e.target.value; load().catch(fail); });
     el.querySelectorAll('#tabs [data-t]').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.t; draw(); }));
     el.querySelector('#walk').onclick = () => walkinModal({});
+    el.querySelector('#extra').onclick = () => extraModal();
+    el.querySelector('#voucher')?.addEventListener('click', () => voucherModal());
     el.querySelector('#fora').onclick = () => foraModal();
     el.querySelector('#csv').onclick = () => download(`/api/distribution/export.csv?date=${data.date}&meal=${data.meal}&restaurant_id=${r.id}`);
     el.querySelector('#print').onclick = printList;
@@ -86,7 +93,27 @@ export async function render(el) {
     if (!matchMedia('(max-width: 860px)').matches) q.focus();
   }
 
+  function acceptsVoucher() {
+    const r = state.meta.restaurants.find((x) => x.id === data.restaurant.id);
+    return !!(r && r.accepts_voucher);
+  }
+  const brl = (v) => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   function tabBody() {
+    if (st.tab === 'extra') {
+      const p = reg.price || {};
+      const head = `<p class="muted small" style="padding:10px 16px 0;margin:0">Extras são pessoas a mais cobradas pelo valor de extra${p.extra_adult ? ` (${brl(p.extra_adult)} adulto · ${brl(p.extra_child)} criança)` : ''}. Entram no controle do restaurante e no faturamento.</p>`;
+      if (!reg.extras.length) return head + '<div class="empty">Nenhum extra lançado nesta refeição.</div>';
+      return head + `<div class="table-wrap"><table class="t"><thead><tr><th>Pax</th><th>Descrição</th><th>Lançado por</th><th>Hora</th><th></th></tr></thead><tbody>
+        ${reg.extras.map((x) => `<tr><td>${paxTxt(x.adults, x.children)}</td><td>${esc(x.note || '')}</td><td class="small">${esc(x.user_name || '')}</td><td>${esc(x.created_at.slice(11, 16))}</td>
+        <td><button class="btn sm ghost" data-delextra="${x.id}">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
+    if (st.tab === 'voucher') {
+      if (!reg.vouchers.length) return '<div class="empty">Nenhum voucher recebido nesta refeição.</div>';
+      return `<div class="table-wrap"><table class="t"><thead><tr><th>Voucher</th><th>Pax</th><th>Obs.</th><th>Recebido por</th><th>Hora</th><th></th></tr></thead><tbody>
+        ${reg.vouchers.map((x) => `<tr><td><b>${esc(x.code)}</b></td><td>${paxTxt(x.adults, x.children)}</td><td>${esc(x.note || '')}</td><td class="small">${esc(x.user_name || '')}</td><td>${esc(x.created_at.slice(11, 16))}</td>
+        <td><button class="btn sm ghost" data-delvoucher="${x.id}">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`;
+    }
     if (st.tab === 'lista') {
       if (!data.list.length) return `<div class="empty">${icon('checklist')}<div>Ninguém na lista deste restaurante.</div></div>`;
       return `<div class="check-list">${data.list.map((g) => {
@@ -126,6 +153,14 @@ export async function render(el) {
     el.querySelector('[data-fora]')?.addEventListener('click', () => foraModal());
     el.querySelectorAll('[data-delwalk]').forEach((b) => b.addEventListener('click', async () => {
       try { await del('/api/walkins/' + b.dataset.delwalk); await load(); } catch (e) { fail(e); }
+    }));
+    el.querySelectorAll('[data-delextra]').forEach((b) => b.addEventListener('click', async () => {
+      if (!(await confirmBox('Remover este extra?', 'Remover', true))) return;
+      try { await del('/api/extras/' + b.dataset.delextra); await load(); } catch (e) { fail(e); }
+    }));
+    el.querySelectorAll('[data-delvoucher]').forEach((b) => b.addEventListener('click', async () => {
+      if (!(await confirmBox('Remover este voucher? Ele poderá ser recebido de novo.', 'Remover', true))) return;
+      try { await del('/api/vouchers/' + b.dataset.delvoucher); await load(); } catch (e) { fail(e); }
     }));
   }
 
@@ -235,6 +270,41 @@ export async function render(el) {
       const v = Math.max(0, Math.min(Number(s.dataset.max), Number(s.dataset.v) + Number(b.dataset.s)));
       s.dataset.v = v; s.querySelector('span').textContent = v;
     }));
+  }
+
+  function extraModal() {
+    const p = reg.price || {};
+    const { el: m, close } = modal({
+      title: `Extra · ${esc(data.restaurant.name)} · ${MEAL_FULL[data.meal]}`,
+      body: `<p class="muted" style="margin-top:0">Pessoas a mais cobradas pelo valor de extra${p.extra_adult ? ` (<b>${brl(p.extra_adult)}</b> adulto · <b>${brl(p.extra_child)}</b> criança)` : ''}.</p>
+        <div class="form-grid"><label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
+        <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
+        <label class="f" style="grid-column:1/-1">Descrição <span style="color:var(--danger)">*</span><input class="input" name="note" placeholder="Obrigatório. Ex.: grupo do evento, mesa 12, autorizado por..."></label></div>`,
+      foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Lançar extra</button>',
+    });
+    m.querySelector('[data-ok]').onclick = async () => {
+      const v = (n) => m.querySelector(`[name=${n}]`).value;
+      if (v('note').trim().length < 3) { m.querySelector('[name=note]').focus(); toast('Descreva o extra.', 'err'); return; }
+      try { await post('/api/extras', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, adults: v('adults'), children: v('children'), note: v('note') }); close(); toast('Extra lançado.'); st.tab = 'extra'; load(); } catch (e) { fail(e); }
+    };
+  }
+
+  function voucherModal() {
+    const { el: m, close } = modal({
+      title: `Receber voucher · ${MEAL_FULL[data.meal]}`,
+      body: `<div class="form-grid"><label class="f" style="grid-column:1/-1">Número do voucher <span style="color:var(--danger)">*</span><input class="input" name="code" autocomplete="off" style="font-size:18px;letter-spacing:.06em" placeholder="Digite ou leia o código"></label>
+        <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
+        <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
+        <label class="f" style="grid-column:1/-1">Observação<input class="input" name="note" placeholder="Opcional"></label></div>
+        <p class="muted small">Cada voucher só pode ser recebido uma vez. Ele entra no controle do restaurante pelo valor da refeição.</p>`,
+      foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Receber voucher</button>',
+    });
+    setTimeout(() => m.querySelector('[name=code]').focus(), 50);
+    m.querySelector('[data-ok]').onclick = async () => {
+      const v = (n) => m.querySelector(`[name=${n}]`).value;
+      if (!v('code').trim()) { m.querySelector('[name=code]').focus(); toast('Informe o número do voucher.', 'err'); return; }
+      try { await post('/api/vouchers', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, code: v('code'), adults: v('adults'), children: v('children'), note: v('note') }); close(); toast('Voucher recebido.'); st.tab = 'voucher'; load(); } catch (e) { fail(e); }
+    };
   }
 
   function walkinModal({ room = '', reservation_id = null }) {

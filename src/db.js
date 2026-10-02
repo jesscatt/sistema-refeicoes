@@ -234,6 +234,97 @@ CREATE TABLE IF NOT EXISTS audit_log (
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
+
+-- ===== Controle financeiro dos restaurantes =====
+-- Preços por restaurante e refeição com vigência a partir de um mês (YYYY-MM). Criança paga a parte dela (padrão: metade).
+-- extra_*: valor cobrado nos extras (refeição adicional cobrada à parte pelo restaurante, ex.: Di Giordana).
+CREATE TABLE IF NOT EXISTS price_history (
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  meal TEXT NOT NULL,
+  valid_from TEXT NOT NULL,
+  price_adult REAL NOT NULL DEFAULT 0,
+  price_child REAL NOT NULL DEFAULT 0,
+  extra_adult REAL NOT NULL DEFAULT 0,
+  extra_child REAL NOT NULL DEFAULT 0,
+  updated_by INTEGER REFERENCES users(id),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  PRIMARY KEY (restaurant_id, meal, valid_from)
+);
+
+-- Extras lançados pelo restaurante (pessoas a mais cobradas pelo valor de extra)
+CREATE TABLE IF NOT EXISTS restaurant_extras (
+  id INTEGER PRIMARY KEY,
+  date TEXT NOT NULL,
+  meal TEXT NOT NULL,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  adults INTEGER NOT NULL DEFAULT 0,
+  children INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  user_id INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_extras_date ON restaurant_extras(date, restaurant_id);
+
+-- Vouchers recebidos (somente restaurantes que aceitam voucher, ex.: Di Giordana)
+CREATE TABLE IF NOT EXISTS vouchers (
+  id INTEGER PRIMARY KEY,
+  date TEXT NOT NULL,
+  meal TEXT NOT NULL,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  code TEXT NOT NULL,
+  adults INTEGER NOT NULL DEFAULT 0,
+  children INTEGER NOT NULL DEFAULT 0,
+  note TEXT,
+  user_id INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_vouchers_date ON vouchers(date, restaurant_id);
+
+-- Outros lançamentos do mês no controle de faturamento (Di Paolo, Botequim, Day-use/Barril, extras históricos...)
+CREATE TABLE IF NOT EXISTS finance_entries (
+  id INTEGER PRIMARY KEY,
+  month TEXT NOT NULL,
+  restaurant_id INTEGER REFERENCES restaurants(id),
+  kind TEXT NOT NULL DEFAULT 'outro' CHECK (kind IN ('outro','extra','voucher')),
+  outlet TEXT NOT NULL,
+  item TEXT NOT NULL DEFAULT '',
+  unit_price REAL,
+  qty REAL,
+  value REAL NOT NULL DEFAULT 0,
+  source TEXT NOT NULL DEFAULT 'manual',
+  user_id INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_fin_month ON finance_entries(month);
+
+-- Histórico importado das planilhas antigas
+-- Diário (planilha de divisão de cada restaurante): previsão, adultos e crianças por refeição
+CREATE TABLE IF NOT EXISTS hist_daily (
+  date TEXT NOT NULL,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  meal TEXT NOT NULL,
+  forecast INTEGER,
+  adults INTEGER NOT NULL DEFAULT 0,
+  children INTEGER NOT NULL DEFAULT 0,
+  source TEXT,
+  PRIMARY KEY (date, restaurant_id, meal)
+);
+-- Mensal (controle de faturamento): quantidades e preços faturados e projetados
+CREATE TABLE IF NOT EXISTS hist_month (
+  month TEXT NOT NULL,
+  restaurant_id INTEGER NOT NULL REFERENCES restaurants(id),
+  meal TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('realizado','projecao')),
+  adults INTEGER NOT NULL DEFAULT 0,
+  children INTEGER NOT NULL DEFAULT 0,
+  price_adult REAL,
+  price_child REAL,
+  value_adults REAL,
+  value_children REAL,
+  price_note TEXT,
+  source TEXT,
+  PRIMARY KEY (month, restaurant_id, meal, kind)
+);
 `);
 
 // ---------- Migrações ----------
@@ -316,6 +407,12 @@ CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
     db.exec("UPDATE users SET active = 0 WHERE role = 'cliente'");
     db.exec("DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role = 'cliente')");
   }
+  // v6: administrador do restaurante (vê o controle semanal e os valores) e restaurante que aceita voucher
+  if (!cols('users').includes('rest_admin')) db.exec('ALTER TABLE users ADD COLUMN rest_admin INTEGER NOT NULL DEFAULT 0');
+  if (!cols('restaurants').includes('accepts_voucher')) {
+    db.exec('ALTER TABLE restaurants ADD COLUMN accepts_voucher INTEGER NOT NULL DEFAULT 0');
+    db.exec("UPDATE restaurants SET accepts_voucher = 1 WHERE code = 'DG'");
+  }
   // v5: número de acesso (login numérico, 3 dígitos ou mais)
   if (!cols('users').includes('login_code')) db.exec('ALTER TABLE users ADD COLUMN login_code TEXT');
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_code ON users(login_code)');
@@ -340,7 +437,7 @@ function tx(fn) {
 }
 
 // Números de acesso: fixos para os perfis padrão, os demais em sequência a partir de 700
-function defaultCodes() { return { admin: '100', dev: '101', supervisao: '200', refeicao: '300', recepcao: '400', digiordana: '501', paradiso: '502', maestro: '503', comercial: '600' }; }
+function defaultCodes() { return { admin: '100', dev: '101', supervisao: '200', refeicao: '300', recepcao: '400', digiordana: '501', paradiso: '502', maestro: '503', comercial: '600', 'adm.digiordana': '511', 'adm.paradiso': '512', 'adm.maestro': '513' }; }
 function nextLoginCode(from = 700) {
   const used = new Set(db.prepare('SELECT login_code FROM users WHERE login_code IS NOT NULL').all().map((r) => r.login_code));
   let n = from;
@@ -379,6 +476,26 @@ function verifyPassword(pw, stored) {
   return ref.length === hash.length && crypto.timingSafeEqual(ref, hash);
 }
 
+// Preços vigentes (planilha de controle de setembro/2026). Criança = metade. Extras da Di Giordana: café 50, almoço/jantar 82 (criança 41).
+function seedPrices() {
+  if (db.prepare('SELECT COUNT(*) n FROM price_history').get().n) return;
+  const old = db.prepare('SELECT * FROM prices WHERE price_adult > 0').all();
+  const ins = db.prepare('INSERT OR IGNORE INTO price_history(restaurant_id, meal, valid_from, price_adult, price_child, extra_adult, extra_child) VALUES (?,?,?,?,?,?,?)');
+  const byCode = Object.fromEntries(db.prepare('SELECT id, code FROM restaurants').all().map((r) => [r.code, r.id]));
+  const P = {
+    DG: { cafe: [43, 21.5, 50, 25], almoco: [75, 37.5, 82, 41], janta: [75, 37.5, 82, 41] },
+    PAR: { cafe: [38.5, 19.25, 0, 0], almoco: [85.5, 42.75, 0, 0], janta: [85.5, 42.75, 0, 0] },
+    MAE: { almoco: [85.5, 42.75, 0, 0], janta: [85.5, 42.75, 0, 0] },
+  };
+  // preços já cadastrados no faturamento continuam valendo; os extras da Di Giordana vêm do padrão
+  const codeOf = Object.fromEntries(Object.entries(byCode).map(([c, id]) => [id, c]));
+  if (old.length) {
+    for (const p of old) { const d = (P[codeOf[p.restaurant_id]] || {})[p.meal] || [0, 0, 0, 0]; ins.run(p.restaurant_id, p.meal, '2000-01', p.price_adult, p.price_child, d[2], d[3]); }
+    return;
+  }
+  for (const [code, meals] of Object.entries(P)) if (byCode[code]) for (const [meal, v] of Object.entries(meals)) ins.run(byCode[code], meal, '2000-01', ...v);
+}
+
 function seed() {
   if (!db.prepare('SELECT COUNT(*) n FROM restaurants').get().n) {
     const ins = db.prepare(`INSERT INTO restaurants(code, name, color, share_cafe, share_almoco, share_janta) VALUES (?,?,?,?,?,?)`);
@@ -397,6 +514,8 @@ function seed() {
     ins.run('almoco', 'Almoço', '12:00', '14:30', 40, 2);
     ins.run('janta', 'Jantar', '19:00', '22:30', 40, 3);
   }
+  seedPrices();
+  if (!getSetting('voucher_init')) { db.exec("UPDATE restaurants SET accepts_voucher = 1 WHERE code = 'DG'"); setSetting('voucher_init', '1'); }
   const rests = db.prepare('SELECT id FROM restaurants').all();
   const insP = db.prepare('INSERT OR IGNORE INTO prices(restaurant_id, meal, price_adult, price_child) VALUES (?,?,0,0)');
   for (const r of rests) for (const m of ['cafe', 'almoco', 'janta']) insP.run(r.id, m);

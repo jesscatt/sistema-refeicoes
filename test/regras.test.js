@@ -309,3 +309,80 @@ test('política: no máximo 5 pessoas por quarto', () => {
   assert.equal(normalizeRecord({ ...base, pax: 6 }).errors.length, 0, 'limite configurável');
   setSetting('max_pax_room', 5);
 });
+
+test('controle financeiro: semanas de quarta a terça, preços por mês, extras e vouchers', () => {
+  const fin = require('../src/finance');
+  // setembro/2026 começa numa terça: semana 1 = dia 1; semana 2 começa na quarta 02/09
+  const w = fin.weeksOfMonth('2026-09');
+  assert.equal(w[0].from, '2026-09-01'); assert.equal(w[0].to, '2026-09-01');
+  assert.equal(w[1].from, '2026-09-02'); assert.equal(w[1].to, '2026-09-08');
+  assert.equal(w[w.length - 1].to, '2026-09-30');
+  const dg = db.prepare("SELECT id FROM restaurants WHERE code = 'DG'").get().id;
+  // preço vigente: padrão 75/37,5 no almoço; nova vigência a partir de 2026-12
+  assert.equal(fin.priceFor(dg, 'almoco', '2026-11').price_adult, 75);
+  db.prepare("INSERT INTO price_history(restaurant_id, meal, valid_from, price_adult, price_child, extra_adult, extra_child) VALUES (?, 'almoco', '2026-12', 80, 40, 90, 45)").run(dg);
+  assert.equal(fin.priceFor(dg, 'almoco', '2026-12').price_adult, 80);
+  assert.equal(fin.priceFor(dg, 'almoco', '2026-11').price_adult, 75);
+  // realizado do sistema + extra + voucher em dezembro
+  const r = upsertReservations([{ reservation_number: '88001', checkin: '2026-12-09', checkout: '2026-12-11', room: '901A', board: 'FAP', pax: 3, children: 1 }]);
+  const res = db.prepare("SELECT id FROM reservations WHERE reservation_number = '88001'").get();
+  db.prepare("INSERT INTO attendance(reservation_id, date, meal, restaurant_id, status, adults, children) VALUES (?, '2026-12-10', 'almoco', ?, 'presente', 2, 1)").run(res.id, dg);
+  db.prepare("INSERT INTO restaurant_extras(date, meal, restaurant_id, adults, children, note) VALUES ('2026-12-10', 'almoco', ?, 2, 0, 'evento')").run(dg);
+  db.prepare("INSERT INTO vouchers(date, meal, restaurant_id, code, adults, children) VALUES ('2026-12-10', 'almoco', ?, 'V1', 1, 0)").run(dg);
+  const m = fin.restaurantMonth(dg, '2026-12');
+  const alm = m.month_lines.find((l) => l.meal === 'almoco');
+  assert.equal(alm.adults, 2); assert.equal(alm.children, 1);
+  assert.equal(alm.value_adults + alm.value_children, 2 * 80 + 40, 'criança paga a parte dela (meia)');
+  assert.equal(m.totals.extras, 2 * 90, 'extra pelo valor de extra');
+  assert.equal(m.totals.vouchers, 80, 'voucher pelo valor da refeição');
+  assert.equal(m.totals.total, 200 + 180 + 80);
+  const wk = m.weeks.find((x) => x.from <= '2026-12-10' && x.to >= '2026-12-10');
+  assert.equal(wk.from, '2026-12-09', 'semana começa na quarta');
+  assert.equal(wk.value, 200);
+  // consolidado com outro ponto e desconto de 15%
+  db.prepare("INSERT INTO finance_entries(month, kind, outlet, item, unit_price, qty, value) VALUES ('2026-12', 'outro', 'Di Paolo', 'Almoço', 95, 2, 190)").run();
+  const c = fin.consolidated('2026-12');
+  assert.equal(c.others_total, 190);
+  assert.equal(c.total, 460 + 190);
+  assert.equal(c.total_net, Math.round((460 + 190) * 0.85 * 100) / 100);
+});
+
+test('importação da planilha de controle de faturamento (formato antigo)', () => {
+  const { buildWorkbook } = require('../src/xlsx-write');
+  const { parseFile } = require('../src/finance-import');
+  // aba no formato da planilha: blocos DG / Paradiso / Churrascaria, preço na fórmula, extras e Di Paolo
+  const rows = [
+    ['VALOR FATURADO ATÉ 30/11'],
+    ['DI GIORDANA', null, null, 'PARADISO', null, null, 'CHURRASCARIA'],
+    ['Adultos', null, null, 'Adultos', null, null, 'Adultos'],
+    ['QUANTIDADE CAFÉ DA MANHÃ ', 'TOTAL', null, 'QUANTIDADE CAFÉ DA MANHÃ ', 'TOTAL', null, null, 'TOTAL'],
+    [100, { f: 'A5*40', v: 4000 }, null, 50, { f: 'D5*35.5', v: 1775 }, null, 'QUANTIDADE ALMOÇO'],
+    [10, { f: 'A6*43', v: 430 }, null, null, null, null, 20, { f: 'G6*85.5', v: 1710 }],
+    ['Crianças', null, null, 'Crianças', null, null, 'Crianças'],
+    ['QUANTIDADE CAFÉ DA MANHÃ ', null, null, 'QUANTIDADE CAFÉ DA MANHÃ ', null, null, 'QUANTIDADE ALMOÇO'],
+    [4, { f: 'A9*20', v: 80 }, null, 2, { f: 'D9*17.75', v: 35.5 }, null, 2, { f: 'G9*42.75', v: 85.5 }],
+    [],
+    ['EXTRAS DI GIORDANA:'],
+    ['Refeição', 'Valor Unitário', 'Quantidade de pessoas', 'Total'],
+    ['Almoço', 82, 3, { f: 'B13*C13', v: 246 }],
+    ['Total'],
+    ['Di Paolo'],
+    ['Refeição', 'Valor Unitário', 'Quant.', 'Total'],
+    ['Almoço', 95, '2', { f: 'B17*C17', v: 190 }],
+    ['Total'],
+    ['Total', 8552],
+    ['Projeção Novembro'],
+  ];
+  const buf = buildWorkbook([{ name: 'Novembro 2026', rows }]);
+  const p = parseFile(buf, 'controle.xlsx');
+  assert.equal(p.type, 'controle');
+  const m = p.months[0];
+  assert.equal(m.month, '2026-11');
+  const cafe = m.lines.find((l) => l.meal === 'cafe' && l.who === 'adults' && l.restaurant_id === 1);
+  assert.equal(cafe.qty, 110, 'duas linhas de café (troca de preço no mês)');
+  assert.equal(cafe.value, 4430);
+  const total = m.lines.reduce((s, l) => s + l.value, 0) + m.entries.reduce((s, e) => s + e.value, 0);
+  assert.equal(total, 8552, 'bate com o total da planilha');
+  assert.ok(m.entries.some((e) => e.outlet === 'Di Paolo' && e.value === 190));
+  assert.ok(m.entries.some((e) => e.kind === 'extra' && e.value === 246));
+});

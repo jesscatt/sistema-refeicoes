@@ -61,6 +61,7 @@ Todos entram pelo **Painel** (aberturas das refeições do dia e avisos).
 | **Administrador** (`admin`, `dev`) | Tudo. |
 | **Refeição** | Tudo, menos Usuários e Configurações (e a tela da recepção): marcação, distribuição, reservas, importação, rooming list, trocas, controle da divisão, previsto × real, faturamento, IA e logs. |
 | **Supervisão** | Faturamento, previsão (Controle da divisão e Previsto × Real), Distribuição, Assistente IA e Logs. Fecha o mês e cadastra valores. |
+| **Administrador do restaurante** | Perfil Restaurante com a opção marcada: marcações, extras, vouchers (DG) e o Controle do restaurante com os valores da semana e do mês. |
 | **Comercial** | Trocas de quarto (conferir/desfazer), Quartos e rooming list, e onde cada hóspede vai comer. Não muda a pensão nem a divisão. |
 | **Recepção** | Onde cada hóspede vai comer (com cartões para imprimir). Só visualiza. |
 | **Restaurante** | Painel e as marcações do próprio restaurante (lista, fora da lista, consumo à parte). |
@@ -113,6 +114,19 @@ Os nomes aparecem na recepção, no restaurante (dá para buscar pelo nome do h�
 **Trocas de quarto**: cada troca fica "a conferir" até o Comercial clicar em *Conferir* ou *Desfazer* (volta o quarto antigo e avisa todos).
 
 **Fora da lista (restaurante)**: botão *Fora da lista* → digita o nº do apto → mostra onde o hóspede deveria comer → registra no restaurante atual. O restaurante de origem é avisado e o hóspede não pode ser marcado de novo naquela refeição em nenhum restaurante.
+
+## Controle de faturamento e controle de cada restaurante
+
+Substitui as planilhas mensais **Controle semanal dos restaurantes (projeção do mês)** e **Controle de divisão** de cada restaurante. Menu *Gestão → Controle de faturamento* (supervisão, setor de refeições e administrador).
+
+- **Controle de faturamento (consolidado):** Di Giordana, Paradiso e Churrascaria no mês — adultos e crianças por refeição × preço, extras, vouchers, outros pontos (Di Paolo, Botequim, Day-use/Barril, eventos, ajustes), total e total com desconto (padrão 15%) e a projeção do mês.
+- **Controle de cada restaurante:** semanas de **quarta a terça** dentro do mês, por dia e refeição: previsão, adultos e crianças; valor de cada semana; total do mês; extras e vouchers.
+- **Todos os meses:** escolha o mês na lista; *Todos os meses* baixa um Excel com uma aba por mês, no formato das planilhas.
+- **Preços por mês:** cada restaurante tem o seu valor; criança paga meia (padrão: metade); valor de extra por refeição. Uma nova vigência vale a partir do mês escolhido; meses anteriores continuam com o preço antigo.
+- **Extras:** lançados na tela de marcação (*Extra*), com descrição obrigatória; cobrados pelo valor de extra.
+- **Vouchers (Di Giordana):** botão *Receber voucher* na marcação; cada número de voucher só pode ser recebido uma vez; entra no controle pelo valor da refeição. Quais restaurantes recebem voucher: *Preços e configurações*.
+- **Administrador do restaurante:** usuário do perfil Restaurante com a opção *Administrador do restaurante* (em *Usuários*). Além das marcações, vê o *Controle do restaurante* (semanas, valores e total do mês) só do seu restaurante. Logins de teste: `511` Di Giordana, `512` Paradiso, `513` Churrascaria (senha `demo1234`).
+- **Histórico:** *Importar histórico* lê as planilhas antigas (todas as abas). O controle de faturamento traz quantidades, preços (inclusive troca de preço no meio do mês), extras e outros pontos; diferenças de fórmulas manuais da planilha entram como *Ajuste da planilha* para o total bater. A planilha de divisão traz o lançamento diário de cada restaurante.
 
 ## Controle da divisão (pagamento dos restaurantes)
 

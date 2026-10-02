@@ -26,7 +26,7 @@ route('POST', '/api/login/lookup', { auth: false }, ({ body, ip }) => {
   if (!u || !u.active) throw new HttpError(404, 'Login não encontrado.');
   const rest = u.restaurant_id ? db.prepare('SELECT name FROM restaurants WHERE id = ?').get(u.restaurant_id) : null;
   const roles = { admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição', recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial' };
-  return { code: u.login_code, name: u.name, role: roles[u.role] + (rest ? ' · ' + rest.name : '') };
+  return { code: u.login_code, name: u.name, role: roles[u.role] + (rest ? ' · ' + rest.name : '') + (u.role === 'restaurante' && u.rest_admin ? ' · administrador' : '') };
 });
 
 route('POST', '/api/login', { auth: false }, ({ body, res, ip }) => {
@@ -56,7 +56,7 @@ route('POST', '/api/logout', { allowPwChange: true, portal: true }, ({ req, res,
 
 route('GET', '/api/me', { allowPwChange: true, portal: true }, ({ user }) => {
   const rest = user.restaurant_id ? db.prepare('SELECT id, code, name, color FROM restaurants WHERE id = ?').get(user.restaurant_id) : null;
-  return { id: user.id, username: user.username, login_code: user.login_code, name: user.name, role: user.role, restaurant: rest, agency: user.agency || null, reservation_number: user.reservation_number || null, must_change_password: !!user.must_change_password };
+  return { id: user.id, username: user.username, login_code: user.login_code, name: user.name, role: user.role, restaurant: rest, agency: user.agency || null, reservation_number: user.reservation_number || null, must_change_password: !!user.must_change_password, rest_admin: !!(user.role === 'restaurante' && user.rest_admin) };
 });
 
 route('POST', '/api/me/password', { allowPwChange: true, portal: true }, ({ user, body, ip }) => {

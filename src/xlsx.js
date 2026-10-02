@@ -55,9 +55,7 @@ function colIndex(ref) {
   return n - 1;
 }
 
-function readXlsx(buf) {
-  const files = unzip(buf);
-  const read = (name) => (files[name] ? files[name]().toString('utf8') : null);
+function sharedStrings(read) {
   const shared = [];
   const ss = read('xl/sharedStrings.xml');
   if (ss) {
@@ -65,20 +63,13 @@ function readXlsx(buf) {
     let m;
     while ((m = re.exec(ss))) shared.push(textOf(m[1]));
   }
-  // Primeira aba (ordem do workbook)
-  let sheetPath = 'xl/worksheets/sheet1.xml';
-  const wb = read('xl/workbook.xml'), rels = read('xl/_rels/workbook.xml.rels');
-  if (wb && rels) {
-    const first = wb.match(/<sheet\b[^>]*r:id="([^"]+)"/);
-    if (first) {
-      const rel = rels.match(new RegExp(`<Relationship\\b[^>]*Id="${first[1]}"[^>]*>`));
-      const tgt = rel && rel[0].match(/Target="([^"]+)"/);
-      if (tgt) sheetPath = tgt[1].startsWith('/') ? tgt[1].slice(1) : 'xl/' + tgt[1].replace(/^\.\//, '');
-    }
-  }
-  const sheet = read(sheetPath);
-  if (!sheet) throw new Error('Não encontrei a primeira aba da planilha.');
+  return shared;
+}
+
+// Lê uma aba: valores (rows[linha][coluna]) e fórmulas ({ 'B5': 'A5*43' })
+function parseSheet(sheet, shared) {
   const rows = [];
+  const formulas = {};
   const rowRe = /<row\b([^>]*)>([\s\S]*?)<\/row>/g;
   let rm;
   while ((rm = rowRe.exec(sheet))) {
@@ -93,6 +84,8 @@ function readXlsx(buf) {
       if (r) idx = colIndex(r[1]);
       const t = (attrs.match(/\bt="([^"]+)"/) || [])[1];
       const v = inner.match(/<v>([\s\S]*?)<\/v>/);
+      const f = inner.match(/<f\b[^>]*>([\s\S]*?)<\/f>/);
+      if (f && r) formulas[r[1]] = decodeXml(f[1]);
       let val = null;
       if (t === 's') val = v ? shared[+v[1]] ?? '' : '';
       else if (t === 'inlineStr') val = textOf(inner);
@@ -104,7 +97,35 @@ function readXlsx(buf) {
     }
     rows.push(row);
   }
-  return rows;
+  return { rows, formulas };
+}
+
+// Todas as abas, na ordem do workbook: [{ name, rows, formulas }]
+function readXlsxSheets(buf) {
+  const files = unzip(buf);
+  const read = (name) => (files[name] ? files[name]().toString('utf8') : null);
+  const shared = sharedStrings(read);
+  const wb = read('xl/workbook.xml') || '', rels = read('xl/_rels/workbook.xml.rels') || '';
+  const out = [];
+  const re = /<sheet\b([^>]*)\/?>/g;
+  let m;
+  while ((m = re.exec(wb))) {
+    const name = decodeXml((m[1].match(/\bname="([^"]*)"/) || [])[1] || '');
+    const rid = (m[1].match(/r:id="([^"]+)"/) || [])[1];
+    const rel = rid && rels.match(new RegExp(`<Relationship\\b[^>]*Id="${rid}"[^>]*>`));
+    const tgt = rel && rel[0].match(/Target="([^"]+)"/);
+    if (!tgt) continue;
+    const path = tgt[1].startsWith('/') ? tgt[1].slice(1) : 'xl/' + tgt[1].replace(/^\.\//, '');
+    const xml = read(path);
+    if (xml) out.push({ name, ...parseSheet(xml, shared) });
+  }
+  return out;
+}
+
+function readXlsx(buf) {
+  const sheets = readXlsxSheets(buf);
+  if (!sheets.length) throw new Error('Não encontrei a primeira aba da planilha.');
+  return sheets[0].rows;
 }
 
 function readCsv(buf) {
@@ -141,4 +162,4 @@ function readSpreadsheet(buf, filename = '') {
   return readCsv(buf);
 }
 
-module.exports = { readSpreadsheet, readXlsx, readCsv };
+module.exports = { readSpreadsheet, readXlsx, readXlsxSheets, readCsv };

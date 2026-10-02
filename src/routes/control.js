@@ -5,6 +5,7 @@ const { db, audit } = require('../db');
 const { MEALS, MEAL_LABEL, monthRange, isISODate, toCSV, todayISO, nowLocal, addDays } = require('../util');
 const { buildXlsx } = require('../xlsx-write');
 const { weekday } = require('../meals');
+const { priceFor } = require('../finance');
 
 const BILL_VIEW = ['admin', 'supervisor', 'refeicao'];
 const BILL_CLOSE = ['admin', 'supervisor'];
@@ -60,13 +61,12 @@ function billedPax(row) {
 function billing(month) {
   const rows = controlRows(month);
   const rests = db.prepare('SELECT id, code, name, color FROM restaurants ORDER BY id').all();
-  const prices = db.prepare('SELECT * FROM prices').all();
   const out = [];
   for (const rest of rests) {
     for (const meal of MEALS) {
       const rr = rows.filter((r) => r.restaurant_id === rest.id && r.meal === meal);
       if (!rr.length && !(db.prepare(`SELECT share_${meal} s FROM restaurants WHERE id = ?`).get(rest.id).s > 0)) continue;
-      const p = prices.find((x) => x.restaurant_id === rest.id && x.meal === meal) || { price_adult: 0, price_child: 0 };
+      const p = priceFor(rest.id, meal, month); // preço vigente no mês (Controle de faturamento → Preços)
       const t = { restaurant: rest, meal, days: rr.length, forecast_adults: 0, forecast_children: 0, checked_adults: 0, checked_children: 0, real_adults: 0, real_children: 0, billed_adults: 0, billed_children: 0, walkin_adults: 0, walkin_children: 0, days_without_real: 0, price_adult: p.price_adult, price_child: p.price_child };
       for (const r of rr) {
         t.forecast_adults += r.forecast_adults; t.forecast_children += r.forecast_children;
@@ -147,11 +147,18 @@ route('GET', '/api/reports/daily.csv', { roles: BILL_CLOSE }, ({ query, user, ip
   };
 });
 
-route('GET', '/api/prices', { roles: BILL_VIEW }, () => db.prepare('SELECT p.*, r.name, r.code FROM prices p JOIN restaurants r ON r.id = p.restaurant_id ORDER BY r.id').all());
+// Preços: agora por mês em Controle de faturamento → Preços (tabela price_history). Mantido para compatibilidade.
+route('GET', '/api/prices', { roles: BILL_VIEW }, () => db.prepare('SELECT id restaurant_id, name, code FROM restaurants WHERE active = 1 ORDER BY id').all()
+  .flatMap((r) => MEALS.map((m) => ({ ...r, meal: m, ...priceFor(r.restaurant_id, m, todayISO().slice(0, 7)) }))));
 
 route('PUT', '/api/prices', { roles: BILL_CLOSE }, ({ body, user, ip }) => {
-  const up = db.prepare('UPDATE prices SET price_adult = ?, price_child = ? WHERE restaurant_id = ? AND meal = ?');
-  for (const p of body.prices || []) up.run(Math.max(0, Number(p.price_adult) || 0), Math.max(0, Number(p.price_child) || 0), p.restaurant_id, p.meal);
+  const from = todayISO().slice(0, 7);
+  const up = db.prepare(`INSERT INTO price_history(restaurant_id, meal, valid_from, price_adult, price_child, extra_adult, extra_child, updated_by) VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(restaurant_id, meal, valid_from) DO UPDATE SET price_adult = excluded.price_adult, price_child = excluded.price_child, updated_by = excluded.updated_by`);
+  for (const p of body.prices || []) {
+    const cur = priceFor(p.restaurant_id, p.meal, from);
+    up.run(p.restaurant_id, p.meal, from, Math.max(0, Number(p.price_adult) || 0), Math.max(0, Number(p.price_child) || 0), cur.extra_adult, cur.extra_child, user.id);
+  }
   audit(user, 'precos_alterados', body.prices, ip);
   return { ok: true };
 });
@@ -162,8 +169,7 @@ route('PUT', '/api/prices', { roles: BILL_CLOSE }, ({ body, user, ip }) => {
 function weekly(from, to, restId = null) {
   const rows = controlRange(from, to, restId);
   const rests = db.prepare(`SELECT id, code, name, color FROM restaurants WHERE active = 1 ${restId ? 'AND id = ' + Number(restId) : ''} ORDER BY id`).all();
-  const prices = db.prepare('SELECT * FROM prices').all();
-  const price = (r, m) => prices.find((p) => p.restaurant_id === r && p.meal === m) || { price_adult: 0, price_child: 0 };
+  const price = (r, m, d = from) => priceFor(r, m, d.slice(0, 7));
   const zero = () => ({ prev_adt: 0, prev_chd: 0, marc_adt: 0, marc_chd: 0, real_adt: 0, real_chd: 0, pag_adt: 0, pag_chd: 0, valor_prev: 0, valor: 0, sem_real: 0, so_previsto: 0, fora_lista: 0, avulso: 0 });
   const add = (t, r, pr) => {
     const b = billedPax(r);
@@ -183,8 +189,9 @@ function weekly(from, to, restId = null) {
       const pr = price(rest.id, meal);
       const t = { meal, price_adult: pr.price_adult, price_child: pr.price_child, ...zero(), days: {} };
       for (const r of rows.filter((x) => x.restaurant_id === rest.id && x.meal === meal)) {
-        add(t, r, pr);
-        const dd = (t.days[r.date] = t.days[r.date] || zero()); add(dd, r, pr);
+        const prd = price(rest.id, meal, r.date);
+        add(t, r, prd);
+        const dd = (t.days[r.date] = t.days[r.date] || zero()); add(dd, r, prd);
       }
       return t;
     }).filter((t) => t.prev_adt + t.prev_chd + t.marc_adt + t.marc_chd + t.real_adt + t.real_chd > 0 || t.price_adult > 0);

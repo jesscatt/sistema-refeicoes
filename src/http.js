@@ -58,7 +58,7 @@ function send(res, status, body, headers = {}) {
 function sessionUser(req) {
   const sid = parseCookies(req).sid;
   if (!sid) return null;
-  const row = db.prepare(`SELECT s.sid, s.expires_at, u.id, u.username, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password
+  const row = db.prepare(`SELECT s.sid, s.expires_at, u.id, u.username, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.rest_admin, u.login_code
     FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.sid = ?`).get(sid);
   if (!row || row.expires_at < Date.now() || !row.active) return null;
   // sessão deslizante

@@ -9,7 +9,7 @@ const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'ag
 
 // ---------- Usuários ----------
 route('GET', '/api/users', { roles: ADMIN }, () =>
-  db.prepare(`SELECT u.id, u.username, u.login_code, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
+  db.prepare(`SELECT u.id, u.username, u.login_code, u.name, u.role, u.rest_admin, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
     FROM users u LEFT JOIN restaurants r ON r.id = u.restaurant_id ORDER BY u.active DESC, CAST(u.login_code AS INTEGER)`).all());
 
 route('GET', '/api/users/next-code', { roles: ADMIN }, () => ({ code: nextLoginCode() }));
@@ -28,7 +28,7 @@ function validUser(body, isNew) {
   if (!ROLES.includes(body.role)) throw new HttpError(400, 'Perfil inválido.');
   const restId = body.role === 'restaurante' ? Number(body.restaurant_id) : null;
   if (body.role === 'restaurante' && !db.prepare('SELECT 1 FROM restaurants WHERE id = ?').get(restId)) throw new HttpError(400, 'Escolha o restaurante do usuário.');
-  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: null, reservation_number: null };
+  return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: null, reservation_number: null, rest_admin: body.role === 'restaurante' && (body.rest_admin === true || body.rest_admin === 1 || body.rest_admin === '1' || body.rest_admin === 'on') ? 1 : 0 };
 }
 
 route('POST', '/api/users', { roles: ADMIN }, ({ body, user, ip }) => {
@@ -37,8 +37,8 @@ route('POST', '/api/users', { roles: ADMIN }, ({ body, user, ip }) => {
   const u = validUser(body, true);
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(u.username)) throw new HttpError(409, 'Já existe esse usuário.');
   const pw = body.password && String(body.password).length >= 8 ? String(body.password) : crypto.randomBytes(6).toString('base64url');
-  const r = db.prepare('INSERT INTO users(username, login_code, name, password_hash, role, restaurant_id, agency, reservation_number, must_change_password) VALUES (?,?,?,?,?,?,?,?,1)')
-    .run(u.username, code, u.name, hashPassword(pw), u.role, u.restaurant_id, u.agency, u.reservation_number);
+  const r = db.prepare('INSERT INTO users(username, login_code, name, password_hash, role, restaurant_id, agency, reservation_number, rest_admin, must_change_password) VALUES (?,?,?,?,?,?,?,?,?,1)')
+    .run(u.username, code, u.name, hashPassword(pw), u.role, u.restaurant_id, u.agency, u.reservation_number, u.rest_admin);
   audit(user, 'usuario_criado', { username: u.username, login_code: code, role: u.role }, ip);
   return { id: Number(r.lastInsertRowid), login_code: code, temp_password: body.password ? null : pw };
 });
@@ -53,7 +53,7 @@ route('PUT', '/api/users/:id', { roles: ADMIN }, ({ params, body, user, ip }) =>
     if (admins <= 1) throw new HttpError(400, 'É preciso manter pelo menos um administrador ativo.');
   }
   const code = body.login_code === undefined ? ex.login_code : validCode(body.login_code, ex.id);
-  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, agency = ?, reservation_number = ?, active = ?, login_code = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, active, code, ex.id);
+  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, agency = ?, reservation_number = ?, active = ?, login_code = ?, rest_admin = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, active, code, body.rest_admin === undefined && u.role === 'restaurante' ? ex.rest_admin : u.rest_admin, ex.id);
   if (!active) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(ex.id);
   audit(user, 'usuario_alterado', { username: ex.username, role: u.role, active }, ip);
   return { ok: true };

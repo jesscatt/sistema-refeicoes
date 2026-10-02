@@ -50,7 +50,7 @@ export async function render(el) {
       </table></div></div>`;
     el.querySelector('#month').addEventListener('change', (e) => { if (e.target.value) { st.month = e.target.value; load().catch(fail); } });
     el.querySelector('#csv')?.addEventListener('click', () => download('/api/billing/export.csv?month=' + st.month));
-    el.querySelector('#prices')?.addEventListener('click', pricesModal);
+    el.querySelector('#prices')?.addEventListener('click', () => { location.hash = '#/financeiro?tab=precos'; });
     el.querySelector('#close')?.addEventListener('click', async () => {
       if (!(await confirmBox(`Fechar o faturamento de ${st.month.split('-').reverse().join('/')}? Os números ficam congelados e os restaurantes não podem mais alterar o controle deste mês.`, 'Fechar mês'))) return;
       try { await post('/api/billing/close', { month: st.month }); toast('Mês fechado.'); load(); } catch (e) { fail(e); }
