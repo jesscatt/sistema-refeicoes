@@ -59,11 +59,18 @@ function restaurantsFor(meal, date = null) {
   const open = restaurantStatus(meal, date).filter((r) => r.open).sort((a, b) => b.share - a.share || a.id - b.id);
   // Com apenas dois restaurantes abertos no almoço ou no jantar, a divisão passa a ser 60/40
   // (o de maior percentual fica com 60%). Configurável em settings: two_open_split (padrão 60).
+  // Com movimento grande (padrão: 400 pessoas ou mais na refeição), o restaurante principal (Di Giordana,
+  // o de menor custo) recebe até 300 pessoas e o restante vai para o outro restaurante aberto.
   if (open.length === 2 && (meal === 'almoco' || meal === 'janta')) {
     const { getSetting } = require('./db');
-    const main = Math.min(100, Math.max(0, Number(getSetting('two_open_split', '60')) || 60)) / 100;
-    open[0] = { ...open[0], share: main };
-    open[1] = { ...open[1], share: Math.round((1 - main) * 100) / 100 };
+    let main = Math.min(100, Math.max(0, Number(getSetting('two_open_split', '60')) || 60)) / 100;
+    const threshold = Number(getSetting('two_open_threshold', '400')) || 400;
+    const mainCap = Number(getSetting('two_open_main_cap', '300')) || 300;
+    const total = (db.prepare(`SELECT SUM(r.adults + r.children) n FROM assignments a JOIN reservations r ON r.id = a.reservation_id
+      WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa'`).get(date, meal) || {}).n || 0;
+    if (total >= threshold) main = Math.max(main, Math.min(1, mainCap / total));
+    open[0] = { ...open[0], share: Math.round(main * 1000) / 1000 };
+    open[1] = { ...open[1], share: Math.round((1 - main) * 1000) / 1000 };
   }
   return open;
 }

@@ -143,10 +143,21 @@ route('DELETE', '/api/api-keys/:id', { roles: ADMIN }, ({ params, user, ip }) =>
 });
 
 route('PUT', '/api/settings/policy', { roles: ADMIN }, ({ body, user, ip }) => {
-  const n = parseInt(body.max_pax_room, 10);
-  if (!(n >= 1 && n <= 20)) throw new HttpError(400, 'Informe um número entre 1 e 20.');
-  setSetting('max_pax_room', n);
-  audit(user, 'politica_alterada', { max_pax_room: n }, ip);
+  if (body.max_pax_room !== undefined) {
+    const n = parseInt(body.max_pax_room, 10);
+    if (!(n >= 1 && n <= 20)) throw new HttpError(400, 'Informe um número entre 1 e 20 para o máximo de pessoas por apartamento.');
+    setSetting('max_pax_room', n);
+  }
+  const num = (k, min, max, label) => {
+    if (body[k] === undefined) return;
+    const v = Number(body[k]);
+    if (!(v >= min && v <= max)) throw new HttpError(400, `Informe ${label} entre ${min} e ${max}.`);
+    setSetting(k, v);
+  };
+  num('two_open_split', 50, 100, 'o percentual do restaurante principal');
+  num('two_open_threshold', 1, 5000, 'o movimento mínimo');
+  num('two_open_main_cap', 1, 5000, 'a quantidade do restaurante principal');
+  audit(user, 'politica_alterada', body, ip);
   return { ok: true };
 });
 

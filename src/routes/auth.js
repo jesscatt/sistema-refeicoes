@@ -75,6 +75,7 @@ route('GET', '/api/meta', { allowPwChange: true, portal: true }, () => ({
   boards: BOARDS,
   meals: MEAL_LABEL,
   max_pax_room: require('../db').maxPaxRoom(),
+  two_open: { split: Number(require('../db').getSetting('two_open_split', '60')), threshold: Number(require('../db').getSetting('two_open_threshold', '400')), main_cap: Number(require('../db').getSetting('two_open_main_cap', '300')) },
   roles: {
     admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição',
     recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial',

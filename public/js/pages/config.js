@@ -28,6 +28,10 @@ export async function render(el) {
         <div class="card-head"><h3 class="grow">Políticas do resort</h3><button class="btn sm primary" id="save-pol">Salvar</button></div>
         <div class="row" style="gap:12px;align-items:flex-end;padding:16px 20px">
           <label class="f" style="max-width:260px">Máximo de pessoas por apartamento<input class="input" type="number" min="1" max="20" id="max-pax" value="${meta.max_pax_room}"></label>
+          <label class="f" style="max-width:200px">Dois abertos: % do principal<input class="input" type="number" min="50" max="100" id="t-split" value="${meta.two_open?.split ?? 60}"></label>
+          <label class="f" style="max-width:200px">Movimento a partir de (pessoas)<input class="input" type="number" min="1" id="t-thr" value="${meta.two_open?.threshold ?? 400}"></label>
+          <label class="f" style="max-width:220px">Principal recebe até (pessoas)<input class="input" type="number" min="1" id="t-cap" value="${meta.two_open?.main_cap ?? 300}"></label>
+          <p class="muted small" style="margin:0 0 10px;flex-basis:100%">Com apenas dois restaurantes abertos no almoço ou no jantar, o principal (Di Giordana) fica com o percentual indicado; com movimento a partir do número informado, recebe até a quantidade indicada e o restante segue para o outro restaurante.</p>
           <p class="muted small" style="margin:0 0 10px">Adultos + crianças. Vale para importação, reservas, rooming list, Comercial e API do site: apartamentos acima do limite são recusados.</p>
         </div>
       </div>
@@ -102,7 +106,7 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
       } catch (e) { fail(e); }
     };
     el.querySelector('#save-pol').onclick = async () => {
-      try { await put('/api/settings/policy', { max_pax_room: el.querySelector('#max-pax').value }); toast('Política salva.'); load(); } catch (e) { fail(e); }
+      try { await put('/api/settings/policy', { max_pax_room: el.querySelector('#max-pax').value, two_open_split: el.querySelector('#t-split').value, two_open_threshold: el.querySelector('#t-thr').value, two_open_main_cap: el.querySelector('#t-cap').value }); toast('Política salva.'); load(); } catch (e) { fail(e); }
     };
     el.querySelector('#save-times').onclick = async () => {
       const list = [...el.querySelectorAll('tr[data-meal]')].map((tr) => ({ meal: tr.dataset.meal, start: tr.querySelector('[name=start]').value, end: tr.querySelector('[name=end]').value, notify_before_min: tr.querySelector('[name=notify_before_min]').value }));

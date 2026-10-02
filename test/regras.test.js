@@ -412,3 +412,20 @@ test('com dois restaurantes abertos no almoço/jantar a divisão é 60/40', () =
   assert.ok(Math.abs(dg.pax / tot - 0.6) < 0.06, `DG ${dg.pax}/${tot}`);
   assert.equal(dg.share, 0.6);
 });
+
+test('dois abertos e 400 pessoas ou mais: Di Giordana recebe até 300', () => {
+  const { restaurantsFor, rebalance, daySummary } = require('../src/meals');
+  const d = '2027-04-14';
+  const mae = db.prepare("SELECT id FROM restaurants WHERE code = 'MAE'").get().id;
+  db.prepare("INSERT OR REPLACE INTO restaurant_days(date, restaurant_id, meal, is_open, note) VALUES (?, ?, 'janta', 0, 'teste')").run(d, mae);
+  const rooms = [];
+  for (const t of 'CDEFGH') for (let f = 1; f <= 6; f++) for (let u = 1; u <= 10; u++) rooms.push(`${f}${String(u).padStart(2, '0')}${t}`);
+  upsertReservations(rooms.slice(0, 220).map((room, i) => ({ reservation_number: `4000${i}`, checkin: '2027-04-14', checkout: '2027-04-16', room, board: 'FAP', pax: 2, children: 0 })));
+  rebalance(d, 'janta');
+  const sum = daySummary(d, 'janta').filter((r) => r.serves);
+  const tot = sum.reduce((s, r) => s + r.pax, 0);
+  assert.ok(tot >= 400, 'movimento de ' + tot);
+  const dg = sum.find((r) => r.code === 'DG');
+  assert.ok(Math.abs(dg.pax - 300) <= 4, `DG ${dg.pax} de ${tot}`);
+  assert.ok(restaurantsFor('janta', d)[0].share > 0.6);
+});
