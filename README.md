@@ -133,7 +133,7 @@ Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar 
 
 Vale **apenas para reservas de grupo** (2 ou mais apartamentos no mesmo número de reserva). Reservas de um único apartamento não aparecem nessa tela nem podem receber rooming list; são ajustadas em *Reservas*.
 
-*Quartos e rooming list → Enviar rooming list*: escolha a reserva/grupo e envie a planilha da agência (.xlsx ou .csv) com **Quarto** e **Nome** (uma linha por hóspede, ou por quarto). Aceita quarto só na primeira linha (células mescladas), coluna Reserva opcional, coluna Idade (até 11 anos = criança) ou Adultos/Crianças. Antes de gravar mostra: quartos que serão atualizados, quartos novos (entram no grupo com a mesma pensão e datas) e quartos do grupo que não vieram na lista (marque os que saíram). Recepção, refeições e restaurantes são avisados. Modelo em *Enviar rooming list → Modelo*.
+*Quartos e rooming list → Enviar rooming list*: escolha a reserva/grupo e envie a planilha da agência (.xlsx, .xls ou .csv) com **Quarto** e **Nome** (uma linha por hóspede, ou por quarto). Aceita quarto só na primeira linha (células mescladas), coluna Reserva opcional, coluna Idade (até 11 anos = criança) ou Adultos/Crianças. Antes de gravar mostra: quartos que serão atualizados, quartos novos (entram no grupo com a mesma pensão e datas) e quartos do grupo que não vieram na lista (marque os que saíram). Recepção, refeições e restaurantes são avisados. Modelo em *Enviar rooming list → Modelo*.
 
 Os nomes aparecem na recepção, no restaurante (dá para buscar pelo nome do hóspede), na reserva e no cartão impresso.
 
@@ -169,7 +169,7 @@ Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, 
 
 ## Importação da planilha
 
-Aceita `.xlsx` e `.csv` (o `.xls` antigo precisa ser salvo como `.xlsx`). Validado com a planilha *DIVISÃO 30-09 a 04-10* do resort (350 quartos, 94 reservas):
+Aceita `.xlsx`, `.xls` (Excel 97–2003) e `.csv`. Validado com a planilha *DIVISÃO 30-09 a 04-10* do resort (350 quartos, 94 reservas):
 
 - **Reserva** pode vir com o nome do grupo junto (`50893 ANR TUR`); o número e o nome são separados.
 - **Vários quartos na mesma reserva** são um grupo.
@@ -227,6 +227,7 @@ src/db.js                 banco (SQLite), usuários iniciais, auditoria
 src/meals.js              regras de pensão e divisão entre restaurantes
 src/importer.js           leitura e gravação das reservas importadas
 src/xlsx.js               leitor de .xlsx/.csv sem dependências
+src/xls.js                leitor de .xls (Excel 97–2003, BIFF8) sem dependências
 src/publish.js            publicação das listas e aviso 40 min antes
 src/routes/               API (auth, reservas, serviço, controle/faturamento, admin, integração, IA)
 public/                   interface web (HTML/CSS/JS puro)

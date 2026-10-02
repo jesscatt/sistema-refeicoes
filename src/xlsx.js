@@ -3,6 +3,8 @@
 // Arquivos .xls antigos (binários) não são suportados: salve como .xlsx ou .csv.
 const zlib = require('node:zlib');
 
+const { isXls, readXlsSheets } = require('./xls');
+
 function unzip(buf) {
   let eocd = -1;
   for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
@@ -70,7 +72,7 @@ function sharedStrings(read) {
 function parseSheet(sheet, shared) {
   const rows = [];
   const formulas = {};
-  const rowRe = /<row\b([^>]*)>([\s\S]*?)<\/row>/g;
+  const rowRe = /<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g; // inclui linhas vazias <row .../>
   let rm;
   while ((rm = rowRe.exec(sheet))) {
     const rn = rm[1].match(/\br="(\d+)"/);
@@ -78,7 +80,7 @@ function parseSheet(sheet, shared) {
     const row = [];
     const cRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
     let cm, idx = 0;
-    while ((cm = cRe.exec(rm[2]))) {
+    while ((cm = cRe.exec(rm[2] || ''))) {
       const attrs = cm[1], inner = cm[2] || '';
       const r = attrs.match(/\br="([A-Z]+\d+)"/);
       if (r) idx = colIndex(r[1]);
@@ -102,6 +104,7 @@ function parseSheet(sheet, shared) {
 
 // Todas as abas, na ordem do workbook: [{ name, rows, formulas }]
 function readXlsxSheets(buf) {
+  if (isXls(buf)) return readXlsSheets(buf); // .xls (Excel 97–2003)
   const files = unzip(buf);
   const read = (name) => (files[name] ? files[name]().toString('utf8') : null);
   const shared = sharedStrings(read);
@@ -155,8 +158,11 @@ function readCsv(buf) {
 function readSpreadsheet(buf, filename = '') {
   const isZip = buf.length > 4 && buf.readUInt32LE(0) === 0x04034b50;
   if (isZip) return readXlsx(buf);
-  if (buf.length > 8 && buf.readUInt32LE(0) === 0xe011cfd0) {
-    throw new Error('Arquivo .xls (formato antigo). Abra no Excel e salve como .xlsx ou .csv.');
+  if (isXls(buf)) {
+    const sheets = readXlsSheets(buf);
+    const first = sheets.find((x) => !x.hidden && x.rows.some((r) => r && r.some((v) => v !== null && v !== undefined && v !== ''))) || sheets[0];
+    if (!first) throw new Error('Não foi encontrada a primeira aba da planilha.');
+    return first.rows;
   }
   if (/\.xlsx$/i.test(filename)) throw new Error('Arquivo .xlsx inválido.');
   return readCsv(buf);

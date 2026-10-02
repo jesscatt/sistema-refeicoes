@@ -451,3 +451,11 @@ FLAVIO LOPES                 0       0       0     0       0       0        0,00
   assert.deepEqual([v.sellers[1].name, v.sellers[1].room_nights, v.sellers[1].value], ['FLAVIO LOPES', 600, 165000]);
   assert.equal(v.total, 174627);
 });
+
+test('planilha .xls (Excel 97–2003) é lida como a .xlsx', () => {
+  const { readSpreadsheet } = require('../src/xlsx');
+  const rows = readSpreadsheet(require('node:fs').readFileSync(require('node:path').join(__dirname, 'fixtures', 'amostra.xls')), 'amostra.xls');
+  assert.deepEqual(rows[0], ['Apartamento', 'Nome', 'Valor', 'Observação']);
+  assert.deepEqual(rows[1].slice(0, 2), ['101B', 'João Ávila']);
+  assert.equal(rows[2][2], 1000);
+});

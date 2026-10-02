@@ -6,13 +6,13 @@ export async function render(el) {
   function drawStart() {
     el.innerHTML = `
       <div class="page-head"><div class="grow"><h1>Importação de reservas</h1>
-        <p>Envie a planilha de divisão (.xlsx) ou o CSV do sistema do hotel. As colunas são reconhecidas pelo nome: Reserva (pode vir com o nome do grupo junto, ex.: “50893 ANR TUR”), Entrada, Saída, Pensão, Apartamento/Apartamento, Pax e Chd. Se a planilha já tiver as colunas de divisão por restaurante, o sistema também lê.</p></div>
+        <p>Envie a planilha de divisão (.xlsx ou .xls) ou o CSV do sistema do hotel. As colunas são reconhecidas pelo nome: Reserva (pode vir com o nome do grupo junto, ex.: “50893 ANR TUR”), Entrada, Saída, Pensão, Apartamento/Apartamento, Pax e Chd. Se a planilha já tiver as colunas de divisão por restaurante, o sistema também lê.</p></div>
         <button class="btn" id="tpl">${icon('download')} Modelo de planilha</button></div>
       <label class="dropzone" id="dz">
         ${icon('upload')}
         <h2 style="margin-top:8px">Arraste a planilha para esta área</h2>
-        <p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p>
-        <input type="file" id="file" accept=".xlsx,.csv,.txt" hidden>
+        <p class="muted">ou clique para escolher o arquivo (.xlsx, .xls ou .csv)</p>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv,.txt" hidden>
       </label>
       <div class="grid g3" style="margin-top:18px">
         <div class="card pad"><h3>1. Conferir</h3><p class="muted small">Antes da gravação, cada linha é apresentada para conferência: nova, alterada, sem alteração ou com erro.</p></div>

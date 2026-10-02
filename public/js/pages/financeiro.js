@@ -231,7 +231,7 @@ export async function render(el) {
         <h3 style="margin-top:0">Importar as planilhas antigas</h3>
         <p class="muted">Envie a planilha <b>Controle semanal dos restaurantes (projeção do mês)</b> e/ou a <b>Controle de divisão</b> de cada restaurante (todas as abas/meses de uma vez). Os meses importados aparecem no controle de faturamento e no controle de cada restaurante. Reenviar a mesma planilha substitui o que veio dela antes.</p>
         <div class="row" style="gap:10px;flex-wrap:wrap">
-          <input type="file" id="file" accept=".xlsx" class="input" style="max-width:420px">
+          <input type="file" id="file" accept=".xlsx,.xls" class="input" style="max-width:420px">
           <label class="row small" style="gap:6px">Restaurante (só para a planilha de divisão)<select class="input sm" id="irest" style="width:auto"><option value="">pelo nome do arquivo</option>${rests.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join('')}</select></label>
           <button class="btn primary" id="prev">${icon('upload')} Conferir</button>
         </div>

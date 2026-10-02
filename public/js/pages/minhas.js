@@ -87,7 +87,7 @@ export async function render(el) {
   function drawRooming() {
     const g = rl.groups.find((x) => x.reservation_number === rl.reservation);
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Envio de rooming list</h1><p>Planilha da agência (.xlsx ou .csv) com o <b>apartamento</b> e o <b>nome</b> de cada hóspede — uma linha por hóspede ou por apartamento. Se tiver coluna de idade, até 11 anos conta como criança.</p></div>
+      <div class="page-head"><div class="grow"><h1>Envio de rooming list</h1><p>Planilha da agência (.xlsx, .xls ou .csv) com o <b>apartamento</b> e o <b>nome</b> de cada hóspede — uma linha por hóspede ou por apartamento. Se tiver coluna de idade, até 11 anos conta como criança.</p></div>
         <button class="btn" id="back">Voltar</button><button class="btn" id="tpl">${icon('download')} Modelo</button></div>
       <div class="card pad" style="margin-bottom:14px">
         <label class="f" style="max-width:640px">Reserva / grupo deste rooming list
@@ -96,7 +96,7 @@ export async function render(el) {
           </select></label>
         ${g ? `<p class="small muted" style="margin:8px 0 0">Apartamentos novos entram nesse grupo com a mesma pensão e as mesmas datas (${esc(stayTxt(g.checkin, g.checkout))}).</p>` : ''}
       </div>
-      ${rl.preview ? previewHtml() : `<label class="dropzone" id="dz">${icon('upload')}<h2>Arraste o rooming list para esta área</h2><p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p><input type="file" id="file" accept=".xlsx,.csv,.txt" hidden></label>`}`;
+      ${rl.preview ? previewHtml() : `<label class="dropzone" id="dz">${icon('upload')}<h2>Arraste o rooming list para esta área</h2><p class="muted">ou clique para escolher o arquivo (.xlsx, .xls ou .csv)</p><input type="file" id="file" accept=".xlsx,.xls,.csv,.txt" hidden></label>`}`;
     el.querySelector('#back').onclick = () => { view = 'lista'; rl = null; load().catch(fail); };
     el.querySelector('#tpl').onclick = () => download('/api/portal/rooming/modelo.csv');
     el.querySelector('#res').addEventListener('change', async (e) => {
