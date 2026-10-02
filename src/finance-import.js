@@ -200,29 +200,44 @@ function parseDivisionSheet(sh, month) {
   const starts = (rows[hdrRow] || []).map((v, c) => (norm(v) === 'data' ? c : -1)).filter((c) => c >= 0);
   const [y, m] = month.split('-').map(Number);
   const days = [], warnings = [];
+  // refeições que o restaurante serve, na ordem em que aparecem em cada dia (ex.: Churrascaria = almoço, jantar)
+  const seen = new Set();
+  for (const c of starts) for (let r = hdrRow + 1; r < Math.min(rows.length, hdrRow + 40); r++) { const ml = mealOf(cell({ rows }, r, c + 1)); if (ml) seen.add(ml); }
+  const seq = ['cafe', 'almoco', 'janta'].filter((x) => seen.has(x));
+  const add = (d) => {
+    const ex = days.find((x) => x.date === d.date && x.meal === d.meal);
+    if (ex) { ex.adults += d.adults; ex.children += d.children; if (d.forecast != null) ex.forecast = (ex.forecast || 0) + d.forecast; } else days.push(d);
+  };
   for (const c of starts) {
-    let date = null;
+    let date = null, idx = 0;
     for (let r = hdrRow + 1; r < rows.length; r++) {
       const a = cell({ rows }, r, c), bm = cell({ rows }, r, c + 1);
       if (/informa/.test(norm(a)) || /informa/.test(norm(bm)) || norm(bm) === 'refeicao') break;
       if (a != null && a !== '') {
         let iso = typeof a === 'number' ? parseDate(a) : null;
-        const mt = String(a).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-        if (mt) iso = `${mt[3]}-${mt[2].padStart(2, '0')}-${mt[1].padStart(2, '0')}`;
+        const mt = String(a).match(/(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})(?!\d)/); // 02/09/2026 ou 02/09/26
+        if (mt) iso = `${mt[3].length === 2 ? '20' + mt[3] : mt[3]}-${mt[2].padStart(2, '0')}-${mt[1].padStart(2, '0')}`;
         if (iso && isISODate(iso)) {
           if (Number(iso.slice(0, 4)) !== y || Number(iso.slice(5, 7)) !== m) {
             const fixed = `${month}-${iso.slice(8, 10)}`;
             warnings.push(`${sh.name.trim()}: data ${iso.split('-').reverse().join('/')} fora do mês; considerada ${fixed.split('-').reverse().join('/')}`);
             iso = isISODate(fixed) ? fixed : null;
           }
-          date = iso;
+          date = iso; idx = 0;
         }
       }
-      const meal = mealOf(bm);
-      if (!date || !meal) continue;
       const fc = num(cell({ rows }, r, c + 2)), ad = num(cell({ rows }, r, c + 3)), ch = num(cell({ rows }, r, c + 4));
+      const label = norm(bm);
+      if (!label && fc == null && ad == null && ch == null) continue;
+      // "Não teve" com números (a planilha soma essa linha): a refeição é a da posição no dia
+      let meal = mealOf(bm);
+      if (meal) idx = seq.indexOf(meal);
+      else if (label.startsWith('nao teve') && (ad || ch)) meal = seq[idx] || null;
+      else if (!label) continue; // linha de soma da planilha
+      idx++;
+      if (!date || !meal) continue;
       if (fc == null && ad == null && ch == null) continue;
-      days.push({ date, meal, forecast: fc == null ? null : Math.round(fc), adults: Math.round(ad || 0), children: Math.round(ch || 0) });
+      add({ date, meal, forecast: fc == null ? null : Math.round(fc), adults: Math.round(ad || 0), children: Math.round(ch || 0) });
     }
   }
   // Totais do mês ("Informações Total Mês" e "... - CRIANÇAS") e extras
