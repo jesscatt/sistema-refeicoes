@@ -38,7 +38,7 @@ export async function render(el) {
         </div>
         <div class="card">
           <div class="card-head"><h3 class="grow">Ranking de vendas</h3><span class="muted small">${d.sales.period_from ? `Período: ${dmy(d.sales.period_from)} a ${dmy(d.sales.period_to)}` : 'Relatório de vendas não enviado'}</span></div>
-          <div class="table-wrap"><table class="t"><thead><tr><th>Posição</th><th>Vendedor</th><th class="n">Room nights</th><th class="n">Valor</th></tr></thead><tbody>
+          <div class="table-wrap"><table class="t"><thead><tr><th>Posição</th><th>Vendedor</th><th class="n">Diárias</th><th class="n">Valor</th></tr></thead><tbody>
             ${d.sales.ranking.map((r, i) => `<tr><td>${i + 1}º</td><td><b>${esc(r.name)}</b>${r.full_names.length ? `<div class="small muted">${r.full_names.map(esc).join(', ')}</div>` : '<div class="small muted">não consta no relatório</div>'}</td><td class="n">${r.room_nights || 0}</td><td class="n">${brl(r.value)}</td></tr>`).join('')}
           </tbody></table></div>
           <div class="row" style="padding:12px 16px;gap:8px;border-top:1px solid var(--line)">

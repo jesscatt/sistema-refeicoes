@@ -49,24 +49,25 @@
   .panel { background: var(--card); border: 1px solid var(--line); border-radius: calc(var(--u) * .9); padding: calc(var(--u) * .9) calc(var(--u) * 1.2); display: flex; flex-direction: column; min-height: 0; overflow: hidden; box-shadow: 0 .2em .8em rgba(3,91,138,.08); }
   .panel h2 { color: var(--blue); margin: 0 0 .45em; font-size: 1.3em; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; align-items: baseline; gap: 1em; white-space: nowrap; }
   .panel h2 small { font-size: .72em; color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  /* Metas: unidade (com barra de progresso abaixo) | valor real | antecipações | previsão | falta */
+  /* Metas: unidade | progresso | percentual | previsão | falta */
   #goals { flex: 1; display: grid; grid-auto-rows: auto; align-content: space-between; min-height: 0; }
-  .goal { display: grid; grid-template-columns: minmax(0,.95fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,1.1fr); column-gap: .6em; align-items: center; gap: .8em; padding: .32em 0; border-bottom: 1px solid var(--line); }
+  .goal { display: grid; grid-template-columns: 6.6em minmax(0,1fr) 2.8em 9.6em 9.6em; column-gap: .8em; align-items: center; gap: .8em; padding: .32em 0; border-bottom: 1px solid var(--line); }
   .goal.head { padding: 0 0 .25em; border-bottom: 2px solid var(--line); }
   .goal.head div { color: var(--muted); font-size: .8em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-align: right; }
   .goal.head div:first-child { text-align: left; }
   .goal .n { font-weight: 800; font-size: 1.3em; display: flex; align-items: baseline; justify-content: space-between; gap: .4em; }
   .goal .n em { font-style: normal; font-size: .7em; color: var(--muted); font-weight: 700; }
-  .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.2em; white-space: nowrap; }
+  .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.4em; white-space: nowrap; }
   .goal .v small.c, .sfoot b small.c, .r .val small.c { font-size: .62em; color: var(--muted); font-weight: 700; margin-right: .15em; }
   .goal .v .note { display: block; color: var(--muted); font-size: .6em; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .goal .v.miss { color: var(--amber); font-weight: 800; }
   .goal .v.ok { color: var(--green); font-weight: 800; }
-  .bar { height: .45em; background: var(--track); border-radius: 99px; overflow: hidden; margin-top: .3em; }
+  .bar { height: .9em; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .goal .p { text-align: right; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
   .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
   .bar i.done { background: linear-gradient(90deg, #1f8f55, var(--green)); }
   .goal.total { border-top: 2px solid var(--teal); border-bottom: 0; background: #eef8fa; border-radius: .5em; padding: .4em .5em; }
-  .goal.total .n, .goal.total .v { font-size: 1.28em; }
+  .goal.total .n, .goal.total .v { font-size: 1.45em; }
   .goal.total .n { color: var(--teal); }
   /* Ranking: as linhas dividem o espaço disponível */
   .rank { flex: 1; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .45em; min-height: 0; }
@@ -138,19 +139,18 @@
     document.getElementById('mes-meta').textContent = mlabel(d.month);
     const row = (u, cls = '') => {
       const p = u.pct == null ? null : u.pct * 100;
-      return `<div class="goal ${cls}"><div><div class="n">${esc(u.label)}${p == null ? '' : `<em>${pct(p, 0)}</em>`}</div>
-        <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.max(1, Math.min(100, p))}%"></i>`}</div></div>
-        <div class="v">${u.value ? money(u.value) : '—'}</div>
-        <div class="v">${u.other ? money(u.other) : '—'}${u.other_note ? `<span class="note">${esc(u.other_note)}</span>` : ''}</div>
+      return `<div class="goal ${cls}"><div class="n">${esc(u.label)}</div>
+        <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.max(1, Math.min(100, p))}%"></i>`}</div>
+        <div class="p">${p == null ? '' : pct(p, 0)}</div>
         <div class="v">${money(u.goal)}</div>
         <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : money(u.missing)}</div></div>`;
     };
-    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div>Valor real (notas)</div><div>Antecipações</div><div>Previsão</div><div>Falta</div></div>`
+    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Previsão</div><div>Falta</div></div>`
       + d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
     const s = d.sales, max = Math.max(1, ...s.ranking.map((r) => r.value));
     document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';
     document.getElementById('rank').innerHTML = s.ranking.slice(0, 6).map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>
-      <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} room nights · ${r.apts.toLocaleString('pt-BR')} apartamentos` : 'sem vendas no período'}</small></div>
+      <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} diárias · ${r.apts.toLocaleString('pt-BR')} apartamentos` : 'sem vendas no período'}</small></div>
       <div class="val">${money(r.value)}</div><div class="rb"><i style="width:${(r.value / max) * 100}%"></i></div></div>`).join('');
     document.getElementById('sfoot').innerHTML = `<div><span>Total da equipe</span><b>${money(s.total)}</b></div><div><span>Meta de vendas</span><b>${money(s.goal)}</b></div>
       <div><span>Falta</span><b style="color:${s.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${s.goal == null ? '—' : s.missing === 0 ? 'Meta atingida' : money(s.missing)}</b></div>`;
