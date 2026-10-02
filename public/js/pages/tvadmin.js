@@ -56,9 +56,9 @@ export async function render(el) {
         ${(() => { const row = d.unit_rows[mi]; const n = (v) => Number(v) || 0;
           const sold = (u) => (u.silbeck != null ? u.silbeck : u.value);
           const tot = row.units.reduce((t, u) => ({ v: t.v + n(sold(u)), o: t.o + n(u.other_value), g: t.g + n(u.goal) }), { v: 0, o: 0, g: 0 });
-          return `<div class="table-wrap"><table class="t" id="utab" data-month="${row.month}"><thead><tr><th>${mesLabel(row.month).toUpperCase()}</th><th>Vendido até agora<div class="small muted" style="text-transform:none;font-weight:500">Resort: usa o Silbeck</div></th><th>Antecipações / outras receitas</th><th>Descrição da receita</th><th>Previsão (meta)</th><th class="n">Falta</th></tr></thead><tbody>
+          return `<div class="table-wrap"><table class="t" id="utab" data-month="${row.month}"><thead><tr><th>${mesLabel(row.month).toUpperCase()}</th><th>Vendido até agora<div class="small muted" style="text-transform:none;font-weight:500">Resort: relatório de vendas do Silbeck</div></th><th>Antecipações / outras receitas</th><th>Descrição da receita</th><th>Previsão (meta)</th><th class="n">Falta</th></tr></thead><tbody>
           ${row.units.map((u) => `<tr data-unit="${u.unit}"><td><b>${esc(u.label)}</b></td>
-            <td>${u.silbeck != null ? `<input class="input sm" value="${fmt(u.silbeck)}" disabled title="Faturamento do mês no Silbeck" style="width:150px"><div class="small muted">do Silbeck</div>` : `<input class="input sm" data-k="value" value="${fmt(u.value)}" placeholder="0,00" style="width:150px">`}</td>
+            <td>${u.silbeck != null ? `<input class="input sm" value="${fmt(u.silbeck)}" disabled title="Total do relatório de Walk-ins/Reservas do mês" style="width:150px"><div class="small muted">relatório de vendas</div>` : `<input class="input sm" data-k="value" value="${fmt(u.value)}" placeholder="0,00" style="width:150px">`}</td>
             <td><input class="input sm" data-k="other_value" value="${fmt(u.other_value)}" placeholder="0,00" style="width:150px"></td>
             <td><input class="input sm" data-k="other_note" value="${esc(u.other_note || '')}" placeholder="Ex.: venda de terreno" style="width:180px"></td>
             <td><input class="input sm" data-k="goal" value="${fmt(u.goal)}" placeholder="0,00" style="width:150px"></td>
