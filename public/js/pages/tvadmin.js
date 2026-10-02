@@ -40,7 +40,7 @@ export async function render(el) {
           <div class="card-head"><h3 class="grow">Ranking de vendas</h3><span class="muted small">${d.sales.period_from ? `Período: ${dmy(d.sales.period_from)} a ${dmy(d.sales.period_to)}` : 'Relatório de vendas não enviado'}</span></div>
           ${d.sales.groups.map((g) => `<div style="padding:4px 16px 0"><b>${esc(g.label)}</b> <span class="muted small">· total ${brl(g.total)}</span></div>
           <div class="table-wrap"><table class="t"><thead><tr><th>Vendedor</th><th class="n">Diárias</th><th class="n">Valor</th></tr></thead><tbody>
-            ${g.ranking.map((r) => `<tr><td><b>${esc(r.name)}</b>${r.full_names.length ? `<div class="small muted">${r.full_names.map(esc).join(', ')}</div>` : '<div class="small muted">não consta no relatório</div>'}</td><td class="n">${r.room_nights || 0}</td><td class="n">${brl(r.value)}</td></tr>`).join('')}
+            ${g.ranking.map((r) => `<tr><td><b>${esc(r.name)}</b>${r.full_names.length ? `<div class="small muted">${r.full_names.map(esc).join(', ')}</div>` : '<div class="small muted">não consta no relatório</div>'}</td><td class="n">${(r.room_nights || 0).toLocaleString('pt-BR')}</td><td class="n">${brl(r.value)}</td></tr>`).join('')}
           </tbody></table></div>`).join('')}
           <div style="padding:12px 16px;border-top:1px solid var(--line);display:grid;gap:8px">
             <label class="f" style="margin:0">Vendedores do cliente final (separados por vírgula)<input class="input" id="sellers-final" value="${esc(d.sellers.final)}"></label>

@@ -12,7 +12,7 @@ const UNITS = [['resort', 'Resort'], ['parque', 'Parque'], ['azeite', 'Azeite'],
 // Vendedores por canal: cliente final e agências
 const GROUPS = [
   { key: 'final', label: 'Cliente final', setting: 'tv_sellers', def: 'Carlos, Tissiano, Maria, Gustavo, Nicolas' },
-  { key: 'agencia', label: 'Agências', setting: 'tv_sellers_agencia', def: 'Luísa, Bianca, Guilherme, Flavio, Vitório' },
+  { key: 'agencia', label: 'Agências', setting: 'tv_sellers_agencia', def: 'Luísa, Bianca, Guilherme, Flavio, Vitório', half: true }, // agências: diárias e apartamentos pela metade
 ];
 // atualização das listas definidas em 02/10/2026 (aplicada uma única vez)
 if (!getSetting('tv_sellers_v2')) { for (const g of GROUPS) setSetting(g.setting, g.def); setSetting('tv_sellers_v2', '1'); }
@@ -69,15 +69,15 @@ function dashboard() {
   const tv = units.reduce((s, u) => s + (u.value || 0), 0), to = units.reduce((s, u) => s + (u.other || 0), 0), tg = units.reduce((s, u) => s + (u.goal || 0), 0);
   // Ranking de vendas por canal (cliente final e agências), somente os vendedores configurados
   const sales = lastSales();
-  const rankOf = (names) => names.map((name) => {
+  const rankOf = (names, f = 1) => names.map((name) => {
     const n = norm(name);
     const hit = sales.rows.filter((r) => norm(r.seller).split(' ')[0] === n.split(' ')[0] || norm(r.seller).startsWith(n));
     return {
       name, full_names: hit.map((h) => h.seller),
-      value: hit.reduce((s, h) => s + h.value, 0), room_nights: hit.reduce((s, h) => s + (h.room_nights || 0), 0), apts: hit.reduce((s, h) => s + (h.apts || 0), 0),
+      value: hit.reduce((s, h) => s + h.value, 0), room_nights: hit.reduce((s, h) => s + (h.room_nights || 0), 0) * f, apts: hit.reduce((s, h) => s + (h.apts || 0), 0) * f,
     };
   }).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
-  const groups = GROUPS.map((g) => { const ranking = rankOf(sellersCfg(g)); return { key: g.key, label: g.label, ranking, total: ranking.reduce((s, r) => s + r.value, 0) }; });
+  const groups = GROUPS.map((g) => { const ranking = rankOf(sellersCfg(g), g.half ? 0.5 : 1); return { key: g.key, label: g.label, ranking, total: ranking.reduce((s, r) => s + r.value, 0) }; });
   const salesTotal = groups.reduce((s, g) => s + g.total, 0);
   const salesGoal = Number(getSetting('tv_sales_goal_' + cur, '')) || null;
   return {
