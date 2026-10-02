@@ -1,6 +1,6 @@
 'use strict';
 // Painel da TV: faturamento e ocupação do mês atual e dos 3 seguintes (Silbeck), metas das unidades
-// (Resort, Park, Azeite, Envase) e ranking de vendas (Walk-ins/Reservas por Funcionário).
+// (Resort, Parque, Azeite, Terceiros, Envase) e ranking de vendas por canal (cliente final e agências).
 const crypto = require('node:crypto');
 const { route, HttpError } = require('../http');
 const { db, audit, getSetting, setSetting } = require('../db');
@@ -9,12 +9,19 @@ const { parseSilbeckPdf } = require('../silbeck-pdf');
 
 const TV_EDIT = ['admin', 'supervisor', 'agencia'];
 const UNITS = [['resort', 'Resort'], ['parque', 'Parque'], ['azeite', 'Azeite'], ['terceiros', 'Terceiros'], ['envase', 'Envase']];
-const DEFAULT_SELLERS = 'Tissiano, Nicolas, Maria, Carlos';
+// Vendedores por canal: cliente final e agências
+const GROUPS = [
+  { key: 'final', label: 'Cliente final', setting: 'tv_sellers', def: 'Carlos, Tissiano, Maria, Gustavo, Nicolas' },
+  { key: 'agencia', label: 'Agências', setting: 'tv_sellers_agencia', def: 'Luísa, Bianca, Guilherme, Flavio, Vitório' },
+];
+// atualização das listas definidas em 02/10/2026 (aplicada uma única vez)
+if (!getSetting('tv_sellers_v2')) { for (const g of GROUPS) setSetting(g.setting, g.def); setSetting('tv_sellers_v2', '1'); }
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
 const nextMonth = (m) => addDays(monthRange(m).last, 1).slice(0, 7);
 const months4 = () => { const a = [todayISO().slice(0, 7)]; for (let i = 0; i < 3; i++) a.push(nextMonth(a[a.length - 1])); return a; };
-const sellersCfg = () => String(getSetting('tv_sellers', DEFAULT_SELLERS)).split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+const splitNames = (v) => String(v || '').split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+const sellersCfg = (g) => splitNames(getSetting(g.setting, g.def));
 function tvKey() {
   let k = getSetting('tv_key');
   if (!k) { k = crypto.randomBytes(18).toString('base64url'); setSetting('tv_key', k); }
@@ -47,9 +54,9 @@ function dashboard() {
     return { unit: k, label, value, other, other_note: s.other_note || null, done, goal, target, missing: target != null ? Math.max(0, target - done) : null, pct: target ? done / target : null };
   });
   const tv = units.reduce((s, u) => s + (u.value || 0), 0), to = units.reduce((s, u) => s + (u.other || 0), 0), tg = units.reduce((s, u) => s + (u.goal || 0), 0);
-  // Ranking de vendas: somente os vendedores do cliente final configurados
+  // Ranking de vendas por canal (cliente final e agências), somente os vendedores configurados
   const sales = lastSales();
-  const ranking = sellersCfg().map((name) => {
+  const rankOf = (names) => names.map((name) => {
     const n = norm(name);
     const hit = sales.rows.filter((r) => norm(r.seller).split(' ')[0] === n.split(' ')[0] || norm(r.seller).startsWith(n));
     return {
@@ -57,12 +64,13 @@ function dashboard() {
       value: hit.reduce((s, h) => s + h.value, 0), room_nights: hit.reduce((s, h) => s + (h.room_nights || 0), 0), apts: hit.reduce((s, h) => s + (h.apts || 0), 0),
     };
   }).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
-  const salesTotal = ranking.reduce((s, r) => s + r.value, 0);
+  const groups = GROUPS.map((g) => { const ranking = rankOf(sellersCfg(g)); return { key: g.key, label: g.label, ranking, total: ranking.reduce((s, r) => s + r.value, 0) }; });
+  const salesTotal = groups.reduce((s, g) => s + g.total, 0);
   const salesGoal = Number(getSetting('tv_sales_goal_' + cur, '')) || null;
   return {
     now: new Date().toISOString(), month: cur, months, units,
     units_total: { value: tv, other: to, done: tv + to, goal: tg ? tg + to : null, missing: tg ? Math.max(0, tg - tv) : null, pct: tg ? (tv + to) / (tg + to) : null },
-    sales: { period_from: sales.period_from, period_to: sales.period_to, generated_at: sales.generated_at, ranking, total: salesTotal, goal: salesGoal, missing: salesGoal ? Math.max(0, salesGoal - salesTotal) : null, pct: salesGoal ? salesTotal / salesGoal : null },
+    sales: { period_from: sales.period_from, period_to: sales.period_to, generated_at: sales.generated_at, groups, total: salesTotal, goal: salesGoal, missing: salesGoal ? Math.max(0, salesGoal - salesTotal) : null, pct: salesGoal ? salesTotal / salesGoal : null },
   };
 }
 
@@ -82,7 +90,7 @@ route('GET', '/api/tv/admin', { roles: TV_EDIT }, () => {
   const cur = todayISO().slice(0, 7);
   const ms = months4();
   return {
-    ...dashboard(), key: tvKey(), sellers: sellersCfg().join(', '), months4: ms,
+    ...dashboard(), key: tvKey(), sellers: Object.fromEntries(GROUPS.map((g) => [g.key, sellersCfg(g).join(', ')])), months4: ms,
     unit_rows: ms.map((m) => ({ month: m, units: UNITS.map(([k, label]) => { const r = db.prepare('SELECT * FROM tv_units WHERE month = ? AND unit = ?').get(m, k) || {}; return { unit: k, label, value: r.value ?? null, other_value: r.other_value ?? null, other_note: r.other_note || '', goal: r.goal ?? null }; }), sales_goal: Number(getSetting('tv_sales_goal_' + m, '')) || null })),
     forecasts: db.prepare('SELECT month, revenue, apts_pct, beds_pct, generated_at, imported_at, filename FROM tv_forecast ORDER BY month DESC LIMIT 12').all(),
     sales_all: lastSales(), current: cur,
@@ -129,9 +137,13 @@ route('PUT', '/api/tv/units', { roles: TV_EDIT }, ({ body, user, ip }) => {
 
 route('PUT', '/api/tv/settings', { roles: TV_EDIT }, ({ body, user, ip }) => {
   if (body.sellers !== undefined) {
-    const list = String(body.sellers).split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
-    if (!list.length) throw new HttpError(400, 'Informe ao menos um vendedor.');
-    setSetting('tv_sellers', list.join(', '));
+    const src = typeof body.sellers === 'object' && body.sellers ? body.sellers : { final: body.sellers };
+    for (const g of GROUPS) {
+      if (src[g.key] === undefined) continue;
+      const list = splitNames(src[g.key]);
+      if (!list.length) throw new HttpError(400, `Informe ao menos um vendedor em ${g.label.toLowerCase()}.`);
+      setSetting(g.setting, list.join(', '));
+    }
   }
   if (body.new_key) setSetting('tv_key', crypto.randomBytes(18).toString('base64url'));
   audit(user, 'tv_configurado', { sellers: body.sellers, nova_chave: !!body.new_key }, ip);
