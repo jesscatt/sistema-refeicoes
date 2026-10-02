@@ -76,17 +76,12 @@
   .grp.agencia h3 { border-color: var(--blue); }
   .grp h3 b { color: var(--blue); font-variant-numeric: tabular-nums; font-size: 1.05em; letter-spacing: 0; }
   .rank { flex: 1; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .35em; min-height: 0; }
-  .r { display: grid; grid-template-columns: 1.9em minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: .55em; row-gap: .12em; background: #f6fafc; border: 1px solid var(--line); border-radius: .55em; padding: .1em .6em; min-height: 0; overflow: hidden; align-content: center; }
-  .r .pos { grid-row: 1 / 3; width: 1.9em; height: 1.9em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1em; background: var(--track); }
-  .r:nth-child(1) .pos { background: #d4a72c; color: #1d1600; }
-  .r:nth-child(2) .pos { background: #b9c4cc; color: #1a2228; }
-  .r:nth-child(3) .pos { background: #b0773f; color: #1c1006; }
-  .r.zero .pos { background: var(--track) !important; color: var(--muted) !important; }
+  .r { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: .55em; row-gap: .12em; background: #f6fafc; border: 1px solid var(--line); border-radius: .55em; padding: .1em .8em; min-height: 0; overflow: hidden; align-content: center; }
   .r.zero { opacity: .65; }
   .r .nm { font-weight: 800; font-size: 1.25em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.12; }
   .r .nm small { display: block; color: var(--muted); font-weight: 600; font-size: .58em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .r .val { text-align: right; font-weight: 800; font-size: 1.35em; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.12; }
-  .r .rb { grid-column: 2 / 4; height: .35em; background: var(--track); border-radius: 99px; overflow: hidden; }
+  .r .rb { grid-column: 1 / 3; height: .35em; background: var(--track); border-radius: 99px; overflow: hidden; }
   .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
   .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; margin-top: .55em; flex: none; }
   .sfoot div { background: #eef5f9; border-radius: .5em; padding: .35em .7em; }
@@ -156,7 +151,7 @@
     document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';
     document.getElementById('groups').innerHTML = s.groups.map((g) => {
       const max = Math.max(1, ...g.ranking.map((r) => r.value));
-      return `<div class="grp ${g.key}"><h3><span>${esc(g.label)}</span><b>${money(g.total)}</b></h3><div class="rank">${g.ranking.slice(0, 6).map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>
+      return `<div class="grp ${g.key}"><h3><span>${esc(g.label)}</span><b>${money(g.total)}</b></h3><div class="rank">${g.ranking.slice(0, 6).map((r) => `<div class="r ${r.value ? '' : 'zero'}">
         <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} diárias · ${r.apts.toLocaleString('pt-BR')} APTOS` : 'sem vendas no período'}</small></div>
         <div class="val">${money(r.value)}</div><div class="rb"><i style="width:${(r.value / max) * 100}%"></i></div></div>`).join('')}</div></div>`;
     }).join('');
