@@ -78,7 +78,7 @@ export async function openReservation(id, onChange = () => {}) {
         <form id="ed" class="form-grid">
           <label class="f full">Nome / grupo<input class="input" name="guest_name" value="${esc(r.guest_name)}" required></label>
           <label class="f full">Hóspedes do quarto (um nome completo por linha · máximo ${state.meta.max_pax_room || 5} por quarto)<textarea class="input" name="guests" rows="5">${esc(r.guests || '')}</textarea></label>
-          <label class="f">Quarto<input class="input" name="room" value="${esc(r.room)}" required></label>
+          <label class="f">Quarto<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" value="${esc(r.room)}" required></label>
           <label class="f">Pensão<select class="input" name="board">${Object.entries(boards).map(([k, b]) => `<option value="${k}" ${k === r.board ? 'selected' : ''}>${k} — ${esc(b.label)}</option>`).join('')}</select></label>
           <label class="f">Entrada<input class="input" type="date" name="checkin" value="${esc(r.checkin)}" required></label>
           <label class="f">Saída<input class="input" type="date" name="checkout" value="${esc(r.checkout)}" required></label>

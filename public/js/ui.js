@@ -218,3 +218,26 @@ export function markdown(md) {
   }
   return html;
 }
+
+// Campo de apartamento: 3 números + letra da torre (A a H), de 101 a 610; a torre A não tem 105 e 106
+export function roomError(v) {
+  const s = String(v || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  if (!s) return '';
+  if (!/^\d{3}[A-Z]$/.test(s)) return 'Use 3 números e a letra da torre (ex.: 101A).';
+  if (!'ABCDEFGH'.includes(s[3])) return 'Torre não existe (de A a H).';
+  const f = +s[0], u = +s.slice(1, 3);
+  if (f < 1 || f > 6 || u < 1 || u > 10) return 'Apartamento não existe (101 a 610).';
+  if (s === '105A' || s === '106A') return 'A torre A não tem o ' + s.slice(0, 3) + '.';
+  return '';
+}
+document.addEventListener('input', (e) => {
+  const el = e.target;
+  if (!el.matches || !el.matches('input[data-room]')) return;
+  const pos = el.selectionStart;
+  el.value = el.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 4);
+  try { el.setSelectionRange(pos, pos); } catch {}
+  const msg = el.value.length === 4 ? roomError(el.value) : '';
+  el.setCustomValidity(msg);
+  el.style.borderColor = msg ? 'var(--danger)' : '';
+  el.title = msg || '3 números e a letra da torre (A a H), ex.: 101A';
+});

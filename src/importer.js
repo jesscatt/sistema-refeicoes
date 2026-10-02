@@ -4,7 +4,7 @@
 //   Reserva ("50893 ANR TUR") | Entrada | Saída | Pensão | Apto ("101C") | Pax (total, inclui crianças) | Chd
 //   + uma coluna por refeição/restaurante/dia ("JANTAR DI GIORDANA QUARTA-FEIRA 30/09") com o pax enviado.
 const { db, tx, notify, maxPaxRoom } = require('./db');
-const { normKey, parseDate, parseBoard, toInt, BOARDS, roomKey, normRoom, addDays, MEALS, isISODate } = require('./util');
+const { normKey, parseDate, parseBoard, toInt, BOARDS, roomKey, normRoom, addDays, MEALS, isISODate, roomError, canonRoom } = require('./util');
 const { syncMany, isEligible, boardHas } = require('./meals');
 
 // Apelidos aceitos para cada coluna (comparados sem acento, minúsculo, sem espaços)
@@ -98,7 +98,8 @@ function normalizeRecord(raw) {
   if (!rec.checkin) errors.push('data de entrada inválida');
   if (!rec.checkout) errors.push('data de saída inválida');
   if (rec.checkin && rec.checkout && rec.checkout < rec.checkin) errors.push('saída antes da entrada');
-  if (!rec.room) errors.push('sem quarto');
+  const re = roomError(rec.room);
+  if (re) errors.push(re); else rec.room = canonRoom(rec.room);
   if (!rec.board) errors.push(`pensão "${raw.board ?? ''}" não reconhecida (use CM, MAP, MAPA ou FAP)`);
   if (rec.adults + rec.children === 0) errors.push('quantidade de pessoas zerada');
   const max = maxPaxRoom();

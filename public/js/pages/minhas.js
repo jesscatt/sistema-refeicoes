@@ -190,7 +190,7 @@ export async function render(el) {
   // ---------- Quarto ----------
   function roomForm(r = {}) {
     return `<form id="pf" class="form-grid">
-      <label class="f">Quarto (número + torre, ex.: 101A)<input class="input" name="room" value="${esc(r.room || '')}" required></label><span></span>
+      <label class="f">Quarto (número + torre, ex.: 101A)<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" value="${esc(r.room || '')}" required></label><span></span>
       <label class="f full">Hóspedes (um nome completo por linha · máximo ${state.meta.max_pax_room || 5} por quarto)<textarea class="input" name="guests" rows="5" placeholder="Maria da Silva&#10;João da Silva">${esc(r.guests || '')}</textarea></label>
       ${r.id ? `<label class="f">Entrada<input class="input" type="date" name="checkin" value="${esc(r.checkin)}" required></label>
       <label class="f">Saída<input class="input" type="date" name="checkout" value="${esc(r.checkout)}" required></label>` : ''}

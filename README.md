@@ -70,6 +70,7 @@ O realizado de cada refeição vem automaticamente dos registros dos restaurante
 
 ## Regras principais
 
+- **Apartamentos:** 3 números + letra da torre (ex.: `101A`). 8 torres (A a H), 6 andares com 10 aptos (101 a 610); a torre A não tem 105 e 106. Qualquer outro valor é recusado (importação, reservas, rooming list, Comercial, consumo à parte e API).
 - **Política de ocupação:** no máximo **5 pessoas por quarto** (adultos + crianças). Vale na importação, no cadastro e na edição de reservas, no rooming list, no Comercial e na API do site; quartos acima do limite são recusados com o motivo. O limite pode ser ajustado em *Configurações → Políticas do resort*.
 
 **Pensões** — `CM` só café · `MAP` café + jantar · `MAPA` café + almoço · `FAP` todas.

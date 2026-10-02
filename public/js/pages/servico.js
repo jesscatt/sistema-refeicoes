@@ -1,4 +1,4 @@
-import { get, post, del, esc, icon, mealIcon, MEAL_FULL, MEAL_LABEL, toast, fail, state, can, boardTag, paxTxt, dayLabel, modal, confirmBox, restTag, today, download, roomHtml } from '../ui.js';
+import { roomError, get, post, del, esc, icon, mealIcon, MEAL_FULL, MEAL_LABEL, toast, fail, state, can, boardTag, paxTxt, dayLabel, modal, confirmBox, restTag, today, download, roomHtml } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -311,7 +311,7 @@ export async function render(el) {
     const { el: m, close } = modal({
       title: 'Consumo pago à parte',
       body: `<p class="muted" style="margin-top:0">Para clientes sem esta refeição na pensão. Fica registrado para o controle, mas não entra na conta do hotel.</p>
-        <div class="form-grid"><label class="f">Quarto<input class="input" name="room" value="${esc(room)}"></label>
+        <div class="form-grid"><label class="f">Quarto<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" value="${esc(room)}"></label>
         <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
         <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
         <label class="f" style="grid-column:1/-1">Observação <span style="color:var(--danger)">*</span><input class="input" name="note" required placeholder="Obrigatório. Ex.: pagou no cartão, comanda 1234"></label></div>`,
@@ -319,6 +319,7 @@ export async function render(el) {
     });
     m.querySelector('[data-ok]').onclick = async () => {
       const v = (n) => m.querySelector(`[name=${n}]`).value;
+      if (v('room').trim() && roomError(v('room'))) { const f = m.querySelector('[name=room]'); f.focus(); f.style.borderColor = 'var(--danger)'; toast(roomError(v('room')), 'err'); return; }
       if (v('note').trim().length < 3) { const f = m.querySelector('[name=note]'); f.focus(); f.style.borderColor = 'var(--danger)'; toast('Preencha a observação do pagamento à parte.', 'err'); return; }
       try {
         await post('/api/walkins', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, room: v('room'), reservation_id, adults: v('adults'), children: v('children'), note: v('note') });

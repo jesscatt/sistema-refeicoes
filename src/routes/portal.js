@@ -9,7 +9,7 @@
  */
 const { route, HttpError } = require('../http');
 const { db, tx, audit, notify, maxPaxRoom } = require('../db');
-const { roomKey, normRoom, normKey, toInt, todayISO, addDays, toCSV } = require('../util');
+const { roomKey, normRoom, normKey, toInt, todayISO, addDays, toCSV, roomError, canonRoom } = require('../util');
 const { syncReservation, syncMany } = require('../meals');
 const { normalizeRecord, splitReservation } = require('../importer');
 const { readSpreadsheet } = require('../xlsx');
@@ -76,7 +76,8 @@ function matchRooming(user, groups, defaultRes = '') {
     const sheetRes = g.reservation_number ? splitReservation(g.reservation_number).number : '';
     const it = { sheet_reservation: sheetRes, reservation_number: sheetRes || def, room: normRoom(g.room), names: cleanGuests(g.names), adults: g.adults, children: g.children, line: g.line };
     const errs = [];
-    if (!it.room) errs.push('sem quarto');
+    const re = roomError(it.room);
+    if (re) errs.push(re); else it.room = canonRoom(it.room);
     // pax: o que veio informado; senão, a quantidade de nomes
     const informed = Number.isFinite(it.adults) || Number.isFinite(it.children);
     if (!informed) { it.adults = Math.max(0, it.names.length - (g.childCount || 0)); it.children = g.childCount || 0; }

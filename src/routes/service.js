@@ -353,6 +353,12 @@ route('POST', '/api/walkins', { roles: SERVICE }, ({ body, user, ip }) => {
   const restId = restaurantFor(user, body.restaurant_id);
   const adults = Math.max(0, Number(body.adults) || 0), children = Math.max(0, Number(body.children) || 0);
   if (adults + children === 0) throw new HttpError(400, 'Informe a quantidade de pessoas.');
+  if (body.room && String(body.room).trim()) {
+    const { roomError, canonRoom } = require('../util');
+    const re = roomError(body.room);
+    if (re) throw new HttpError(400, re.charAt(0).toUpperCase() + re.slice(1) + '.');
+    body.room = canonRoom(body.room);
+  }
   const note = String(body.note ?? '').trim().replace(/\s+/g, ' ').slice(0, 300);
   if (note.length < 3) throw new HttpError(400, 'A observação é obrigatória no consumo pago à parte (ex.: forma de pagamento, comanda).');
   body.note = note;

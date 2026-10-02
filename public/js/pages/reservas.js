@@ -56,7 +56,7 @@ export async function render(el) {
       title: 'Nova reserva',
       body: `<form id="nf" class="form-grid">
         <label class="f">Nº da reserva<input class="input" name="reservation_number" required></label>
-        <label class="f">Quarto<input class="input" name="room" required></label>
+        <label class="f">Quarto<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" required></label>
         <label class="f full">Nome completo<input class="input" name="guest_name" required></label>
         <label class="f">Entrada<input class="input" type="date" name="checkin" required></label>
         <label class="f">Saída<input class="input" type="date" name="checkout" required></label>

@@ -53,7 +53,7 @@ test('importação reconhece cabeçalho com títulos antes', () => {
 test('divisão 60/20/20 e café 60/40', () => {
   const d0 = '2026-11-10';
   const recs = [];
-  for (let i = 0; i < 200; i++) recs.push({ reservation_number: 'T' + i, guest_name: 'Hóspede ' + i, checkin: d0, checkout: addDays(d0, 2), room: String(100 + i), board: 'FAP', adults: 1 + (i % 3), children: i % 2 });
+  for (let i = 0; i < 200; i++) recs.push({ reservation_number: 'T' + i, guest_name: 'Hóspede ' + i, checkin: d0, checkout: addDays(d0, 2), room: `${1 + (Math.floor(i / 10) % 6)}${String(1 + (i % 10)).padStart(2, '0')}${'EFGH'[Math.floor(i / 60)]}`, board: 'FAP', adults: 1 + (i % 3), children: i % 2 });
   const r = upsertReservations(recs);
   assert.equal(r.inserted, 200);
   const day = addDays(d0, 1);
@@ -72,9 +72,9 @@ test('divisão 60/20/20 e café 60/40', () => {
 });
 
 test('troca de quarto na reimportação é registrada', () => {
-  const r = upsertReservations([{ reservation_number: 'T1', guest_name: 'Hóspede 1', checkin: '2026-11-10', checkout: '2026-11-12', room: '999', board: 'FAP', adults: 2, children: 1 }]);
+  const r = upsertReservations([{ reservation_number: 'T1', guest_name: 'Hóspede 1', checkin: '2026-11-10', checkout: '2026-11-12', room: '610H', board: 'FAP', adults: 2, children: 1 }]);
   assert.equal(r.roomChanges.length, 1);
-  assert.equal(r.roomChanges[0].old_room, '101');
+  assert.equal(r.roomChanges[0].old_room, '102E');
   assert.ok(db.prepare("SELECT 1 FROM notifications WHERE kind = 'room_change'").get());
 });
 
@@ -92,7 +92,7 @@ test('quarto com letra da torre', () => {
     { reservation_number: 'TW1', guest_name: 'Torre A', checkin: '2026-12-01', checkout: '2026-12-03', room: '101A', board: 'CM', adults: 1, children: 0 },
     { reservation_number: 'TW2', guest_name: 'Torre B', checkin: '2026-12-01', checkout: '2026-12-03', room: 'B101', board: 'CM', adults: 1, children: 0 },
   ]);
-  const find = (q) => { const m = roomMatch('room', q); return db.prepare(`SELECT reservation_number n FROM reservations WHERE ${m.sql} ORDER BY n`).all(...m.args).map((r) => r.n); };
+  const find = (q) => { const m = roomMatch('room', q); return db.prepare(`SELECT reservation_number n FROM reservations WHERE ${m.sql} AND reservation_number LIKE 'TW%' ORDER BY n`).all(...m.args).map((r) => r.n); };
   assert.deepEqual(find('a101'), ['TW1']);
   assert.deepEqual(find('101 B'), ['TW2']);
   assert.deepEqual(find('101'), ['TW1', 'TW2']);
@@ -107,14 +107,14 @@ test('reserva com nome junto e vários quartos (grupo)', () => {
   assert.deepEqual(splitReservation('59.699 EMANUEL VIAJES'), { number: '59699', name: 'EMANUEL VIAJES' });
   assert.deepEqual(splitReservation(12345), { number: '12345', name: '' });
   const recs = [];
-  for (let i = 0; i < 12; i++) recs.push({ reservation_number: '77001 GRUPO TESTE', checkin: '2027-01-10', checkout: '2027-01-13', room: `${101 + i}A`, board: 'FAP', pax: 2, children: 0 });
+  for (let i = 0; i < 12; i++) recs.push({ reservation_number: '77001 GRUPO TESTE', checkin: '2027-01-10', checkout: '2027-01-13', room: `${i < 10 ? 101 + i : 191 + i}C`, board: 'FAP', pax: 2, children: 0 });
   const r = upsertReservations(recs);
   assert.equal(r.inserted, 12);
   const split = db.prepare(`SELECT COUNT(*) n FROM (SELECT a.date, a.meal, COUNT(DISTINCT a.restaurant_id) k FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     WHERE r.reservation_number = '77001' GROUP BY 1, 2 HAVING k > 1)`).get().n;
   assert.equal(split, 0, 'grupo não pode ser dividido entre restaurantes');
   // reimportar com um quarto trocado e um removido
-  const again = recs.slice(0, 11).map((x, i) => (i === 0 ? { ...x, room: '999A' } : x));
+  const again = recs.slice(0, 11).map((x, i) => (i === 0 ? { ...x, room: '610C' } : x));
   const r2 = upsertReservations(again, { cancelMissing: true });
   assert.equal(r2.roomChanges.length, 1);
   assert.equal(r2.cancelled, 1);
@@ -174,8 +174,8 @@ test('Comercial: rooming list, trocas e permissões', async () => {
   const { apiKeyAuth } = require('../src/routes/integration');
   const { addDays, todayISO } = require('../src/util');
   const t = todayISO();
-  upsertReservations([0, 1, 2].map((i) => ({ reservation_number: '99001 AGENCIA TESTE', checkin: t, checkout: addDays(t, 3), room: `${701 + i}A`, board: 'MAP', pax: 2, children: 0 })));
-  upsertReservations([{ reservation_number: '99002', checkin: t, checkout: addDays(t, 3), room: '710A', board: 'MAP', pax: 2, children: 0 }]);
+  upsertReservations([0, 1, 2].map((i) => ({ reservation_number: '99001 AGENCIA TESTE', checkin: t, checkout: addDays(t, 3), room: `${401 + i}D`, board: 'MAP', pax: 2, children: 0 })));
+  upsertReservations([{ reservation_number: '99002', checkin: t, checkout: addDays(t, 3), room: '410D', board: 'MAP', pax: 2, children: 0 }]);
   db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('com1', 'Comercial', ?, 'agencia')").run(hashPassword('senha-123'));
   db.prepare("INSERT INTO users(username, name, password_hash, role, restaurant_id) VALUES ('rest1', 'Rest', ?, 'restaurante', 2)").run(hashPassword('senha-123'));
   const srv = http.createServer((q, s2) => handle(q, s2, __dirname, apiKeyAuth)).listen(0);
@@ -205,30 +205,30 @@ test('Comercial: rooming list, trocas e permissões', async () => {
     assert.equal((await fetch(base + '/api/distribution', { headers: H(c) })).status, 403);
     assert.equal((await fetch(base + '/api/billing', { headers: H(c) })).status, 403);
     // rooming list: uma linha por hóspede, quarto mesclado, idade -> criança; 1 quarto novo; 1 quarto fora
-    const csv = 'Quarto;Nome do hóspede;Idade\n701A;Maria Silva;40\n;João Silva;42\n;Pedro Silva;7\n702A;Ana Souza;30\n705A;Carlos Lima;50\n705A;Rita Lima;48\n';
+    const csv = 'Quarto;Nome do hóspede;Idade\n401D;Maria Silva;40\n;João Silva;42\n;Pedro Silva;7\n402D;Ana Souza;30\n405D;Carlos Lima;50\n405D;Rita Lima;48\n';
     const prev = await (await fetch(base + '/api/portal/rooming/preview', { method: 'POST', headers: H(c, { 'content-type': 'application/octet-stream', 'x-filename': 'rl.csv', 'x-reservation': '99001' }), body: Buffer.from(csv) })).json();
     const byRoom = Object.fromEntries(prev.items.map((i) => [i.room, i]));
-    assert.equal(byRoom['701A'].action, 'atualizar');
-    assert.deepEqual([byRoom['701A'].adults, byRoom['701A'].children], [2, 1]);
-    assert.equal(byRoom['702A'].adults, 1);
-    assert.equal(byRoom['705A'].action, 'novo');
-    assert.equal(prev.missing.length, 1); // 703A não veio
+    assert.equal(byRoom['401D'].action, 'atualizar');
+    assert.deepEqual([byRoom['401D'].adults, byRoom['401D'].children], [2, 1]);
+    assert.equal(byRoom['402D'].adults, 1);
+    assert.equal(byRoom['405D'].action, 'novo');
+    assert.equal(prev.missing.length, 1); // 403D não veio
     const groups = prev.items.map((i) => ({ reservation_number: i.reservation_number, room: i.room, names: i.names, adults: i.adults, children: i.children }));
     const res = await (await fetch(base + '/api/portal/rooming/commit', { method: 'POST', headers: H(c), body: JSON.stringify({ groups, remove_ids: [prev.missing[0].id], reservation_number: '99001' }) })).json();
     assert.deepEqual([res.updated, res.created, res.removed], [2, 1, 1]);
-    const r705 = db.prepare("SELECT * FROM reservations WHERE reservation_number = '99001' AND room = '705A'").get();
+    const r705 = db.prepare("SELECT * FROM reservations WHERE reservation_number = '99001' AND room = '405D'").get();
     assert.equal(r705.board, 'MAP');
     assert.equal(r705.guests, 'Carlos Lima\nRita Lima');
-    assert.equal(db.prepare("SELECT status FROM reservations WHERE reservation_number = '99001' AND room = '703A'").get().status, 'cancelada');
+    assert.equal(db.prepare("SELECT status FROM reservations WHERE reservation_number = '99001' AND room = '403D'").get().status, 'cancelada');
     // troca de quarto pelo Comercial, conferência e desfazer
-    const r701 = db.prepare("SELECT id FROM reservations WHERE reservation_number = '99001' AND room = '701A'").get();
-    const up = await fetch(base + '/api/portal/reservations/' + r701.id, { method: 'PUT', headers: H(c), body: JSON.stringify({ room: '799A', board: 'FAP' }) });
+    const r701 = db.prepare("SELECT id FROM reservations WHERE reservation_number = '99001' AND room = '401D'").get();
+    const up = await fetch(base + '/api/portal/reservations/' + r701.id, { method: 'PUT', headers: H(c), body: JSON.stringify({ room: '409D', board: 'FAP' }) });
     assert.equal(up.status, 200);
     assert.equal(db.prepare('SELECT board FROM reservations WHERE id = ?').get(r701.id).board, 'MAP', 'pensão não muda pelo Comercial');
     const ch = db.prepare('SELECT id FROM room_changes WHERE reservation_id = ? ORDER BY id DESC').get(r701.id);
     const undo = await fetch(base + `/api/room-changes/${ch.id}/validate`, { method: 'POST', headers: H(c), body: JSON.stringify({ undo: true }) });
     assert.equal(undo.status, 200);
-    assert.equal(db.prepare('SELECT room FROM reservations WHERE id = ?').get(r701.id).room, '701A');
+    assert.equal(db.prepare('SELECT room FROM reservations WHERE id = ?').get(r701.id).room, '401D');
     // fora da lista: registrado num restaurante, não marca de novo em lugar nenhum
     const a = db.prepare("SELECT * FROM assignments WHERE reservation_id = ? AND meal = 'janta' AND date = ?").get(r701.id, t);
     const other = db.prepare('SELECT id FROM restaurants WHERE id != ? AND share_janta > 0 LIMIT 1').get(a.restaurant_id).id;
@@ -252,7 +252,7 @@ test('fechar restaurante numa data redistribui os hóspedes', async () => {
   const { apiKeyAuth } = require('../src/routes/integration');
   const { addDays, todayISO } = require('../src/util');
   const d0 = addDays(todayISO(), 5);
-  upsertReservations([0, 1, 2, 3, 4, 5].map((i) => ({ reservation_number: `66${i} DIA`, checkin: d0, checkout: addDays(d0, 2), room: `${801 + i}B`, board: 'FAP', pax: 2, children: 0 })));
+  upsertReservations([0, 1, 2, 3, 4, 5].map((i) => ({ reservation_number: `66${i} DIA`, checkin: d0, checkout: addDays(d0, 2), room: `${601 + i}B`, board: 'FAP', pax: 2, children: 0 })));
   const day = addDays(d0, 1);
   const mae = db.prepare("SELECT id FROM restaurants WHERE code = 'MAE'").get().id;
   db.prepare("INSERT INTO users(username, name, password_hash, role) VALUES ('ref9', 'Ref', ?, 'refeicao')").run(hashPassword('senha-123'));
@@ -324,7 +324,7 @@ test('controle financeiro: semanas de quarta a terça, preços por mês, extras 
   assert.equal(fin.priceFor(dg, 'almoco', '2026-12').price_adult, 80);
   assert.equal(fin.priceFor(dg, 'almoco', '2026-11').price_adult, 75);
   // realizado do sistema + extra + voucher em dezembro
-  const r = upsertReservations([{ reservation_number: '88001', checkin: '2026-12-09', checkout: '2026-12-11', room: '901A', board: 'FAP', pax: 3, children: 1 }]);
+  const r = upsertReservations([{ reservation_number: '88001', checkin: '2026-12-09', checkout: '2026-12-11', room: '601H', board: 'FAP', pax: 3, children: 1 }]);
   const res = db.prepare("SELECT id FROM reservations WHERE reservation_number = '88001'").get();
   db.prepare("INSERT INTO attendance(reservation_id, date, meal, restaurant_id, status, adults, children) VALUES (?, '2026-12-10', 'almoco', ?, 'presente', 2, 1)").run(res.id, dg);
   db.prepare("INSERT INTO restaurant_extras(date, meal, restaurant_id, adults, children, note) VALUES ('2026-12-10', 'almoco', ?, 2, 0, 'evento')").run(dg);
@@ -385,4 +385,13 @@ test('importação da planilha de controle de faturamento (formato antigo)', () 
   assert.equal(total, 8552, 'bate com o total da planilha');
   assert.ok(m.entries.some((e) => e.outlet === 'Di Paolo' && e.value === 190));
   assert.ok(m.entries.some((e) => e.kind === 'extra' && e.value === 246));
+});
+
+test('apartamentos: 3 números e a torre (A a H), 101 a 610, torre A sem 105 e 106', () => {
+  const { roomError, canonRoom } = require('../src/util');
+  for (const ok of ['101A', '610H', '107A', '105B', '101 a', '310-c']) assert.equal(roomError(ok), null, ok);
+  for (const bad of ['sss', '101', 'A', '1010A', '101I', '611A', '700B', '100A', '105A', '106A', '']) assert.ok(roomError(bad), bad);
+  assert.equal(canonRoom('101 a'), '101A');
+  const { normalizeRecord } = require('../src/importer');
+  assert.match(normalizeRecord({ reservation_number: '1', checkin: '2026-10-10', checkout: '2026-10-11', room: '105A', board: 'CM', pax: 1 }).errors.join(), /torre A não tem/);
 });

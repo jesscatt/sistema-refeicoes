@@ -121,6 +121,23 @@ function roomSort(v) {
   return (m[1] || '').padStart(8, '0') + (m[2] || '');
 }
 // Texto do quarto como gravado: maiúsculo e sem espaços sobrando
+// Apartamentos do resort: 8 torres (A a H), 6 andares com 10 aptos cada (101 a 610).
+// A torre A não tem o 105 e o 106. Formato: 3 números + letra da torre, ex.: 101A.
+const TOWERS = 'ABCDEFGH';
+const MISSING_ROOMS = new Set(['105A', '106A']);
+function roomError(v) {
+  if (!String(v ?? '').trim()) return 'sem quarto';
+  const s = roomKey(v); // aceita 101A, 101 a, A-101, Torre A 101...
+  if (!/^\d{3}[A-Z]$/.test(s)) return `quarto "${String(v).trim()}" inválido: use 3 números e a letra da torre (ex.: 101A)`;
+  const floor = Number(s[0]), unit = Number(s.slice(1, 3)), tower = s[3];
+  if (!TOWERS.includes(tower)) return `torre "${tower}" não existe (torres de A a H)`;
+  if (floor < 1 || floor > 6 || unit < 1 || unit > 10) return `o apto ${s} não existe (de 101 a 610, 10 por andar)`;
+  if (MISSING_ROOMS.has(s)) return `a torre A não tem o apto ${s.slice(0, 3)}`;
+  return null;
+}
+// "101 a" -> "101A" (quando o quarto é válido)
+function canonRoom(v) { return roomError(v) ? normRoom(v) : roomKey(v); }
+
 function normRoom(v) {
   return String(v ?? '').trim().toUpperCase().replace(/\.0$/, '').replace(/\s+/g, ' ');
 }
@@ -147,5 +164,5 @@ function toCSV(headers, rows) {
 
 module.exports = {
   MEALS, MEAL_LABEL, BOARDS, pad, todayISO, nowHM, nowLocal, isISODate, addDays, daysBetween,
-  monthRange, hmToMin, minToHM, parseDate, normKey, parseBoard, toInt, toCSV, roomKey, roomSort, normRoom, roomMatch,
+  monthRange, hmToMin, minToHM, parseDate, normKey, parseBoard, toInt, toCSV, roomKey, roomSort, normRoom, roomMatch, roomError, canonRoom,
 };

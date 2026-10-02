@@ -52,7 +52,7 @@ for (let i = 0; i < 90; i++) {
     reservation_number: String(50000 + i),
     guest_name: `${first[rnd(first.length)]} ${last[rnd(last.length)]} ${last[rnd(last.length)]}`,
     checkin: start, checkout: addDays(start, 2 + rnd(5)),
-    room: String(100 * (1 + rnd(4)) + 1 + rnd(30)) + ['A', 'B', 'C'][rnd(3)],
+    room: String(100 * (1 + rnd(6)) + 1 + rnd(10)) + 'DEFGH'[rnd(5)], // aptos 101–610, torres A–H
     board: boards[rnd(boards.length)],
     adults: 1 + rnd(3), children: rnd(3),
   });
