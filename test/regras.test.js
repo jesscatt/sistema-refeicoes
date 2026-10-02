@@ -459,3 +459,26 @@ test('planilha .xls (Excel 97–2003) é lida como a .xlsx', () => {
   assert.deepEqual(rows[1].slice(0, 2), ['101B', 'João Ávila']);
   assert.equal(rows[2][2], 1000);
 });
+
+test('Lista de Reservas do Silbeck: só as linhas de reserva são validadas; hóspedes viram nomes e crianças', () => {
+  const H = ['Reserva', null, null, null, null, null, 'Fone', 'Entrada', null, 'Saída', null, null, 'Dias', 'Pensão', 'Apto', null, 'Tipo', 'Pax', 'C.', 'Moeda'];
+  const rows = [
+    ['RESORT TERMAS ROMANAS'], [], H,
+    ['60402  PALOMA', null, null, null, null, null, '(55) 1', '07/10/26', null, '09/10/26', null, null, '2', 'FAP', '405B', null, '(1) CSLSF', '3', null, 'R$'],
+    [null, 'Obs. Reserva: GRUPO'],
+    [null, 'Hóspede:', null, 'PALOMA VALANDRO', null, null, null, null, null, null, null, null, null, null, 'ADULTO PAGANTE'],
+    [null, 'Hóspede:', null, 'EBERSON SILVA', null, null, null, null, null, null, null, null, null, null, 'ADULTO PAGANTE'],
+    [null, 'Hóspede:', null, 'THEODORO SILVA', null, null, null, null, null, null, null, null, null, null, 'CRIANCA ATE 4 ANOS'],
+    ['Gerado por:', null, 'Silbeck - SB Hotel em 02/10/2026'], H,
+    ['48968  GRUPO', null, null, null, null, null, '', '10/10/26', null, '11/10/26', null, null, '1', 'FAP', '503A', null, '', '2'],
+    ['48968  GRUPO', null, null, null, null, null, '', '11/10/26', null, '12/10/26', null, null, '1', 'FAP', '503A', null, '', '2'],
+  ];
+  const p = parseRows(rows);
+  assert.ok(p.ok);
+  assert.equal(p.rows.length, 2);
+  assert.equal(p.rows.filter((r) => r.errors.length).length, 0);
+  const a = p.rows[0];
+  assert.deepEqual([a.reservation_number, a.room, a.board, a.adults, a.children], ['60402', '405B', 'FAP', 2, 1]);
+  assert.equal(a.guests, 'PALOMA VALANDRO\nEBERSON SILVA\nTHEODORO SILVA');
+  assert.deepEqual([p.rows[1].checkin, p.rows[1].checkout], ['2026-10-10', '2026-10-12']);
+});

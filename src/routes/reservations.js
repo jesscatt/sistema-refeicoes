@@ -183,7 +183,7 @@ route('POST', '/api/import/preview', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ 
     filename, headerRow: parsed.headerRow, mapping: parsed.mapping, rows: parsed.rows,
     groups: groups.size,
     removed: plan.removed.map((e) => ({ id: e.id, reservation_number: e.reservation_number, guest_name: e.guest_name, room: e.room, checkin: e.checkin, checkout: e.checkout })),
-    distribution: parsed.distribution,
+    distribution: parsed.distribution, skipped: parsed.skipped || 0,
   };
 });
 

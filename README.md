@@ -171,6 +171,7 @@ Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, 
 
 Aceita `.xlsx`, `.xls` (Excel 97–2003) e `.csv`. Validado com a planilha *DIVISÃO 30-09 a 04-10* do resort (350 quartos, 94 reservas):
 
+- **Lista de Reservas do Silbeck** (relatório analítico, inclusive em `.xls`): somente as linhas de reserva são validadas (reserva, entrada, saída, pensão, apartamento e pax). As linhas de observação, os cabeçalhos repetidos de cada página e os rodapés são desconsiderados, e as demais colunas (telefone, valores, situação) não são usadas. As linhas **Hóspede:** abaixo de cada reserva viram a lista de nomes do apartamento, e os tipos *CRIANÇA* contam como crianças. O mesmo apartamento da mesma reserva em datas seguidas é unido em uma só estada.
 - **Reserva** pode vir com o nome do grupo junto (`50893 ANR TUR`); o número e o nome são separados.
 - **Vários quartos na mesma reserva** são um grupo.
 - **Datas que o Excel gravou com dia e mês trocados** (01/10 virando 10 de janeiro) são corrigidas.

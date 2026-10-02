@@ -90,6 +90,11 @@ function normalizeRecord(raw) {
     adults: null,
     lunch_on_arrival: raw.lunch_on_arrival ? 1 : 0,
   };
+  // nomes dos hóspedes (quando a planilha traz a lista, ex.: Lista de Reservas do Silbeck)
+  if (raw.guests !== undefined && raw.guests !== null) {
+    const list = (Array.isArray(raw.guests) ? raw.guests : String(raw.guests).split(/\r?\n/)).map((x) => String(x ?? '').trim().replace(/\s+/g, ' ')).filter(Boolean);
+    if (list.length) rec.guests = list.join('\n');
+  }
   if (!rec.guest_name && rec.reservation_number) rec.guest_name = `Reserva ${rec.reservation_number}`;
   if (raw.adults !== undefined && raw.adults !== null && raw.adults !== '') rec.adults = toInt(raw.adults, 0);
   else if (raw.pax !== undefined && raw.pax !== null && raw.pax !== '') rec.adults = Math.max(0, toInt(raw.pax, 0) - rec.children);
@@ -174,9 +179,31 @@ function parseRows(rows) {
   }
   const header = rows[head.idx];
   const dataRows = [];
+  const filled = (v) => v !== null && v !== undefined && String(v).trim() !== '';
+  const headTxt = new Set(header.filter(filled).map((v) => normKey(v)));
+  let skipped = 0;
   for (let i = head.idx + 1; i < rows.length; i++) {
     const r = rows[i] || [];
-    if (!r.some((v) => v !== null && v !== undefined && String(v).trim() !== '')) continue;
+    if (!r.some(filled)) continue;
+    const resv = r[head.map.reservation_number];
+    // Linha de hóspede (ex.: "Hóspede: NOME ... ADULTO PAGANTE"): entra na lista de nomes da reserva anterior
+    const gi = r.findIndex((v) => typeof v === 'string' && /^h[oó]spedes?\s*:?$/i.test(v.trim()));
+    if (gi >= 0 && !filled(resv)) {
+      const prev = dataRows[dataRows.length - 1];
+      if (prev) {
+        const rest = r.slice(gi + 1).filter(filled).map((v) => String(v).trim());
+        const type = rest.find((v) => /^(ADULTO|CRIAN|BEB|INFANT|CHD|ADT)/i.test(v.normalize('NFD').replace(/[̀-ͯ]/g, ''))) || '';
+        const name = rest.find((v) => v !== type) || '';
+        (prev.guests = prev.guests || []).push({ name, child: /CRIAN|BEB|INFANT|CHD/i.test(type.normalize('NFD').replace(/[̀-ͯ]/g, '')) });
+      }
+      continue;
+    }
+    // Só interessam as linhas de reserva: o resto (observações, cabeçalhos repetidos de página,
+    // rodapés "Gerado por", totais) é ignorado sem gerar erro
+    const hasDates = filled(r[head.map.checkin]) || filled(r[head.map.checkout]);
+    if (!filled(resv) && !hasDates) { skipped++; continue; }
+    if (filled(resv) && headTxt.has(normKey(resv))) { skipped++; continue; } // cabeçalho repetido
+    if (filled(resv) && !/\d/.test(String(resv)) && !hasDates) { skipped++; continue; } // títulos e rodapés
     dataRows.push({ i, r });
   }
   // datas de referência = as que não deixam dúvida
@@ -201,9 +228,18 @@ function parseRows(rows) {
   }
 
   const out = [];
-  for (const { i, r } of dataRows) {
+  for (const { i, r, guests } of dataRows) {
     const raw = {};
     for (const [f, idx] of Object.entries(head.map)) raw[f] = r[idx];
+    if (guests && guests.length) {
+      raw.guests = guests.map((g) => g.name);
+      // crianças pela lista de hóspedes quando a planilha não tem a coluna de crianças
+      if (head.map.children === undefined) {
+        const kids = guests.filter((g) => g.child).length;
+        raw.children = kids;
+        if (head.map.adults === undefined) raw.adults = Math.max(toInt(raw.pax, guests.length), guests.length) - kids;
+      }
+    }
     const notes = [];
     let dateFixed = false, boardGuess = null;
     // escolhe a melhor leitura das datas (entrada <= saída, perto das demais)
@@ -238,9 +274,27 @@ function parseRows(rows) {
     }
     out.push({ line: i + 1, ...rec, errors, notes, dist, date_fixed: dateFixed, board_guess: boardGuess });
   }
+  // Mesma reserva e apartamento em períodos seguidos (ex.: 10–11 e 11–12): une em uma só estada
+  const byKey = new Map();
+  for (let k = 0; k < out.length; k++) {
+    const r = out[k];
+    if (r.errors.length || !r.checkin || !r.checkout) continue;
+    const key = `${r.reservation_number}|${roomKey(r.room)}`;
+    const prev = byKey.get(key);
+    if (prev && prev.board === r.board && prev.adults === r.adults && prev.children === r.children && (prev.checkout === r.checkin || r.checkout === prev.checkin)) {
+      if (r.checkin < prev.checkin) prev.checkin = r.checkin;
+      if (r.checkout > prev.checkout) prev.checkout = r.checkout;
+      if (r.guests && !prev.guests) prev.guests = r.guests;
+      prev.dist.push(...r.dist);
+      prev.notes.push(`período unido com a linha ${r.line} (mesmo apartamento em datas seguidas)`);
+      out.splice(k--, 1);
+      continue;
+    }
+    byKey.set(key, r);
+  }
   const mapping = Object.fromEntries(Object.entries(head.map).map(([f, idx]) => [f, { label: LABELS[f], column: String(header[idx]) }]));
   const slots = [...new Map(distCols.map((d) => [`${d.date}|${d.meal}`, { date: d.date, meal: d.meal }])).values()];
-  return { ok: true, headerRow: head.idx + 1, mapping, rows: out, distribution: distCols.length ? { columns: distCols.map(({ col, ...x }) => x), slots } : null };
+  return { ok: true, headerRow: head.idx + 1, mapping, rows: out, skipped, distribution: distCols.length ? { columns: distCols.map(({ col, ...x }) => x), slots } : null };
 }
 
 // Confere a divisão da planilha contra as regras de pensão
@@ -290,6 +344,7 @@ function planImport(records, { cancelMissing = false } = {}) {
   }
   const removed = [];
   const fields = ['guest_name', 'checkin', 'checkout', 'room', 'board', 'adults', 'children', 'lunch_on_arrival'];
+  const guestsChanged = (ex, rec) => rec.guests !== undefined && String(ex.guests || '') !== String(rec.guests);
   const getAll = db.prepare('SELECT * FROM reservations WHERE reservation_number = ?');
   for (const [num, list] of byNum) {
     const existing = getAll.all(num);
@@ -311,7 +366,7 @@ function planImport(records, { cancelMissing = false } = {}) {
     for (const it of list) {
       const ex = it.existing;
       if (!ex) { it.action = 'nova'; continue; }
-      const changed = fields.some((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(it.rec.room) : String(ex[k] ?? 0) !== String(it.rec[k] ?? 0))) || ex.status !== 'ativa';
+      const changed = fields.some((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(it.rec.room) : String(ex[k] ?? 0) !== String(it.rec[k] ?? 0))) || guestsChanged(ex, it.rec) || ex.status !== 'ativa';
       it.action = changed ? 'alterada' : 'igual';
       if (roomKey(ex.room) !== roomKey(it.rec.room)) it.old_room = ex.room;
     }
@@ -340,8 +395,8 @@ function upsertReservations(records, { source = 'excel', user = null, cancelMiss
       if (it.action === 'duplicada') continue;
       const pref = rec.pref_restaurant_id ?? null;
       if (it.action === 'nova') {
-        const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, pref_restaurant_id, lunch_on_arrival)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(rec.reservation_number, rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, source, pref, rec.lunch_on_arrival ? 1 : 0);
+        const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, pref_restaurant_id, lunch_on_arrival, guests)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(rec.reservation_number, rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, source, pref, rec.lunch_on_arrival ? 1 : 0, rec.guests || '');
         rec.id = Number(r.lastInsertRowid);
         result.inserted++; result.ids.push(rec.id);
         continue;
@@ -355,8 +410,8 @@ function upsertReservations(records, { source = 'excel', user = null, cancelMiss
         result.roomChanges.push({ reservation_number: rec.reservation_number, guest_name: rec.guest_name, old_room: ex.room, new_room: rec.room });
       }
       db.prepare(`UPDATE reservations SET guest_name=?, checkin=?, checkout=?, room=?, board=?, adults=?, children=?, status='ativa',
-          lunch_on_arrival = ?, pref_restaurant_id = COALESCE(?, pref_restaurant_id), updated_at = datetime('now','localtime') WHERE id = ?`)
-        .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, rec.lunch_on_arrival ? 1 : 0, pref, ex.id);
+          lunch_on_arrival = ?, pref_restaurant_id = COALESCE(?, pref_restaurant_id), guests = COALESCE(?, guests), updated_at = datetime('now','localtime') WHERE id = ?`)
+        .run(rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, rec.lunch_on_arrival ? 1 : 0, pref, rec.guests ?? null, ex.id);
       result.updated++; result.ids.push(ex.id);
     }
     for (const e of plan.removed) {
