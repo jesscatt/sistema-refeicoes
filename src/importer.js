@@ -63,7 +63,7 @@ function findHeaderRow(rows) {
 const REQUIRED = ['reservation_number', 'checkin', 'checkout', 'room', 'board'];
 const LABELS = {
   reservation_number: 'Nº da reserva', guest_name: 'Nome', checkin: 'Entrada', checkout: 'Saída',
-  room: 'Quarto', board: 'Pensão', adults: 'Adultos', pax: 'Pessoas (total)', children: 'Crianças',
+  room: 'Apartamento', board: 'Pensão', adults: 'Adultos', pax: 'Pessoas (total)', children: 'Crianças',
 };
 
 // "50893 ANR TUR" -> { number: "50893", name: "ANR TUR" } · "59.699 EMANUEL VIAJES" -> "59699"
@@ -103,7 +103,7 @@ function normalizeRecord(raw) {
   if (!rec.board) errors.push(`pensão "${raw.board ?? ''}" não reconhecida (use CM, MAP, MAPA ou FAP)`);
   if (rec.adults + rec.children === 0) errors.push('quantidade de pessoas zerada');
   const max = maxPaxRoom();
-  if (rec.adults + rec.children > max) errors.push(`${rec.adults + rec.children} pessoas no quarto; a política do resort é de no máximo ${max} por quarto`);
+  if (rec.adults + rec.children > max) errors.push(`${rec.adults + rec.children} pessoas no apartamento; a política do resort é de no máximo ${max} por apartamento`);
   return { rec, errors };
 }
 
@@ -278,7 +278,7 @@ function planImport(records, { cancelMissing = false } = {}) {
   for (const rec of records) {
     if (rec.errors && rec.errors.length) { items.push({ rec, action: 'erro' }); continue; }
     const k = `${rec.reservation_number}|${roomKey(rec.room)}`;
-    if (seen.has(k)) { const prev = seen.get(k); prev.action = 'duplicada'; prev.rec.warning = 'mesma reserva e quarto repetidos na planilha (vale a última linha)'; }
+    if (seen.has(k)) { const prev = seen.get(k); prev.action = 'duplicada'; prev.rec.warning = 'reserva e apartamento repetidos na planilha (prevalece a última linha)'; }
     const it = { rec, action: null };
     seen.set(k, it);
     items.push(it);

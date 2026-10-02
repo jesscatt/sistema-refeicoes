@@ -66,7 +66,7 @@ route('GET', '/api/reservations/export.csv', { roles: ['admin', 'supervisor', 'r
     .filter((r) => !query.date || (r.checkin <= query.date && r.checkout >= query.date));
   audit(user, 'exportou_reservas', { total: rows.length }, ip);
   return {
-    __raw: toCSV(['Reserva', 'Nome', 'Entrada', 'Saída', 'Quarto', 'Pensão', 'Adultos', 'Crianças', 'Origem', 'Situação'],
+    __raw: toCSV(['Reserva', 'Nome', 'Entrada', 'Saída', 'Apartamento', 'Pensão', 'Adultos', 'Crianças', 'Origem', 'Situação'],
       rows.map((r) => [r.reservation_number, r.guest_name, r.checkin, r.checkout, r.room, r.board, r.adults, r.children, r.source, r.status])),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="reservas.csv"' },
   };
@@ -86,7 +86,7 @@ route('GET', '/api/reservations/:id', { roles: DETAIL }, ({ params }) => {
 function guestsWithinPolicy(g) {
   const { maxPaxRoom } = require('../db');
   const n = String(g ?? '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean).length;
-  if (n > maxPaxRoom()) throw new HttpError(400, `${n} hóspedes informados; a política do resort é de no máximo ${maxPaxRoom()} pessoas por quarto.`);
+  if (n > maxPaxRoom()) throw new HttpError(400, `${n} hóspedes informados; a política do resort é de no máximo ${maxPaxRoom()} pessoas por apartamento.`);
 }
 
 function readReservationBody(body) {
@@ -198,7 +198,7 @@ route('POST', '/api/import/commit', { roles: EDIT, raw: 25 * 1024 * 1024 }, ({ b
 });
 
 route('GET', '/api/import/modelo.csv', { roles: EDIT }, () => ({
-  __raw: toCSV(['Nº Reserva', 'Nome completo', 'Entrada', 'Saída', 'Quarto', 'Pensão', 'Adultos', 'Crianças'], [
+  __raw: toCSV(['Nº Reserva', 'Nome completo', 'Entrada', 'Saída', 'Apartamento', 'Pensão', 'Adultos', 'Crianças'], [
     ['12345', 'Maria da Silva', '01/10/2026', '05/10/2026', '101', 'FAP', 2, 1],
     ['12346', 'João Pereira', '02/10/2026', '04/10/2026', '215', 'MAP', 2, 0],
   ]),
@@ -221,7 +221,7 @@ route('POST', '/api/room-changes/:id/validate', { roles: VALIDATE }, ({ params, 
   if (!c) throw new HttpError(404, 'Troca não encontrada.');
   const note = body.note ? String(body.note).slice(0, 300) : null;
   if (body.undo) {
-    if (roomKey(c.current_room) !== roomKey(c.new_room)) throw new HttpError(409, 'O quarto já mudou de novo depois desta troca; ajuste pela reserva.');
+    if (roomKey(c.current_room) !== roomKey(c.new_room)) throw new HttpError(409, 'O apartamento foi alterado novamente após esta troca; ajuste diretamente na reserva.');
     tx(() => {
       db.prepare("UPDATE reservations SET room = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(c.old_room, c.reservation_id);
       db.prepare('INSERT INTO room_changes(reservation_id, old_room, new_room, source, user_id, validated_at, validated_by, validation_note) VALUES (?,?,?,?,?,datetime(\'now\',\'localtime\'),?,?)')

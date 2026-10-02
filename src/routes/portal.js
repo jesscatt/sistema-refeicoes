@@ -84,7 +84,7 @@ function matchRooming(user, groups, defaultRes = '') {
     it.adults = Math.max(0, toInt(it.adults, 0)); it.children = Math.max(0, toInt(it.children, 0));
     if (it.adults + it.children === 0) errs.push('sem hóspedes nem quantidade de pessoas');
     const max = maxPaxRoom();
-    if (it.adults + it.children > max || it.names.length > max) errs.push(`${Math.max(it.adults + it.children, it.names.length)} pessoas no quarto; a política do resort é de no máximo ${max} por quarto`);
+    if (it.adults + it.children > max || it.names.length > max) errs.push(`${Math.max(it.adults + it.children, it.names.length)} pessoas no apartamento; a política do resort é de no máximo ${max} por apartamento`);
     // encontra o quarto
     let found = null;
     if (it.reservation_number) {
@@ -96,12 +96,12 @@ function matchRooming(user, groups, defaultRes = '') {
       const act = all.filter((x) => x.status === 'ativa');
       const pick = act.length ? act : all;
       if (pick.length === 1) { found = pick[0]; it.reservation_number = found.reservation_number; }
-      else if (pick.length > 1) errs.push('quarto aparece em mais de uma reserva; escolha a reserva do rooming list');
+      else if (pick.length > 1) errs.push('o apartamento consta em mais de uma reserva; selecione a reserva do rooming list');
       else if (resv.length === 1) it.reservation_number = resv[0].reservation_number;
       else it.needs_reservation = true;
     }
     const k = `${it.reservation_number}|${roomKey(it.room)}`;
-    if (it.room && seen.has(k)) errs.push('quarto repetido na lista');
+    if (it.room && seen.has(k)) errs.push('apartamento repetido na lista');
     seen.add(k);
     if (found) {
       it.id = found.id;
@@ -114,7 +114,7 @@ function matchRooming(user, groups, defaultRes = '') {
       const R = byNum.get(it.reservation_number);
       const t = groupTemplate(R.rooms);
       const taken = roomTaken(it.room, t.checkin, t.checkout);
-      if (taken) errs.push(`o quarto ${it.room} está ocupado nessas datas por outra reserva`);
+      if (taken) errs.push(`o apartamento ${it.room} está ocupado nestas datas por outra reserva`);
       it.action = 'novo';
       it.template = t;
       touched.add(it.reservation_number);
@@ -161,7 +161,7 @@ function parseRooming(rows) {
     const score = Object.keys(map).length;
     if (map.room !== undefined && (!best || score > best.score)) best = { i, map, score };
   }
-  if (!best) throw new HttpError(400, 'Não encontrei a coluna do quarto (Quarto/Apto/UH). Use o modelo de rooming list.');
+  if (!best) throw new HttpError(400, 'Não foi encontrada a coluna do apartamento (Apartamento/Quarto/Apto/UH). Utilize o modelo de rooming list.');
   const { map } = best;
   // coluna "Pax" com nomes em vez de números
   if (map.name === undefined && map.pax !== undefined) {
@@ -235,7 +235,7 @@ route('GET', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params 
 
 route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params, body, ip }) => {
   const ex = getOwn(user, params.id);
-  if (ex.status !== 'ativa') throw new HttpError(409, 'Este quarto foi removido. Fale com o resort para reativar.');
+  if (ex.status !== 'ativa') throw new HttpError(409, 'Este apartamento foi removido da reserva. Contate o resort para reativá-lo.');
   if (ex.checkout < todayISO()) throw new HttpError(409, 'Estadia encerrada; não é possível alterar.');
   // campos liberados para a agência (a pensão e o número da reserva não mudam por aqui)
   const allowed = ['room', 'checkin', 'checkout', 'adults', 'children'];
@@ -243,9 +243,9 @@ route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params,
   const { rec, errors } = normalizeRecord({ ...ex, ...patch, reservation_number: ex.reservation_number, board: ex.board });
   if (errors.length) throw new HttpError(400, 'Verifique: ' + errors.join(', '));
   const guests = body.guests === undefined ? ex.guests : guestsText(body.guests);
-  if (cleanGuests(guests).length > maxPaxRoom()) throw new HttpError(400, `A política do resort é de no máximo ${maxPaxRoom()} pessoas por quarto.`);
+  if (cleanGuests(guests).length > maxPaxRoom()) throw new HttpError(400, `A política do resort é de no máximo ${maxPaxRoom()} pessoas por apartamento.`);
   if (roomKey(rec.room) !== roomKey(ex.room)) {
-    if (roomTaken(rec.room, rec.checkin, rec.checkout, ex.id)) throw new HttpError(409, `O quarto ${rec.room} já está ocupado nessas datas. Confirme o número com a recepção.`);
+    if (roomTaken(rec.room, rec.checkin, rec.checkout, ex.id)) throw new HttpError(409, `O apartamento ${rec.room} já está ocupado nestas datas. Confirme o número com a recepção.`);
   }
   const diff = Object.fromEntries(allowed.filter((k) => (k === 'room' ? roomKey(ex.room) !== roomKey(rec.room) : String(ex[k]) !== String(rec[k]))).map((k) => [k, [ex[k], rec[k]]]));
   if (guests !== ex.guests) diff.guests = [ex.guests, guests];
@@ -264,7 +264,7 @@ route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params,
     if (other.length) {
       const labels = { checkin: 'entrada', checkout: 'saída', adults: 'adultos', children: 'crianças' };
       for (const role of ['refeicao', 'recepcao']) {
-        notify({ role, kind: 'portal_change', title: `${who(user)} alterou a reserva ${ex.reservation_number}`, body: `Apto ${rec.room}: ${other.map((k) => `${labels[k]} ${diff[k][0]} → ${diff[k][1]}`).join(' · ')}`, link: '#/reservas' });
+        notify({ role, kind: 'portal_change', title: `${who(user)} alterou a reserva ${ex.reservation_number}`, body: `Apartamento ${rec.room}: ${other.map((k) => `${labels[k]} ${diff[k][0]} → ${diff[k][1]}`).join(' · ')}`, link: '#/reservas' });
       }
     }
   });
@@ -288,7 +288,7 @@ function removeRoom(user, ex, reason, quiet = false) {
       .run(`[removido por ${who(user)}${reason ? ': ' + String(reason).slice(0, 200) : ''}]`, ex.id);
     syncReservation(ex.id);
     if (!quiet) for (const role of ['refeicao', 'recepcao', 'restaurante']) {
-      notify({ role, kind: 'portal_remove', title: `Apto ${ex.room} removido da reserva ${ex.reservation_number}`, body: `${ex.guest_name} · ${ex.adults + ex.children} pax · feito por ${who(user)}${reason ? ` · motivo: ${String(reason).slice(0, 120)}` : ''}`, link: '#/reservas' });
+      notify({ role, kind: 'portal_remove', title: `Apartamento ${ex.room} removido da reserva ${ex.reservation_number}`, body: `${ex.guest_name} · ${ex.adults + ex.children} pessoa(s) · realizado por ${who(user)}${reason ? ` · motivo: ${String(reason).slice(0, 120)}` : ''}`, link: '#/reservas' });
     }
   });
 }
@@ -297,7 +297,7 @@ function removeRoom(user, ex, reason, quiet = false) {
 function applyRooming(user, groups, removeIds, ip, source, defaultRes = '') {
   const m = matchRooming(user, groups, defaultRes);
   const bad = m.items.filter((i) => i.action === 'erro' || i.needs_reservation);
-  if (bad.length) throw new HttpError(400, `Corrija ${bad.length} quarto(s) com erro antes de enviar.`, { items: m.items });
+  if (bad.length) throw new HttpError(400, `Corrija ${bad.length} apartamento(s) com erro antes do envio.`, { items: m.items });
   const result = { updated: 0, created: 0, unchanged: 0, removed: 0, paxChanges: [] };
   const ids = [];
   tx(() => {
@@ -313,7 +313,7 @@ function applyRooming(user, groups, removeIds, ip, source, defaultRes = '') {
         const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, lunch_on_arrival, guests)
           VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(it.reservation_number, t.guest_name, t.checkin, t.checkout, it.room, t.board, it.adults, it.children, 'agencia', t.lunch_on_arrival ? 1 : 0, guests);
         result.created++; ids.push(Number(r.lastInsertRowid));
-        result.paxChanges.push(`${it.room}: quarto novo (${it.adults}+${it.children})`);
+        result.paxChanges.push(`${it.room}: apartamento incluído (${it.adults} adulto(s) e ${it.children} criança(s))`);
       }
     }
   });
@@ -340,7 +340,7 @@ route('POST', '/api/portal/rooming/preview', { roles: PORTAL, raw: 10 * 1024 * 1
   let rows;
   try { rows = readSpreadsheet(body, filename); } catch (e) { throw new HttpError(400, e.message); }
   const groups = parseRooming(rows);
-  if (!groups.length) throw new HttpError(400, 'Não encontrei nenhum quarto na planilha.');
+  if (!groups.length) throw new HttpError(400, 'Nenhum apartamento foi encontrado na planilha.');
   return { filename, ...matchRooming(user, groups, req.headers['x-reservation'] ? decodeURIComponent(req.headers['x-reservation']) : '') };
 });
 
@@ -361,7 +361,7 @@ route('POST', '/api/portal/rooms', { roles: PORTAL }, ({ user, body, ip }) => {
   const m = matchRooming(user, [g]);
   const it = m.items[0];
   if (it.action === 'erro') throw new HttpError(400, it.errors.join('; '));
-  if (it.action !== 'novo') throw new HttpError(409, 'Esse quarto já está na reserva. Use “Alterar” para mudar os hóspedes.');
+  if (it.action !== 'novo') throw new HttpError(409, 'Este apartamento já consta na reserva. Utilize “Alterar” para modificar os hóspedes.');
   return applyRooming(user, [g], [], ip, 'digitado');
 });
 
@@ -371,7 +371,7 @@ route('GET', '/api/portal/groups', { roles: PORTAL }, ({ user }) => agencyReserv
 })));
 
 route('GET', '/api/portal/rooming/modelo.csv', { roles: PORTAL }, () => ({
-  __raw: toCSV(['Reserva', 'Quarto', 'Nome do hóspede', 'Idade'], [
+  __raw: toCSV(['Reserva', 'Apartamento', 'Nome do hóspede', 'Idade'], [
     ['55778', '201A', 'Maria da Silva', ''],
     ['55778', '201A', 'João da Silva', ''],
     ['55778', '201A', 'Pedro da Silva', 8],

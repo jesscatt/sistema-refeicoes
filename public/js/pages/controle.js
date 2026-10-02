@@ -30,7 +30,7 @@ export async function render(el) {
     const semTotal = Object.values(tot).reduce((s, t) => s + t.sem, 0);
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Previsto x realizado</h1><p><b>Previsto</b>: pax da distribuição. <b>Realizado</b>: pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente e sem edição manual.</p></div>
+        <div class="grow"><h1>Previsto x realizado</h1><p><b>Previsto</b>: pessoas previstas na distribuição. <b>Realizado</b>: pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente e sem edição manual.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         <select class="input sm" id="rest" style="width:auto">${state.meta.restaurants.map((r) => `<option value="${r.id}" ${r.id === rest.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
         ${can('admin', 'supervisor') ? `<button class="btn" id="csv">${icon('download')} Relatório diário</button>` : ''}
@@ -40,7 +40,7 @@ export async function render(el) {
       <div class="card"><div class="table-wrap" style="max-height:72vh"><table class="t ctl">
         <thead>
           <tr><th rowspan="2">Dia</th>${meals.map((m) => `<th class="grp" colspan="5">${MEAL_LABEL[m]}</th>`).join('')}</tr>
-          <tr>${meals.map(() => '<th class="n gs">Prev. adt</th><th class="n">Prev. chd</th><th class="n">Real. adt</th><th class="n">Real. chd</th><th class="n">Dif.</th>').join('')}</tr>
+          <tr>${meals.map(() => '<th class="n gs">Prev. adultos</th><th class="n">Prev. crianças</th><th class="n">Real. adultos</th><th class="n">Real. crianças</th><th class="n">Dif.</th>').join('')}</tr>
         </thead>
         <tbody>${days.map((date) => {
           const wd = weekday(date);
@@ -51,7 +51,7 @@ export async function render(el) {
             const none = prev > 0 && real === 0 && date < today();
             const z = (v) => (v ? v : '<span class="muted">0</span>');
             return `<td class="n gs">${z(r.forecast_adults)}</td><td class="n">${z(r.forecast_children)}</td>
-              <td class="n" ${none ? 'style="background:var(--mustard-l)" title="sem registro do restaurante"' : ''}>${z(r.checked_adults)}${r.fora_lista ? `<sup title="${r.fora_lista} apto(s) fora da lista" style="color:var(--mustard)">${r.fora_lista}</sup>` : ''}</td>
+              <td class="n" ${none ? 'style="background:var(--mustard-l)" title="sem registro do restaurante"' : ''}>${z(r.checked_adults)}${r.fora_lista ? `<sup title="${r.fora_lista} apartamento(s) fora da lista" style="color:var(--mustard)">${r.fora_lista}</sup>` : ''}</td>
               <td class="n">${z(r.checked_children)}</td>
               <td class="n">${prev || real ? diff(real, prev) : ''}</td>`;
           }).join('')}</tr>`;

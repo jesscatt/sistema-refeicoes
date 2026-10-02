@@ -82,7 +82,7 @@ export function restTag(r) {
   if (!r) return '<span class="rest-tag none">—</span>';
   return `<span class="rest-tag" style="background:${esc(r.color || '#888')}">${esc(r.name)}</span>`;
 }
-// Quarto com letra da torre: "A101", "101a", "Torre A 101" -> chave "101A"
+// Apartamento com letra da torre: "A101", "101a", "Torre A 101" -> chave "101A"
 const ROOM_WORDS = /\b(TORRE|TOR|BLOCO|BL|APTO|APT|AP|UH|QUARTO|QTO|QT|NUMERO|NUM)\b|\bN\s*[º°]/g;
 export function roomKey(v) {
   const s = String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(ROOM_WORDS, ' ');
@@ -102,7 +102,7 @@ export function roomHtml(room) {
 }
 export const restDot = (r) => `<span class="dot" style="background:${esc(r.color)}"></span>`;
 export const boardTag = (b) => `<span class="board" title="${esc((state.meta?.boards?.[b] || {}).label || '')}">${esc(b)}</span>`;
-export const paxTxt = (a, c) => `${a} adt${c ? ` + ${c} chd` : ''}`;
+export const paxTxt = (a, c) => `${a} ${Number(a) === 1 ? 'adulto' : 'adultos'}${c ? ` e ${c} ${Number(c) === 1 ? 'criança' : 'crianças'}` : ''}`;
 
 export function mealIcon(meal) { return icon(meal === 'cafe' ? 'cup' : meal === 'almoco' ? 'plate' : 'moon'); }
 

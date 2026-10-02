@@ -81,8 +81,8 @@ export async function render(el) {
         <div class="table-wrap"><table class="t fin">
           <thead><tr><th>Realizado</th><th class="n">Adultos</th><th class="n">R$</th><th class="n">Total ADT</th><th class="n">Crianças</th><th class="n">R$</th><th class="n">Total CHD</th><th class="n">Total</th></tr></thead>
           <tbody>${R.realizado.map((l) => line(R, l)).join('')}
-            ${R.extras.map((e) => `<tr class="sub"><td colspan="7">Extra · ${e.meal ? MEAL_ROW[e.meal] + ` · ${n0(e.adults)} adt${e.children ? ` + ${n0(e.children)} chd` : ''}` : esc(e.item)}</td><td class="n">${brl(e.value)}</td></tr>`).join('')}
-            ${R.vouchers.map((v) => `<tr class="sub"><td colspan="7">Vouchers · ${v.meal ? MEAL_ROW[v.meal] + ` · ${n0(v.count)} voucher(s), ${n0(v.adults + v.children)} pax` : esc(v.item)}</td><td class="n">${brl(v.value)}</td></tr>`).join('')}
+            ${R.extras.map((e) => `<tr class="sub"><td colspan="7">Extra · ${e.meal ? MEAL_ROW[e.meal] + ` · ${n0(e.adults)} adultos${e.children ? ` + ${n0(e.children)} crianças` : ''}` : esc(e.item)}</td><td class="n">${brl(e.value)}</td></tr>`).join('')}
+            ${R.vouchers.map((v) => `<tr class="sub"><td colspan="7">Vouchers · ${v.meal ? MEAL_ROW[v.meal] + ` · ${n0(v.count)} voucher(s), ${n0(v.adults + v.children)} pessoas` : esc(v.item)}</td><td class="n">${brl(v.value)}</td></tr>`).join('')}
           </tbody>
           <tfoot><tr><td>Total</td><td class="n">${n0(R.realizado.reduce((s, l) => s + l.adults, 0))}</td><td></td><td class="n">${brl(R.totals.adults)}</td><td class="n">${n0(R.realizado.reduce((s, l) => s + l.children, 0))}</td><td></td><td class="n">${brl(R.totals.children)}</td><td class="n">${brl(R.totals.total)}</td></tr></tfoot>
         </table></div>
@@ -132,14 +132,14 @@ export async function render(el) {
     body.innerHTML = `
       <div class="stats">
         <div class="card stat"><div class="k">Total do mês</div><div class="v" style="font-size:24px">${brl(d.totals.total)}</div><div class="muted small">${esc(d.restaurant.name)} · ${mesLabel(d.month)}</div></div>
-        <div class="card stat"><div class="k">Adultos</div><div class="v" style="font-size:22px">${brl(d.totals.adults)}</div><div class="muted small">${n0(d.month_lines.reduce((s, l) => s + l.adults, 0))} pax</div></div>
-        <div class="card stat"><div class="k">Crianças (meia)</div><div class="v" style="font-size:22px">${brl(d.totals.children)}</div><div class="muted small">${n0(d.month_lines.reduce((s, l) => s + l.children, 0))} pax</div></div>
+        <div class="card stat"><div class="k">Adultos</div><div class="v" style="font-size:22px">${brl(d.totals.adults)}</div><div class="muted small">${n0(d.month_lines.reduce((s, l) => s + l.adults, 0))} pessoas</div></div>
+        <div class="card stat"><div class="k">Crianças (meia)</div><div class="v" style="font-size:22px">${brl(d.totals.children)}</div><div class="muted small">${n0(d.month_lines.reduce((s, l) => s + l.children, 0))} pessoas</div></div>
         <div class="card stat"><div class="k">Extras${d.restaurant.accepts_voucher ? ' e vouchers' : ''}</div><div class="v" style="font-size:20px">${brl(d.totals.extras + d.totals.vouchers)}</div></div>
       </div>
       <p class="muted small" style="margin:-4px 0 12px">Fonte: ${SRC[d.source]}. Semanas de quarta a terça dentro do mês. Criança paga meia.${d.source === 'planilha' ? ' O total do mês é o número faturado na planilha; as semanas mostram o lançamento diário.' : ''}</p>
       <div class="card" style="margin-bottom:14px">
         <div class="card-head">${icon('coin')}<h3 class="grow">Valor de cada semana</h3></div>
-        <div class="table-wrap"><table class="t fin"><thead><tr><th>Semana</th>${d.meals.map((m) => `<th class="n">${MEAL_LABEL[m]} adt</th><th class="n">${MEAL_LABEL[m]} chd</th>`).join('')}<th class="n">Valor</th></tr></thead>
+        <div class="table-wrap"><table class="t fin"><thead><tr><th>Semana</th>${d.meals.map((m) => `<th class="n">${MEAL_LABEL[m]} adultos</th><th class="n">${MEAL_LABEL[m]} crianças</th>`).join('')}<th class="n">Valor</th></tr></thead>
           <tbody>${d.weeks.map((w) => `<tr${w.from <= hoje && hoje <= w.to ? ' style="background:var(--primary-l, #e6f4f7)"' : ''}><td><b>Semana ${w.n}</b> <span class="muted small">${br(w.from).slice(0, 5)} a ${br(w.to).slice(0, 5)}</span></td>
             ${w.lines.map((l) => `<td class="n">${pq(l.adults)}</td><td class="n">${pq(l.children)}</td>`).join('')}<td class="n"><b>${brl(w.value)}</b></td></tr>`).join('')}</tbody>
           <tfoot><tr><td>Mês (semanas)</td>${d.meals.map((m) => `<td class="n">${n0(d.weeks.reduce((s, w) => s + w.lines.find((l) => l.meal === m).adults, 0))}</td><td class="n">${n0(d.weeks.reduce((s, w) => s + w.lines.find((l) => l.meal === m).children, 0))}</td>`).join('')}<td class="n">${brl(d.weeks.reduce((s, w) => s + w.value, 0))}</td></tr></tfoot>
@@ -166,8 +166,8 @@ export async function render(el) {
           </tbody></table></div></div>
         <div class="card"><div class="card-head"><h3 class="grow">Extras${d.restaurant.accepts_voucher ? ' e vouchers' : ''}</h3><b>${brl(d.totals.extras + d.totals.vouchers)}</b></div>
           <div class="table-wrap"><table class="t fin"><tbody>
-            ${d.extras.map((e) => `<tr><td>Extra · ${e.meal ? MEAL_ROW[e.meal] : esc(e.item)}</td><td class="n">${e.meal ? `${n0(e.adults)} adt${e.children ? ` + ${n0(e.children)} chd` : ''}` : (e.adults ? n0(e.adults) : '')}</td><td class="n small muted">${e.price_adult != null ? brl(e.price_adult) : ''}</td><td class="n">${brl(e.value)}</td></tr>`).join('')}
-            ${d.vouchers.map((v) => `<tr><td>Vouchers · ${v.meal ? MEAL_ROW[v.meal] : esc(v.item)}</td><td class="n">${n0(v.count)} voucher(s)</td><td class="n small muted">${n0(v.adults + v.children)} pax</td><td class="n">${brl(v.value)}</td></tr>`).join('')}
+            ${d.extras.map((e) => `<tr><td>Extra · ${e.meal ? MEAL_ROW[e.meal] : esc(e.item)}</td><td class="n">${e.meal ? `${n0(e.adults)} adultos${e.children ? ` + ${n0(e.children)} crianças` : ''}` : (e.adults ? n0(e.adults) : '')}</td><td class="n small muted">${e.price_adult != null ? brl(e.price_adult) : ''}</td><td class="n">${brl(e.value)}</td></tr>`).join('')}
+            ${d.vouchers.map((v) => `<tr><td>Vouchers · ${v.meal ? MEAL_ROW[v.meal] : esc(v.item)}</td><td class="n">${n0(v.count)} voucher(s)</td><td class="n small muted">${n0(v.adults + v.children)} pessoas</td><td class="n">${brl(v.value)}</td></tr>`).join('')}
             ${!d.extras.length && !d.vouchers.length ? '<tr><td><div class="empty">Nenhum extra no mês.</div></td></tr>' : ''}
           </tbody></table></div>
           ${d.restaurant.accepts_voucher ? '<div style="padding:10px 16px"><button class="btn sm" id="vlist">Ver vouchers recebidos</button></div>' : ''}</div>
@@ -175,7 +175,7 @@ export async function render(el) {
     body.querySelector('#vlist')?.addEventListener('click', async () => {
       try {
         const rows = await get(`/api/vouchers?month=${st.month}&restaurant_id=${d.restaurant.id}`);
-        modal({ wide: true, title: `Vouchers · ${esc(d.restaurant.name)} · ${mesLabel(st.month)}`, body: rows.length ? `<div class="table-wrap"><table class="t"><thead><tr><th>Data</th><th>Refeição</th><th>Voucher</th><th>Pax</th><th>Recebido por</th></tr></thead><tbody>${rows.map((v) => `<tr><td>${br(v.date)}</td><td>${MEAL_LABEL[v.meal]}</td><td><b>${esc(v.code)}</b></td><td>${v.adults} adt${v.children ? ` + ${v.children} chd` : ''}</td><td class="small">${esc(v.user_name || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhum voucher no mês.</div>', foot: '<button class="btn" data-close>Fechar</button>' });
+        modal({ wide: true, title: `Vouchers · ${esc(d.restaurant.name)} · ${mesLabel(st.month)}`, body: rows.length ? `<div class="table-wrap"><table class="t"><thead><tr><th>Data</th><th>Refeição</th><th>Voucher</th><th>Pax</th><th>Recebido por</th></tr></thead><tbody>${rows.map((v) => `<tr><td>${br(v.date)}</td><td>${MEAL_LABEL[v.meal]}</td><td><b>${esc(v.code)}</b></td><td>${v.adults} adultos${v.children ? ` + ${v.children} crianças` : ''}</td><td class="small">${esc(v.user_name || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhum voucher no mês.</div>', foot: '<button class="btn" data-close>Fechar</button>' });
       } catch (e) { fail(e); }
     });
   }

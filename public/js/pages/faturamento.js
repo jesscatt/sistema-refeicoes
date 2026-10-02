@@ -20,7 +20,7 @@ export async function render(el) {
     const sum = (k) => b.lines.reduce((s, l) => s + l[k], 0);
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e pax (adulto/criança). Base de cálculo: o <b>realizado</b>, isto é, os pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente.</p></div>
+        <div class="grow"><h1>Faturamento</h1><p>Quantidades por restaurante, refeição e número de pessoas (adultos e crianças). Base de cálculo: o <b>realizado</b>, isto é, as pessoas registradas pelos restaurantes (lista e fora da lista), calculado automaticamente.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         ${boss ? `<button class="btn" id="prices">${icon('coin')} Valores</button><button class="btn" id="csv">${icon('download')} Relatório oficial</button>` : ''}
         ${boss && !b.closed ? `<button class="btn primary" id="close">${icon('lock')} Fechar mês</button>` : ''}
@@ -31,15 +31,15 @@ export async function render(el) {
       ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado. ${boss ? 'Clique em “Valores” para informar.' : 'Peça à supervisão para cadastrar os valores.'}</span></div>` : ''}
       <div class="stats">
         <div class="card stat"><div class="k">Total do mês</div><div class="v">${money(b.total)}</div></div>
-        <div class="card stat"><div class="k">Pax realizados</div><div class="v">${sum('billed_adults') + sum('billed_children')}<small>${sum('billed_adults')} adt · ${sum('billed_children')} chd</small></div></div>
-        <div class="card stat"><div class="k">Previsto</div><div class="v">${sum('forecast_adults') + sum('forecast_children')}<small>pax</small></div></div>
-        <div class="card stat"><div class="k">Consumo à parte</div><div class="v">${sum('walkin_adults') + sum('walkin_children')}<small>pax (fora da conta)</small></div></div>
+        <div class="card stat"><div class="k">Pax realizados</div><div class="v">${sum('billed_adults') + sum('billed_children')}<small>${sum('billed_adults')} adultos · ${sum('billed_children')} crianças</small></div></div>
+        <div class="card stat"><div class="k">Previsto</div><div class="v">${sum('forecast_adults') + sum('forecast_children')}<small>pessoas</small></div></div>
+        <div class="card stat"><div class="k">Consumo à parte</div><div class="v">${sum('walkin_adults') + sum('walkin_children')}<small>pessoas (fora da conta)</small></div></div>
       </div>
       <div class="card pad" style="margin-bottom:16px"><div class="bars">
         ${Object.values(byRest).map((x) => `<div class="b"><span class="row" style="gap:8px">${restDot(x.r)}<b>${esc(x.r.name)}</b></span><div class="track"><i style="width:${(x.value / maxV) * 100}%;background:${esc(x.r.color)}"></i></div><span class="num"><b>${money(x.value)}</b></span></div>`).join('')}
       </div></div>
       <div class="card"><div class="table-wrap"><table class="t">
-        <thead><tr><th>Restaurante</th><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adt</th><th class="n">Realizado chd</th><th class="n">Dif. pax</th><th class="n">Valor adt</th><th class="n">Valor chd</th><th class="n">Total</th></tr></thead>
+        <thead><tr><th>Restaurante</th><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adultos</th><th class="n">Realizado crianças</th><th class="n">Diferença (pessoas)</th><th class="n">Valor adt</th><th class="n">Valor chd</th><th class="n">Total</th></tr></thead>
         <tbody>${b.lines.map((l) => `<tr>
           <td><span class="row" style="gap:8px">${restDot(l.restaurant)}${esc(l.restaurant.name)}</span></td><td>${MEAL_LABEL[l.meal]}</td>
           <td class="n">${l.forecast_adults + l.forecast_children}</td>

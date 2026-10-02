@@ -16,7 +16,7 @@ export async function render(el) {
       </div>
       ${openCard(rd)}
       <div class="stats">
-        <div class="card stat"><div class="k">Hospedados</div><div class="v">${d.inhouse.adults + d.inhouse.children}<small>pax · ${d.inhouse.reservas} reservas</small></div></div>
+        <div class="card stat"><div class="k">Hospedados</div><div class="v">${d.inhouse.adults + d.inhouse.children}<small>pessoas · ${d.inhouse.reservas} reservas</small></div></div>
         <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>adt</small> ${d.inhouse.children}<small>chd</small></div></div>
         <div class="card stat"><div class="k">Entradas · Saídas</div><div class="v">${d.arrivals}<small>entram</small> ${d.departures}<small>saem</small></div></div>
         <div class="card stat"><div class="k">Pensões</div><div class="v" style="font-size:15px;font-family:var(--font);display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
@@ -61,7 +61,7 @@ export async function render(el) {
           ${r.days.map((d) => `<td class="${d.date === wk.today ? 'today' : ''}"><div class="wk-meals">${d.meals.map((m) => {
             const cls = !m.serves ? 'na' : m.open ? 'on' : 'off';
             const can = edit && m.serves && d.date >= wk.today;
-            const tip = `${SHORT[m.meal]} · ${!m.serves ? 'não serve' : m.open ? 'aberto' : 'fechado'}${m.note ? ' · ' + m.note : ''}`;
+            const tip = `${SHORT[m.meal]} · ${!m.serves ? 'não oferece' : m.open ? 'aberto' : 'fechado'}${m.note ? ' · ' + m.note : ''}`;
             return `<${can ? 'button' : 'span'} class="wm ${cls}" title="${esc(tip)}" ${can ? `data-rday="${r.id}" data-meal="${m.meal}" data-date="${d.date}"` : ''}>${SHORT[m.meal]}</${can ? 'button' : 'span'}>`;
           }).join('')}</div>${d.meals.some((m) => m.note && !m.open) ? `<div class="wk-note">${esc(d.meals.find((m) => m.note && !m.open).note)}</div>` : ''}</td>`).join('')}
         </tr>`).join('')}</tbody>
@@ -86,7 +86,7 @@ export async function render(el) {
     md.querySelector('[data-ok]').onclick = async () => {
       try {
         const res = await put('/api/restaurants/day', { date: rd.date, meal, restaurant_id: r.id, open: !closing, note: md.querySelector('[name=note]').value });
-        toast(`${r.name} ${closing ? 'fechado' : 'aberto'}${res.moved ? ` · ${res.moved} apto(s) redistribuído(s)` : ''}.`);
+        toast(`${r.name} ${closing ? 'fechado' : 'aberto'}${res.moved ? ` · ${res.moved} apartamento(s) redistribuído(s)` : ''}.`);
         close(); load();
       } catch (e) { fail(e); }
     };
@@ -101,13 +101,13 @@ export async function render(el) {
       <div class="top">
         <div class="meal-ico ${m.meal}">${mealIcon(m.meal)}</div>
         <div><div class="title">${MEAL_FULL[m.meal]}</div><div class="hours">${m.start} – ${m.end}</div></div>
-        <div class="total"><b>${total}</b><span>pax previstos</span></div>
+        <div class="total"><b>${total}</b><span>pessoas previstas</span></div>
       </div>
       <div class="split-bar">${serv.map((r) => `<i style="width:${total ? (r.pax / total) * 100 : 0}%;background:${esc(r.color)}" title="${esc(r.name)}"></i>`).join('')}</div>
       <div class="rests">${serv.map((r) => `
         <div class="rest-line" style="${!r.serves && !r.pax ? 'opacity:.6' : ''}">
           <span class="nm">${restDot(r)}${esc(r.name)}${r.full ? ' <span class="badge danger">lotado</span>' : ''}</span>
-          ${!r.serves && !r.pax ? `<span class="num"></span><span class="pct"><span class="badge ${r.closed_today ? 'danger' : ''}">${r.closed_today ? 'fechado' : 'não serve'}</span></span>` : `<span class="num"><b>${r.pax}</b> <span class="muted small">pax</span></span>
+          ${!r.serves && !r.pax ? `<span class="num"></span><span class="pct"><span class="badge ${r.closed_today ? 'danger' : ''}">${r.closed_today ? 'fechado' : 'não oferece'}</span></span>` : `<span class="num"><b>${r.pax}</b> <span class="muted small">pessoas</span></span>
           <span class="pct">${pct(r.pct)} <span title="meta">/ ${pct(r.share)}</span></span>`}
           <span class="chk" title="marcados">${r.checked_pax ? '✓ ' + r.checked_pax : ''}</span>
         </div>`).join('')}</div>

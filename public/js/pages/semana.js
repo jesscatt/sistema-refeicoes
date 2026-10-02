@@ -30,7 +30,7 @@ export async function render(el) {
     const days = w.days;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Apuração semanal</h1><p>Total de pax (adultos e crianças) e valor a pagar por restaurante no período. Base do pagamento: o <b>realizado</b>, ou seja, os pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente. A <b>previsão</b> vem da distribuição.</p></div>
+        <div class="grow"><h1>Apuração semanal</h1><p>Total de pessoas (adultos e crianças) e valor a pagar por restaurante no período. Base do pagamento: o <b>realizado</b>, ou seja, as pessoas registradas pelos restaurantes (lista e fora da lista), calculado automaticamente. A <b>previsão</b> vem da distribuição.</p></div>
       </div>
       <div class="row" style="margin-bottom:16px">
         <button class="btn sm ghost" id="prev" title="Semana anterior">‹</button>
@@ -49,23 +49,23 @@ export async function render(el) {
         ${w.restaurants.map((r) => { const t = r.total; return `
           <div class="card stat" style="border-top-color:${esc(r.restaurant.color)}">
             <div class="k" style="color:${esc(r.restaurant.color)}">${esc(r.restaurant.name)}</div>
-            <div class="v">${nf(t.pag_adt + t.pag_chd)}<small>pax realizados</small></div>
+            <div class="v">${nf(t.pag_adt + t.pag_chd)}<small>pessoas realizados</small></div>
             <div class="row small" style="gap:14px;margin-top:2px"><span><b>${nf(t.pag_adt)}</b> adultos</span><span><b>${nf(t.pag_chd)}</b> crianças</span></div>
             <div class="row" style="margin-top:10px;align-items:baseline"><b style="font-size:20px">${money(t.valor)}</b><span class="small muted">previsto ${money(t.valor_prev)} · ${diff(t.valor - t.valor_prev, true)}</span></div>
           </div>`; }).join('')}
       </div>
       ${w.restaurants.length > 1 ? `<div class="card pad" style="margin-bottom:16px"><div class="row"><b class="grow">Total da semana</b>
-        <span><b>${nf(w.total.pag_adt + w.total.pag_chd)}</b> pax (${nf(w.total.pag_adt)} adt · ${nf(w.total.pag_chd)} chd)</span>
-        <span class="muted">·</span><span>previsto ${nf(w.total.prev_adt + w.total.prev_chd)} pax · ${diff(w.total.pag_adt + w.total.pag_chd - w.total.prev_adt - w.total.prev_chd)}</span>
+        <span><b>${nf(w.total.pag_adt + w.total.pag_chd)}</b> pax (${nf(w.total.pag_adt)} adultos · ${nf(w.total.pag_chd)} crianças)</span>
+        <span class="muted">·</span><span>previsto ${nf(w.total.prev_adt + w.total.prev_chd)} pessoas · ${diff(w.total.pag_adt + w.total.pag_chd - w.total.prev_adt - w.total.prev_chd)}</span>
         <span class="muted">·</span><b style="font-size:18px">${money(w.total.valor)}</b><span class="small muted">(previsto ${money(w.total.valor_prev)} · ${diff(w.total.valor - w.total.valor_prev, true)})</span></div></div>` : ''}
 
       ${w.restaurants.map((r) => `
         <div class="card" style="margin-bottom:16px">
           <div class="card-head" style="border-top:4px solid ${esc(r.restaurant.color)};border-radius:var(--radius) var(--radius) 0 0"><h3 class="grow">${restDot(r.restaurant)} ${esc(r.restaurant.name)}</h3></div>
           <div class="table-wrap"><table class="t">
-            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adt</th><th class="n">Realizado chd</th><th class="n">Realizado total</th><th class="n">Dif. pax</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
+            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adultos</th><th class="n">Realizado crianças</th><th class="n">Realizado total</th><th class="n">Diferença (pessoas)</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
             <tbody>${r.meals.map((m) => `<tr>
-              <td><b>${MEAL_LABEL[m.meal]}</b><div class="small muted">${money(m.price_adult)} adt · ${money(m.price_child)} chd${m.sem_real ? ` · <span style="color:#8a5a07">${m.sem_real} sem registro</span>` : ''}</div></td>
+              <td><b>${MEAL_LABEL[m.meal]}</b><div class="small muted">${money(m.price_adult)} adultos · ${money(m.price_child)} crianças${m.sem_real ? ` · <span style="color:#8a5a07">${m.sem_real} sem registro</span>` : ''}</div></td>
               <td class="n">${nf(m.prev_adt + m.prev_chd)}<div class="small muted">${nf(m.prev_adt)} / ${nf(m.prev_chd)}</div></td>
               <td class="n">${nf(m.pag_adt)}</td><td class="n">${nf(m.pag_chd)}</td><td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b></td>
               <td class="n">${diff(m.pag_adt + m.pag_chd - m.prev_adt - m.prev_chd)}</td>
@@ -77,8 +77,8 @@ export async function render(el) {
           <details style="border-top:1px solid var(--line)"><summary style="padding:10px 18px;cursor:pointer;font-weight:600;font-size:14px">Ver por dia</summary>
             <div class="table-wrap"><table class="t">
               <thead><tr><th>Refeição</th>${days.map((d) => `<th class="n">${weekday(d)} ${br(d).slice(0, 5)}</th>`).join('')}<th class="n">Total</th></tr></thead>
-              <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} chd${x.sem_real ? ' · sem registro' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
-                <td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b><div class="small muted">${nf(m.pag_chd)} chd</div></td></tr>`).join('')}</tbody>
+              <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} crianças${x.sem_real ? ' · sem registro' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
+                <td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b><div class="small muted">${nf(m.pag_chd)} crianças</div></td></tr>`).join('')}</tbody>
             </table></div>
             <p class="small muted" style="padding:0 18px 12px">Pax realizados por dia (registros dos restaurantes). “sem registro” = refeição prevista sem nenhum registro.</p>
           </details>

@@ -6,7 +6,7 @@ export async function render(el) {
   function drawStart() {
     el.innerHTML = `
       <div class="page-head"><div class="grow"><h1>Importação de reservas</h1>
-        <p>Envie a planilha de divisão (.xlsx) ou o CSV do sistema do hotel. As colunas são reconhecidas pelo nome: Reserva (pode vir com o nome do grupo junto, ex.: “50893 ANR TUR”), Entrada, Saída, Pensão, Apto/Quarto, Pax e Chd. Se a planilha já tiver as colunas de divisão por restaurante, o sistema também lê.</p></div>
+        <p>Envie a planilha de divisão (.xlsx) ou o CSV do sistema do hotel. As colunas são reconhecidas pelo nome: Reserva (pode vir com o nome do grupo junto, ex.: “50893 ANR TUR”), Entrada, Saída, Pensão, Apartamento/Apartamento, Pax e Chd. Se a planilha já tiver as colunas de divisão por restaurante, o sistema também lê.</p></div>
         <button class="btn" id="tpl">${icon('download')} Modelo de planilha</button></div>
       <label class="dropzone" id="dz">
         ${icon('upload')}
@@ -16,8 +16,8 @@ export async function render(el) {
       </label>
       <div class="grid g3" style="margin-top:18px">
         <div class="card pad"><h3>1. Conferir</h3><p class="muted small">Antes de gravar, você vê cada linha: nova, alterada, sem mudança ou com erro.</p></div>
-        <div class="card pad"><h3>2. Trocas de quarto</h3><p class="muted small">Se uma reserva já existente vier com outro quarto, a troca é registrada e recepção e restaurantes são avisados.</p></div>
-        <div class="card pad"><h3>3. Divisão</h3><p class="muted small">Usa a divisão que já veio na planilha ou divide sozinho (60/20/20), sempre com o grupo inteiro no mesmo restaurante e alternando os restaurantes ao longo da estadia.</p></div>
+        <div class="card pad"><h3>2. Trocas de apartamento</h3><p class="muted small">Se uma reserva já existente vier com outro apartamento, a troca é registrada e recepção e restaurantes são avisados.</p></div>
+        <div class="card pad"><h3>3. Divisão</h3><p class="muted small">Utiliza a divisão informada na planilha ou realiza a divisão automaticamente (60/20/20), sempre com o grupo inteiro no mesmo restaurante e alternando os restaurantes ao longo da estadia.</p></div>
       </div>`;
     const dz = el.querySelector('#dz'), fi = el.querySelector('#file');
     fi.addEventListener('change', () => fi.files[0] && upload(fi.files[0]));
@@ -52,11 +52,11 @@ export async function render(el) {
     const shown = rows.filter((r) => filter === 'todos' || (filter === 'avisos' ? (r.notes && r.notes.length) || r.warning : filter === 'erros' ? r.errors.length : r.action === filter));
     const slotTxt = dist ? (() => { const s = [...dist.slots].sort((a, b) => a.date.localeCompare(b.date)); const f = s[0], l = s[s.length - 1]; return `de ${MEALN[f.meal]} ${br(f.date).slice(0, 5)} a ${MEALN[l.meal]} ${br(l.date).slice(0, 5)}`; })() : '';
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Conferência da importação</h1><p>${esc(preview.filename)} · cabeçalho na linha ${preview.headerRow} · ${rows.length} quartos em ${preview.groups} reservas</p></div>
+      <div class="page-head"><div class="grow"><h1>Conferência da importação</h1><p>${esc(preview.filename)} · cabeçalho na linha ${preview.headerRow} · ${rows.length} apartamentos em ${preview.groups} reservas</p></div>
         <button class="btn" id="back">Escolher outro arquivo</button>
         <button class="btn primary" id="go">${icon('check')} Importar</button></div>
       <div class="stats">
-        <div class="card stat"><div class="k">Quartos novos</div><div class="v">${c('nova')}</div></div>
+        <div class="card stat"><div class="k">Apartamentos novos</div><div class="v">${c('nova')}</div></div>
         <div class="card stat"><div class="k">Alterados</div><div class="v">${c('alterada')}</div></div>
         <div class="card stat"><div class="k">Sem mudança</div><div class="v">${c('igual')}</div></div>
         <div class="card stat"><div class="k">Com erro</div><div class="v" style="color:${c('erro') ? 'var(--danger)' : 'inherit'}">${c('erro')}</div></div>
@@ -65,21 +65,21 @@ export async function render(el) {
       ${dist ? `<div class="card pad" style="margin-bottom:14px">
           <div class="row"><div class="grow"><b>A planilha já traz a divisão por restaurante</b> <span class="muted">· ${dist.columns.length} colunas, ${slotTxt}</span></div></div>
           <label class="row" style="margin-top:10px;gap:8px;cursor:pointer"><input type="checkbox" id="use-dist" ${preview.useDist !== false ? 'checked' : ''}>
-            <span>Usar a divisão da planilha — cada quarto fica travado no restaurante que está na planilha. Desmarque para o sistema dividir sozinho pela regra 60/20/20.</span></label>
+            <span>Usar a divisão da planilha — cada apartamento fica travado no restaurante que está na planilha. Desmarque para o sistema dividir sozinho pela regra 60/20/20.</span></label>
           ${loa.length ? `<p class="small" style="margin:10px 0 0"><b>Almoço no dia da chegada</b> (detectado na planilha): ${loa.map(esc).join(' · ')}</p>` : ''}
         </div>` : ''}
-      ${trocas.length ? `<div class="banner warn">${icon('swap')}<span><b>${trocas.length} troca(s) de quarto</b>: ${trocas.slice(0, 6).map((r) => `${esc(r.guest_name)} ${esc(r.old_room)} → ${esc(r.room)}`).join(' · ')}${trocas.length > 6 ? '…' : ''}</span></div>` : ''}
+      ${trocas.length ? `<div class="banner warn">${icon('swap')}<span><b>${trocas.length} troca(s) de apartamento</b>: ${trocas.slice(0, 6).map((r) => `${esc(r.guest_name)} ${esc(r.old_room)} → ${esc(r.room)}`).join(' · ')}${trocas.length > 6 ? '…' : ''}</span></div>` : ''}
       ${preview.removed && preview.removed.length ? `<div class="card pad" style="margin-bottom:14px;border-color:#e8c47e">
-          <b>${preview.removed.length} quarto(s) de reservas desta planilha não aparecem mais nela:</b>
+          <b>${preview.removed.length} apartamento(s) de reservas desta planilha não aparecem mais nela:</b>
           <div class="small" style="margin:6px 0">${preview.removed.slice(0, 12).map((x) => `${esc(x.guest_name)} · ${roomHtml(x.room)}`).join(' &nbsp;·&nbsp; ')}${preview.removed.length > 12 ? ' …' : ''}</div>
-          <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="cancel-missing" ${preview.cancelMissing !== false ? 'checked' : ''}> <span>Cancelar esses quartos (saem das listas futuras)</span></label>
+          <label class="row" style="gap:8px;cursor:pointer"><input type="checkbox" id="cancel-missing" ${preview.cancelMissing !== false ? 'checked' : ''}> <span>Cancelar esses apartamentos (saem das listas futuras)</span></label>
         </div>` : ''}
       ${c('erro') ? `<div class="banner danger">${icon('alert')}<span>Linhas com erro não são importadas. Quando o sistema consegue sugerir a correção, escolha abaixo na própria linha.</span></div>` : ''}
       <div class="card pad" style="margin-bottom:14px"><b>Colunas reconhecidas:</b> ${Object.values(preview.mapping).map((m) => `<span class="badge" style="margin:2px">${esc(m.label)} ← “${esc(m.column)}”</span>`).join('')}</div>
       <div class="card">
         <div class="card-head"><div class="seg" id="flt">${[['todos', `Todos (${rows.length})`], ['nova', `Novos (${c('nova')})`], ['alterada', `Alterados (${c('alterada')})`], ['avisos', `Com aviso (${withNotes.length})`], ['erros', `Erros (${c('erro')})`]].map(([k, l]) => `<button data-f="${k}" class="${filter === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
         <div class="table-wrap" style="max-height:60vh"><table class="t">
-        <thead><tr><th>Linha</th><th></th><th>Reserva</th><th>Nome / grupo</th><th>Entrada</th><th>Saída</th><th>Quarto</th><th>Pensão</th><th class="n">Adt</th><th class="n">Chd</th><th>Observação</th></tr></thead>
+        <thead><tr><th>Linha</th><th></th><th>Reserva</th><th>Nome / grupo</th><th>Entrada</th><th>Saída</th><th>Apartamento</th><th>Pensão</th><th class="n">Adt</th><th class="n">Chd</th><th>Observação</th></tr></thead>
         <tbody>${shown.map((r) => `<tr data-line="${r.line}">
           <td class="muted">${r.line}</td><td>${badge[r.action] || ''}</td><td>${esc(r.reservation_number)}</td><td>${esc(r.guest_name)}${r.lunch_on_arrival ? ' <span class="badge info" title="Almoço no dia da chegada">almoço na chegada</span>' : ''}</td>
           <td>${esc(br(r.checkin))}</td><td>${esc(br(r.checkout))}</td>
@@ -120,12 +120,12 @@ export async function render(el) {
         use_distribution: !!preview.distribution && preview.useDist !== false,
         cancel_missing: preview.cancelMissing !== false,
       });
-      toast(`${r.inserted} novos, ${r.updated} atualizados${r.roomChanges.length ? `, ${r.roomChanges.length} troca(s) de quarto avisada(s)` : ''}.`, 'ok', 'Importação concluída');
+      toast(`${r.inserted} novos, ${r.updated} atualizados${r.roomChanges.length ? `, ${r.roomChanges.length} troca(s) de apartamento avisada(s)` : ''}.`, 'ok', 'Importação concluída');
       el.innerHTML = `<div class="card pad" style="text-align:center;padding:40px">
         <h1>Importação concluída</h1>
-        <p class="muted">${r.inserted} quartos novos · ${r.updated} atualizados · ${r.unchanged} sem mudança${r.cancelled ? ` · ${r.cancelled} cancelados` : ''}${r.errors.length ? ` · ${r.errors.length} com erro` : ''}</p>
+        <p class="muted">${r.inserted} apartamentos novos · ${r.updated} atualizados · ${r.unchanged} sem mudança${r.cancelled ? ` · ${r.cancelled} cancelados` : ''}${r.errors.length ? ` · ${r.errors.length} com erro` : ''}</p>
         ${r.distApplied ? `<p>Divisão da planilha aplicada em ${r.distApplied} refeições${r.distSkipped ? ` (${r.distSkipped} não aplicadas porque a pensão não inclui)` : ''}.</p>` : ''}
-        ${r.roomChanges.length ? `<p>${r.roomChanges.length} troca(s) de quarto registradas e avisadas.</p>` : ''}
+        ${r.roomChanges.length ? `<p>${r.roomChanges.length} troca(s) de apartamento registradas e avisadas.</p>` : ''}
         <div class="row" style="justify-content:center;margin-top:16px">${canSee('distribuicao') ? '<a class="btn" href="#/distribuicao">Distribuição de hóspedes</a>' : ''}${canSee('recepcao') ? '<a class="btn" href="#/recepcao">Consulta de refeições</a>' : ''}<button class="btn primary" id="again">Importar outra</button></div></div>`;
       el.querySelector('#again').onclick = drawStart;
     } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Importar'; }

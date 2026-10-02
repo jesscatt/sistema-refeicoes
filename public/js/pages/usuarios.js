@@ -5,8 +5,8 @@ const ROLE_HELP = {
   supervisor: 'Vê tudo, cadastra valores, fecha o faturamento e gera os relatórios oficiais.',
   refeicao: 'Importa planilhas, revisa e ajusta a divisão, publica listas, vê faturamento.',
   recepcao: 'Consulta de refeições dos hóspedes e impressão dos cartões (somente leitura).',
-  restaurante: 'Marca quem veio comer no seu restaurante, lança extras e (na Di Giordana) vouchers. Se for administrador do restaurante, vê também o controle semanal e os valores do mês.',
-  agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de quarto e ajusta quartos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
+  restaurante: 'Registra os atendimentos do seu restaurante, as refeições extras e (na Di Giordana) vouchers. Se for administrador do restaurante, vê também o controle semanal e os valores do mês.',
+  agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de apartamento e ajusta apartamentos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
 };
 
 export async function render(el) {

@@ -165,14 +165,14 @@ function tickClock() {
   const toMin = (hm) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
   let txt = '';
   for (const t of state.meta.meal_times) {
-    if (now >= toMin(t.start) && now <= toMin(t.end)) { txt = `${mealIcon(t.meal)} ${MEAL_FULL[t.meal]} em serviço até ${t.end}`; break; }
+    if (now >= toMin(t.start) && now <= toMin(t.end)) { txt = `${mealIcon(t.meal)} ${MEAL_FULL[t.meal]} em serviço até as ${t.end}`; break; }
     if (now < toMin(t.start)) {
       const open = toMin(t.start) - t.notify_before_min;
-      txt = `${mealIcon(t.meal)} Próximo: ${MEAL_FULL[t.meal]} às ${t.start}` + (now >= open ? ' · lista liberada' : ` · lista às ${String(Math.floor(open / 60)).padStart(2, '0')}:${String(open % 60).padStart(2, '0')}`);
+      txt = `${mealIcon(t.meal)} Próxima refeição: ${MEAL_FULL[t.meal]} às ${t.start}` + (now >= open ? ' · lista oficial liberada' : ` · liberação da lista às ${String(Math.floor(open / 60)).padStart(2, '0')}:${String(open % 60).padStart(2, '0')}`);
       break;
     }
   }
-  if (!txt) txt = `${mealIcon('cafe')} Próximo: café amanhã às ${state.meta.meal_times[0].start}`;
+  if (!txt) txt = `${mealIcon('cafe')} Próxima refeição: café da manhã de amanhã às ${state.meta.meal_times[0].start}`;
   const nm = document.getElementById('now-meal');
   if (nm.dataset.t !== txt) { nm.innerHTML = txt; nm.dataset.t = txt; nm.querySelector('svg').setAttribute('style', 'width:20px;height:20px;color:var(--primary)'); }
 }

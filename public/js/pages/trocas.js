@@ -32,7 +32,7 @@ export async function render(el) {
       const c = rows.find((x) => String(x.id) === b.dataset.undo);
       const { el: m, close } = modal({
         title: 'Desfazer troca?',
-        body: `<p style="margin-top:0">O hóspede volta do quarto <b>${roomHtml(c.new_room)}</b> para o <b>${roomHtml(c.old_room)}</b>. Recepção e restaurantes são avisados.</p><label class="f">Motivo<input class="input" name="note" placeholder="Ex.: troca não aconteceu"></label>`,
+        body: `<p style="margin-top:0">O hóspede volta do apartamento <b>${roomHtml(c.new_room)}</b> para o <b>${roomHtml(c.old_room)}</b>. Recepção e restaurantes são avisados.</p><label class="f">Motivo<input class="input" name="note" placeholder="Ex.: troca não aconteceu"></label>`,
         foot: '<button class="btn" data-close>Voltar</button><button class="btn danger" data-go>Desfazer troca</button>',
       });
       m.querySelector('[data-go]').onclick = async () => {

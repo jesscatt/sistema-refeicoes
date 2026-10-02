@@ -19,7 +19,7 @@ export async function render(el) {
     const shareTot = serving.reduce((s, r) => s + r.share, 0) || 1;
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Distribuição de hóspedes</h1><p>${MEAL_FULL[d.meal]} · ${esc(dayLabel(d.date))} · ${total} pax em ${d.rows.length} quartos</p></div>
+        <div class="grow"><h1>Distribuição de hóspedes</h1><p>${MEAL_FULL[d.meal]} · ${esc(dayLabel(d.date))} · ${total} pessoas em ${d.rows.length} apartamentos</p></div>
         ${dateBar({ date: d.date, meal: d.meal })}
       </div>
       <div class="row" style="margin-bottom:16px">
@@ -40,7 +40,7 @@ export async function render(el) {
     el.querySelector('#xlsx').onclick = () => {
       const { el: m, close } = modal({
         title: 'Planilha de divisão (.xlsx)',
-        body: `<p class="muted" style="margin-top:0">Mesmo formato da planilha de hoje: uma coluna por refeição, restaurante e dia, com o pax de cada quarto e os totais.</p>
+        body: `<p class="muted" style="margin-top:0">Mesmo formato da planilha de hoje: uma coluna por refeição, restaurante e dia, com o número de pessoas de cada apartamento e os totais.</p>
           <div class="form-grid"><label class="f">De<input class="input" type="date" name="from" value="${esc(d.date)}"></label>
           <label class="f">Até<input class="input" type="date" name="to" value="${esc(addDays(d.date, 4))}"></label></div>`,
         foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Baixar</button>',
@@ -53,7 +53,7 @@ export async function render(el) {
       try { const r = await post('/api/distribution/rebalance', { date: d.date, meal: d.meal }); toast(`${r.moved} reserva(s) mudaram de restaurante.`); load(); } catch (e) { fail(e); }
     });
     el.querySelector('#pub')?.addEventListener('click', async () => {
-      try { const r = await post('/api/distribution/publish', { date: d.date, meal: d.meal }); toast(`Lista publicada: ${r.total} pax. Restaurantes avisados.`); load(); } catch (e) { fail(e); }
+      try { const r = await post('/api/distribution/publish', { date: d.date, meal: d.meal }); toast(`Lista publicada: ${r.total} pessoas. Restaurantes avisados.`); load(); } catch (e) { fail(e); }
     });
     el.querySelectorAll('select[data-asg]').forEach((s) => s.addEventListener('change', async () => {
       try { await post('/api/distribution/move', { assignment_id: Number(s.dataset.asg), restaurant_id: Number(s.value) }); toast('Movido e travado (o grupo inteiro foi junto).'); load(); } catch (e) { fail(e); load(); }
@@ -66,7 +66,7 @@ export async function render(el) {
   function col(r, total, shareTot, serving) {
     const rows = d.rows.filter((x) => x.restaurant_id === r.id);
     const target = r.share / shareTot;
-    // agrupa os quartos da mesma reserva (grupo)
+    // agrupa os apartamentos da mesma reserva (grupo)
     const groups = [];
     const byNum = new Map();
     for (const g of rows) {
@@ -89,14 +89,14 @@ export async function render(el) {
       return `<details class="grp">
         <summary class="guest grp-head">
           <span class="room"><span class="badge info">${G.rooms.length} qtos</span></span>
-          <span style="min-width:0"><div class="nm"><b>${esc(G.name)}</b></div><div class="sub">grupo ${esc(G.num)} · ${pax} pax${G.rooms.some((x) => x.att_status) ? ` · <b style="color:var(--ok)">${G.rooms.filter((x) => x.att_status).length} marcados</b>` : ''}</div></span>
+          <span style="min-width:0"><div class="nm"><b>${esc(G.name)}</b></div><div class="sub">grupo ${esc(G.num)} · ${pax} pessoas${G.rooms.some((x) => x.att_status) ? ` · <b style="color:var(--ok)">${G.rooms.filter((x) => x.att_status).length} marcados</b>` : ''}</div></span>
           <span class="row" style="gap:4px">${actions(head, r, serving)}</span>
         </summary>
         ${G.rooms.map((x) => line(x, true)).join('')}
       </details>`;
     }).join('');
     return `<div class="card dist-col" style="--c:${esc(r.color)}">
-      <div class="card-head"><div class="grow"><h3>${esc(r.name)}</h3><div class="meta">${r.pax} pax (${r.adults} adt · ${r.children} chd) · ${rows.length} quartos · ${groups.length} reservas${r.cap ? ` · capacidade ${r.cap}` : ''}</div></div>
+      <div class="card-head"><div class="grow"><h3>${esc(r.name)}</h3><div class="meta">${r.pax} pessoas (${r.adults} adultos · ${r.children} crianças) · ${rows.length} apartamentos · ${groups.length} reservas${r.cap ? ` · capacidade ${r.cap}` : ''}</div></div>
         <div style="text-align:right"><b style="font-size:22px">${pct(r.pct)}</b><div class="meta">meta ${pct(target)}</div></div></div>
       <div class="target"><i style="width:${Math.min(100, r.pct * 100)}%"></i><b style="left:${target * 100}%"></b></div>
       ${r.full ? '<div class="banner danger" style="margin:0 14px 10px">Capacidade atingida</div>' : ''}
@@ -113,8 +113,8 @@ export async function render(el) {
     const area = document.getElementById('print-area');
     area.innerHTML = d.summary.filter((r) => r.serves).map((r) => {
       const rows = d.rows.filter((x) => x.restaurant_id === r.id);
-      return `<div class="plist"><h2>${esc(r.name)} — ${MEAL_FULL[d.meal]} ${esc(dayLabel(d.date))}</h2><p>${rows.length} reservas · ${r.pax} pax</p>
-        <table><thead><tr><th></th><th>Quarto</th><th>Nome</th><th>Adt</th><th>Chd</th><th>Pensão</th></tr></thead><tbody>
+      return `<div class="plist"><h2>${esc(r.name)} — ${MEAL_FULL[d.meal]} ${esc(dayLabel(d.date))}</h2><p>${rows.length} reservas · ${r.pax} pessoas</p>
+        <table><thead><tr><th></th><th>Apartamento</th><th>Nome</th><th>Adt</th><th>Chd</th><th>Pensão</th></tr></thead><tbody>
         ${rows.map((g) => `<tr><td><span class="box"></span></td><td><b>${roomHtml(g.room)}</b></td><td>${esc(g.guest_name)}${g.guests ? `<br><small>${String(g.guests).split('\n').filter(Boolean).map(esc).join(', ')}</small>` : ''}</td><td>${g.adults}</td><td>${g.children}</td><td>${esc(g.board)}</td></tr>`).join('')}
         </tbody></table></div>`;
     }).join('');

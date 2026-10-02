@@ -20,7 +20,7 @@ function dayMeal(query) {
 
 function restaurantFor(user, requested) {
   if (user.role === 'restaurante') {
-    if (!user.restaurant_id) throw new HttpError(400, 'Seu usuário não está vinculado a um restaurante. Fale com o administrador.');
+    if (!user.restaurant_id) throw new HttpError(400, 'Seu usuário não está vinculado a um restaurante. Contate o administrador do sistema.');
     return user.restaurant_id;
   }
   const id = Number(requested);
@@ -91,7 +91,7 @@ route('PUT', '/api/restaurants/day', { roles: MANAGE }, ({ body, user, ip }) => 
   if (date < todayISO()) throw new HttpError(400, 'Não é possível alterar dias anteriores.');
   const cur = restaurantStatus(meal, date).find((r) => r.id === restId);
   if (!cur) throw new HttpError(404, 'Restaurante não encontrado.');
-  if (!cur.serves) throw new HttpError(400, `${cur.name} não serve ${MEAL_LABEL[meal].toLowerCase()}. Ajuste a divisão em Configurações.`);
+  if (!cur.serves) throw new HttpError(400, `${cur.name} não oferece ${MEAL_LABEL[meal].toLowerCase()}. Ajuste a divisão em Configurações.`);
   const open = !!body.open;
   const note = body.note ? String(body.note).slice(0, 200) : null;
   if (!open && restaurantStatus(meal, date).filter((r) => r.open && r.id !== restId).length === 0) {
@@ -110,7 +110,7 @@ route('PUT', '/api/restaurants/day', { roles: MANAGE }, ({ body, user, ip }) => 
   });
   if (!open || !isPublished(date, meal)) moved = rebalance(date, meal).moved;
   const d = `${date.slice(8)}/${date.slice(5, 7)}`;
-  notify({ kind: 'restaurant_day', title: `${cur.name} ${open ? 'aberto' : 'fechado'} no ${MEAL_LABEL[meal].toLowerCase()} de ${d}`, body: `${note ? note + ' · ' : ''}${moved ? `${moved} apto(s) redistribuído(s) entre os restaurantes abertos.` : 'Distribuição mantida.'}`, link: `#/painel?date=${date}` });
+  notify({ kind: 'restaurant_day', title: `${cur.name} ${open ? 'aberto' : 'fechado'} no ${MEAL_LABEL[meal].toLowerCase()} de ${d}`, body: `${note ? note + ' · ' : ''}${moved ? `${moved} apartamento(s) redistribuído(s) entre os restaurantes abertos.` : 'Distribuição mantida.'}`, link: `#/painel?date=${date}` });
   audit(user, open ? 'restaurante_aberto_dia' : 'restaurante_fechado_dia', { date, meal, restaurante: cur.code, obs: note, redistribuidos: moved }, ip);
   return { ok: true, moved };
 });
@@ -142,9 +142,9 @@ route('POST', '/api/distribution/move', { roles: MANAGE }, ({ body, user, ip }) 
   if (!a) throw new HttpError(404, 'Registro não encontrado.');
   const rest = db.prepare(`SELECT * FROM restaurants WHERE id = ? AND active = 1`).get(body.restaurant_id);
   if (!rest) throw new HttpError(400, 'Restaurante inválido.');
-  if (!restaurantsFor(a.meal, a.date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest.name} não serve ${MEAL_LABEL[a.meal].toLowerCase()} nesse dia.`);
+  if (!restaurantsFor(a.meal, a.date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest.name} não oferece ${MEAL_LABEL[a.meal].toLowerCase()} nesta data.`);
   if (db.prepare('SELECT 1 FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(a.reservation_id, a.date, a.meal)) {
-    throw new HttpError(409, 'Este cliente já foi marcado; não é possível mudar o restaurante.');
+    throw new HttpError(409, 'O atendimento deste hóspede já foi registrado; não é possível alterar o restaurante.');
   }
   const targets = body.only_room ? [a] : db.prepare(`SELECT a.* FROM assignments a JOIN reservations r ON r.id = a.reservation_id
     WHERE r.reservation_number = ? AND a.date = ? AND a.meal = ? AND r.status = 'ativa'
@@ -176,7 +176,7 @@ route('GET', '/api/distribution/export.csv', { roles: [...VIEW, 'restaurante'] }
     WHERE a.date = ? AND a.meal = ? AND r.status = 'ativa' ${restId ? 'AND a.restaurant_id = ' + restId : ''}
     ORDER BY a.restaurant_id, room_sort(r.room)`).all(date, meal);
   return {
-    __raw: toCSV(['Restaurante', 'Quarto', 'Nome', 'Reserva', 'Pensão', 'Adultos', 'Crianças', 'Pax'],
+    __raw: toCSV(['Restaurante', 'Apartamento', 'Hóspede', 'Reserva', 'Pensão', 'Adultos', 'Crianças', 'Total de pessoas'],
       rows.map((r) => [rm[r.restaurant_id].name, r.room, r.guest_name, r.reservation_number, r.board, r.adults, r.children, r.adults + r.children])),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="lista-${meal}-${date}.csv"` },
   };
@@ -282,11 +282,11 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
     const t = db.prepare('SELECT * FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
     let state, message;
     if (r.status !== 'ativa') { state = 'cancelada'; message = 'Reserva cancelada.'; }
-    else if (!boardHas(r.board, meal)) { state = 'sem_refeicao'; message = `A pensão ${r.board} (${BOARDS[r.board].label}) não inclui ${MEAL_LABEL[meal].toLowerCase()}. Cobrar à parte.`; }
-    else if (!inWindow(r, date, meal)) { state = 'sem_refeicao'; message = `${MEAL_LABEL[meal]} não incluído neste dia da estadia (entrada ${r.checkin}, saída ${r.checkout}). Cobrar à parte.`; }
-    else if (t) { state = 'ja_marcado'; message = `Já registrado em ${rm[t.restaurant_id].name} às ${t.created_at.slice(11, 16)}.`; }
-    else if (a && a.restaurant_id === restId) { state = 'na_lista'; message = 'Está na lista deste restaurante.'; }
-    else { state = 'outro_restaurante'; message = `Lista de ${a ? rm[a.restaurant_id].name : 'nenhum restaurante'}. Se marcar aqui fica como FORA DA LISTA.`; }
+    else if (!boardHas(r.board, meal)) { state = 'sem_refeicao'; message = `A pensão ${r.board} (${BOARDS[r.board].label}) não inclui ${MEAL_LABEL[meal].toLowerCase()}. A refeição deve ser cobrada à parte.`; }
+    else if (!inWindow(r, date, meal)) { state = 'sem_refeicao'; message = `${MEAL_LABEL[meal]} não incluído nesta data da estadia (entrada em ${r.checkin.split('-').reverse().join('/')}, saída em ${r.checkout.split('-').reverse().join('/')}). A refeição deve ser cobrada à parte.`; }
+    else if (t) { state = 'ja_marcado'; message = `Atendimento já registrado no restaurante ${rm[t.restaurant_id].name} às ${t.created_at.slice(11, 16)}.`; }
+    else if (a && a.restaurant_id === restId) { state = 'na_lista'; message = 'Consta na lista deste restaurante.'; }
+    else { state = 'outro_restaurante'; message = `Designado ao restaurante ${a ? rm[a.restaurant_id].name : '(sem designação)'}. O registro neste restaurante será feito como atendimento fora da lista.`; }
     return {
       reservation_id: r.id, reservation_number: r.reservation_number, guest_name: r.guest_name, guests: r.guests, room: r.room, board: r.board,
       adults: r.adults, children: r.children, state, message,
@@ -297,7 +297,7 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
   const moved = db.prepare(`SELECT c.old_room, c.new_room, c.created_at, r.guest_name FROM room_changes c JOIN reservations r ON r.id = c.reservation_id
     WHERE room_key(c.old_room) = ? AND room_key(r.room) != ? AND r.checkout >= ? AND r.status = 'ativa' ORDER BY c.id DESC LIMIT 5`).all(roomKey(q), roomKey(q), date);
   if (!results.length && !moved.length) {
-    return { results, moved, notFound: `Nenhum hóspede hospedado com "${q}" em ${date.split('-').reverse().join('/')}.` };
+    return { results, moved, notFound: `Nenhum hóspede encontrado para "${q}" em ${date.split('-').reverse().join('/')}.` };
   }
   return { results, moved };
 });
@@ -306,11 +306,11 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
   const { date, meal } = dayMeal(body);
   const restId = restaurantFor(user, body.restaurant_id);
   const rest = db.prepare('SELECT * FROM restaurants WHERE id = ?').get(restId);
-  if (!rest || !restaurantsFor(meal, date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest ? rest.name : 'Este restaurante'} não serve ${MEAL_LABEL[meal].toLowerCase()}.`);
+  if (!rest || !restaurantsFor(meal, date).find((x) => x.id === rest.id)) throw new HttpError(400, `${rest ? rest.name : 'Este restaurante'} não oferece ${MEAL_LABEL[meal].toLowerCase()}.`);
   const r = db.prepare('SELECT * FROM reservations WHERE id = ?').get(body.reservation_id);
   if (!r) throw new HttpError(404, 'Reserva não encontrada.');
   if (!isEligible(r, date, meal)) {
-    throw new HttpError(400, `Cliente não possui ${MEAL_LABEL[meal].toLowerCase()} na pensão (${r.board}). Deve ser cobrado à parte.`, { state: 'sem_refeicao' });
+    throw new HttpError(400, `O hóspede não possui ${MEAL_LABEL[meal].toLowerCase()} na pensão (${r.board}). A refeição deve ser cobrada à parte.`, { state: 'sem_refeicao' });
   }
   const adults = body.adults !== undefined ? Math.max(0, Math.min(Number(body.adults) || 0, r.adults)) : r.adults;
   const children = body.children !== undefined ? Math.max(0, Math.min(Number(body.children) || 0, r.children)) : r.children;
@@ -323,13 +323,13 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
     audit(user, 'refeicao_marcada', { reserva: r.reservation_number, quarto: r.room, date, meal, restaurante: rest.code, status }, ip);
     const assignedName = a && status === 'fora_lista' ? (db.prepare('SELECT name FROM restaurants WHERE id = ?').get(a.restaurant_id) || {}).name : null;
     if (status === 'fora_lista' && a) {
-      notify({ role: 'restaurante', restaurant_id: a.restaurant_id, kind: 'fora_lista', title: `Apto ${r.room} registrado fora da lista em ${rest.name}`, body: `${MEAL_LABEL[meal]} de ${date.slice(8)}/${date.slice(5, 7)}: hóspede da sua lista atendido em ${rest.name}. Não registrar novamente.`, link: `#/servico?date=${date}&meal=${meal}` });
+      notify({ role: 'restaurante', restaurant_id: a.restaurant_id, kind: 'fora_lista', title: `Apartamento ${r.room} atendido fora da lista no restaurante ${rest.name}`, body: `${MEAL_LABEL[meal]} de ${date.slice(8)}/${date.slice(5, 7)}: hóspede designado ao seu restaurante e atendido no restaurante ${rest.name}. Não efetuar novo registro.`, link: `#/servico?date=${date}&meal=${meal}` });
     }
     return { id: Number(ins.lastInsertRowid), status, assigned_restaurant: assignedName };
   } catch (e) {
     if (String(e.message).includes('UNIQUE')) {
       const t = db.prepare('SELECT t.*, x.name FROM attendance t JOIN restaurants x ON x.id = t.restaurant_id WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
-      throw new HttpError(409, `Já registrado em ${t.name} às ${t.created_at.slice(11, 16)}. Não é possível marcar de novo.`);
+      throw new HttpError(409, `Atendimento já registrado no restaurante ${t.name} às ${t.created_at.slice(11, 16)}. Não é possível novo registro.`);
     }
     throw e;
   }
@@ -339,8 +339,8 @@ route('DELETE', '/api/attendance/:id', { roles: SERVICE }, ({ params, user, ip }
   const t = db.prepare('SELECT t.*, r.reservation_number FROM attendance t JOIN reservations r ON r.id = t.reservation_id WHERE t.id = ?').get(params.id);
   if (!t) throw new HttpError(404, 'Registro não encontrado.');
   if (user.role === 'restaurante') {
-    if (t.restaurant_id !== user.restaurant_id) throw new HttpError(403, 'Só é possível desfazer marcações do seu restaurante.');
-    if (t.date !== todayISO()) throw new HttpError(403, 'Só é possível desfazer marcações de hoje.');
+    if (t.restaurant_id !== user.restaurant_id) throw new HttpError(403, 'Somente é possível cancelar registros do seu restaurante.');
+    if (t.date !== todayISO()) throw new HttpError(403, 'Somente é possível cancelar registros da data de hoje.');
   }
   db.prepare('DELETE FROM attendance WHERE id = ?').run(t.id);
   audit(user, 'marcacao_desfeita', { reserva: t.reservation_number, date: t.date, meal: t.meal }, ip);
@@ -360,7 +360,7 @@ route('POST', '/api/walkins', { roles: SERVICE }, ({ body, user, ip }) => {
     body.room = canonRoom(body.room);
   }
   const note = String(body.note ?? '').trim().replace(/\s+/g, ' ').slice(0, 300);
-  if (note.length < 3) throw new HttpError(400, 'A observação é obrigatória no consumo pago à parte (ex.: forma de pagamento, comanda).');
+  if (note.length < 3) throw new HttpError(400, 'A observação é obrigatória no consumo cobrado à parte (ex.: forma de pagamento, número da comanda).');
   body.note = note;
   db.prepare('INSERT INTO walkins(date, meal, restaurant_id, room, reservation_id, adults, children, note, user_id) VALUES (?,?,?,?,?,?,?,?,?)')
     .run(date, meal, restId, body.room || null, body.reservation_id || null, adults, children, body.note || null, user.id);

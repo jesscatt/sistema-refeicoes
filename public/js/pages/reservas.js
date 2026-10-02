@@ -30,14 +30,14 @@ export async function render(el) {
     </div>
     <div class="card pad" style="margin-bottom:14px">
       <div class="row">
-        <input class="input" id="q" placeholder="Nome, quarto e torre (101A) ou nº da reserva" value="${esc(st.q)}" style="max-width:340px">
+        <input class="input" id="q" placeholder="Nome, apartamento e torre (101A) ou nº da reserva" value="${esc(st.q)}" style="max-width:340px">
         <label class="row small" style="gap:6px">Hospedados em <input type="date" class="input sm" id="date" value="${esc(st.date)}" style="width:auto"></label>
         <select class="input sm" id="board" style="width:auto"><option value="">Todas as pensões</option>${Object.keys(state.meta.boards).map((b) => `<option ${b === st.board ? 'selected' : ''}>${b}</option>`).join('')}</select>
         <select class="input sm" id="status" style="width:auto">${[['ativa', 'Ativas'], ['cancelada', 'Canceladas'], ['', 'Todas']].map(([v, l]) => `<option value="${v}" ${v === st.status ? 'selected' : ''}>${l}</option>`).join('')}</select>
       </div>
     </div>
     <div class="card"><div class="table-wrap"><table class="t">
-      <thead><tr><th>Reserva</th><th>Quarto</th><th>Grupo / hóspedes</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pax</th><th>Origem</th><th>Situação</th></tr></thead>
+      <thead><tr><th>Reserva</th><th>Apartamento</th><th>Grupo / hóspedes</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pax</th><th>Origem</th><th>Situação</th></tr></thead>
       <tbody id="tbody"></tbody></table></div>
       <div class="row" style="padding:12px 16px;justify-content:flex-end"><button class="btn sm" id="prev">‹ Anterior</button><button class="btn sm" id="next">Próxima ›</button></div>
     </div>`;
@@ -56,7 +56,7 @@ export async function render(el) {
       title: 'Nova reserva',
       body: `<form id="nf" class="form-grid">
         <label class="f">Nº da reserva<input class="input" name="reservation_number" required></label>
-        <label class="f">Quarto<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" required></label>
+        <label class="f">Apartamento<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" required></label>
         <label class="f full">Nome completo<input class="input" name="guest_name" required></label>
         <label class="f">Entrada<input class="input" type="date" name="checkin" required></label>
         <label class="f">Saída<input class="input" type="date" name="checkout" required></label>

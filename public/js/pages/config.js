@@ -18,7 +18,7 @@ export async function render(el) {
             ${MEALS.map((m) => `<td><input class="input sm" type="number" min="0" max="100" step="1" name="share_${m}" value="${Math.round(r[`share_${m}`] * 100)}" style="width:70px"></td>`).join('')}
             ${MEALS.map((m) => `<td><input class="input sm" type="number" min="0" name="cap_${m}" value="${r[`cap_${m}`]}" style="width:80px" title="0 = sem limite"></td>`).join('')}
           </tr>`).join('')}</tbody></table></div>
-        <p class="muted small" style="padding:0 18px 14px">Percentual 0 = não serve aquela refeição. Capacidade em pax por refeição (0 = sem limite); é usada na divisão e na API do site para não lotar.</p>
+        <p class="muted small" style="padding:0 18px 14px">Percentual 0 = não oferece aquela refeição. Capacidade em pessoas por refeição (0 = sem limite); é usada na divisão e na API do site para não lotar.</p>
         <div class="card-head" style="border-top:1px solid var(--line)"><h3 class="grow">Dias em que o restaurante fecha</h3><span class="muted small">marque o dia para fechar · a parte dele vai para os outros abertos</span></div>
         <div class="table-wrap"><table class="t"><thead><tr><th>Restaurante</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
           <tbody>${meta.restaurants.map((r) => `<tr data-closed="${r.id}"><td><b>${esc(r.name)}</b></td>${MEALS.map((m) => r[`share_${m}`] > 0 ? `<td><div class="closed-days" data-meal="${m}">${['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((l, i) => `<label title="${['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][i]}"><input type="checkbox" value="${i}" ${String(r[`closed_${m}`] || '').split(',').includes(String(i)) ? 'checked' : ''}>${l}</label>`).join('')}</div></td>` : '<td class="muted small">não serve</td>').join('')}</tr>`).join('')}</tbody></table></div>
@@ -27,8 +27,8 @@ export async function render(el) {
       <div class="card" style="margin-bottom:16px">
         <div class="card-head"><h3 class="grow">Políticas do resort</h3><button class="btn sm primary" id="save-pol">Salvar</button></div>
         <div class="row" style="gap:12px;align-items:flex-end;padding:16px 20px">
-          <label class="f" style="max-width:260px">Máximo de pessoas por quarto<input class="input" type="number" min="1" max="20" id="max-pax" value="${meta.max_pax_room}"></label>
-          <p class="muted small" style="margin:0 0 10px">Adultos + crianças. Vale para importação, reservas, rooming list, Comercial e API do site: quartos acima do limite são recusados.</p>
+          <label class="f" style="max-width:260px">Máximo de pessoas por apartamento<input class="input" type="number" min="1" max="20" id="max-pax" value="${meta.max_pax_room}"></label>
+          <p class="muted small" style="margin:0 0 10px">Adultos + crianças. Vale para importação, reservas, rooming list, Comercial e API do site: apartamentos acima do limite são recusados.</p>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
         try {
           const r = await post('/api/api-keys', { name: m.querySelector('[name=name]').value, source: m.querySelector('[name=source]').value });
           close();
-          modal({ title: 'Chave criada', body: '<p>Copie agora: ela não será mostrada de novo.</p><pre style="white-space:pre-wrap;word-break:break-all">' + esc(r.key) + '</pre>', foot: '<button class="btn primary" data-close>Copiei</button>' });
+          modal({ title: 'Chave criada', body: '<p>Copie a chave agora; ela não será exibida novamente.</p><pre style="white-space:pre-wrap;word-break:break-all">' + esc(r.key) + '</pre>', foot: '<button class="btn primary" data-close>Copiei</button>' });
           load();
         } catch (e) { fail(e); }
       };
@@ -141,7 +141,7 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
         foot: '<button class="btn" data-close>Cancelar</button><button class="btn danger" data-ok>Apagar</button>',
       });
       m.querySelector('[data-ok]').onclick = async () => {
-        try { const r = await post('/api/admin/reset-reservations', { confirm: m.querySelector('[name=c]').value }); toast(`${r.deleted} quartos apagados. Pode importar a planilha real.`); close(); } catch (e) { fail(e); }
+        try { const r = await post('/api/admin/reset-reservations', { confirm: m.querySelector('[name=c]').value }); toast(`${r.deleted} apartamentos apagados. Pode importar a planilha real.`); close(); } catch (e) { fail(e); }
       };
     };
     el.querySelector('#sync').onclick = async () => {

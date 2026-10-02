@@ -130,7 +130,7 @@ route('GET', '/api/billing/export.csv', { roles: BILL_CLOSE }, ({ query, user, i
   rows.push(['TOTAL', '', '', '', '', '', '', '', '', b.total, '', '']);
   rows.push([c ? `Fechado em ${c.closed_at}` : 'Prévia (mês não fechado)']);
   return {
-    __raw: toCSV(['Restaurante', 'Refeição', 'Previsto ADT', 'Previsto CHD', 'Realizado ADT', 'Realizado CHD', 'Diferença pax', 'Valor ADT', 'Valor CHD', 'Total R$', 'Consumo à parte (pax)', 'Refeições sem registro'], rows),
+    __raw: toCSV(['Restaurante', 'Refeição', 'Previsto ADT', 'Previsto CHD', 'Realizado ADT', 'Realizado CHD', 'Diferença (pessoas)', 'Valor ADT', 'Valor CHD', 'Total R$', 'Consumo cobrado à parte (pessoas)', 'Refeições sem registro'], rows),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="faturamento-${month}.csv"` },
   };
 });
@@ -140,7 +140,7 @@ route('GET', '/api/reports/daily.csv', { roles: BILL_CLOSE }, ({ query, user, ip
   const rests = Object.fromEntries(db.prepare('SELECT id, name FROM restaurants').all().map((r) => [r.id, r.name]));
   audit(user, 'relatorio_diario_exportado', { month }, ip);
   return {
-    __raw: toCSV(['Data', 'Refeição', 'Restaurante', 'Previsto ADT', 'Previsto CHD', 'Realizado ADT', 'Realizado CHD', 'Fora da lista (aptos)', 'Diferença (realizado - previsto)', 'Consumo à parte (pax)'],
+    __raw: toCSV(['Data', 'Refeição', 'Restaurante', 'Previsto ADT', 'Previsto CHD', 'Realizado ADT', 'Realizado CHD', 'Fora da lista (apartamentos)', 'Diferença (realizado - previsto)', 'Consumo cobrado à parte (pessoas)'],
       controlRows(month).map((r) => [r.date.split('-').reverse().join('/'), MEAL_LABEL[r.meal], rests[r.restaurant_id], r.forecast_adults, r.forecast_children, r.checked_adults, r.checked_children, r.fora_lista,
         r.checked_adults + r.checked_children - r.forecast_adults - r.forecast_children, r.walkin_adults + r.walkin_children])),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="controle-diario-${month}.csv"` },
@@ -231,7 +231,7 @@ route('GET', '/api/control/week.xlsx', { roles: WEEK_VIEW }, ({ query, user, ip 
   const H = (v) => ({ v, s: 3 });
   const n = (v) => ({ v: Math.round((Number(v) || 0) * 100) / 100, s: 5 });
   const rows = [[{ v: `APURAÇÃO SEMANAL · ${br(from)} a ${br(to)}`, s: 1 }], [],
-    ['Restaurante', 'Refeição', 'Previsto ADT', 'Previsto CHD', 'Previsto total', 'Realizado ADT', 'Realizado CHD', 'Realizado total', 'Diferença pax', 'R$ ADT', 'R$ CHD', 'Valor previsto', 'Valor a pagar', 'Diferença R$', 'Refeições sem registro'].map(H)];
+    ['Restaurante', 'Refeição', 'Previsto ADT', 'Previsto CHD', 'Previsto total', 'Realizado ADT', 'Realizado CHD', 'Realizado total', 'Diferença (pessoas)', 'R$ ADT', 'R$ CHD', 'Valor previsto', 'Valor a pagar', 'Diferença R$', 'Refeições sem registro'].map(H)];
   for (const r of w.restaurants) {
     for (const m of r.meals) rows.push([r.restaurant.name, MEAL_LABEL[m.meal], n(m.prev_adt), n(m.prev_chd), n(m.prev_adt + m.prev_chd), n(m.pag_adt), n(m.pag_chd), n(m.pag_adt + m.pag_chd), n(m.pag_adt + m.pag_chd - m.prev_adt - m.prev_chd), n(m.price_adult), n(m.price_child), n(m.valor_prev), n(m.valor), n(m.valor - m.valor_prev), n(m.sem_real)]);
     const t = r.total;

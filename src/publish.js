@@ -23,14 +23,14 @@ function publishList(date, meal, user = null, auto = false) {
     notify({
       role: 'restaurante', restaurant_id: r.id, kind: 'list_ready',
       title: `Lista do ${label} ${verb}`,
-      body: `${r.name}: ${r.pax} pax (${r.adults} adultos, ${r.children} crianças) em ${r.reservas} reservas. Serviço das ${mt.start} às ${mt.end}.`,
+      body: `${r.name}: ${r.pax} pessoas (${r.adults} adultos e ${r.children} crianças) em ${r.reservas} reservas. Horário de serviço: ${mt.start} às ${mt.end}.`,
       link: `#/servico?date=${date}&meal=${meal}`,
     });
   }
   const total = sum.reduce((s, r) => s + r.pax, 0);
   const resumo = sum.map((r) => `${r.code} ${r.pax}`).join(' · ');
   for (const role of ['recepcao', 'refeicao', 'supervisor']) {
-    notify({ role, kind: 'list_ready', title: `Lista do ${label} ${verb}`, body: `${total} pax — ${resumo}`, link: `#/distribuicao?date=${date}&meal=${meal}` });
+    notify({ role, kind: 'list_ready', title: `Lista do ${label} ${verb}`, body: `${total} pessoas — ${resumo}`, link: `#/distribuicao?date=${date}&meal=${meal}` });
   }
   audit(user, auto ? 'lista_publicada_auto' : 'lista_publicada', { date, meal, total }, null);
   return { date, meal, total, restaurants: sum };
