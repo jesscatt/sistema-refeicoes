@@ -67,16 +67,16 @@ function renderLogin(msg = '') {
   // Um só formulário: ao digitar o número (3+ dígitos) aparece o nome do usuário e o campo de senha
   function step1(code = '', err = '') {
     body.innerHTML = `<form id="login-form" autocomplete="on">
-        <label class="f">Login<input class="input login-code" name="code" inputmode="numeric" autocomplete="username" placeholder="" value="${esc(code)}" required autofocus></label>
+        <label class="f" id="codef">Login<input class="input login-code" name="code" inputmode="numeric" autocomplete="username" placeholder="" value="${esc(code)}" required autofocus></label>
         <div id="who"></div>
         <label class="f hidden" id="pwf">Senha<input class="input" name="password" type="password" autocomplete="current-password"></label>
         ${msgHtml(err)}
         <button class="btn primary lg" type="submit">Continuar</button>
       </form>`;
     const f = body.querySelector('form'), inp = f.querySelector('[name=code]'), pw = f.querySelector('[name=password]');
-    const btn = f.querySelector('button[type=submit]'), who = f.querySelector('#who'), pwf = f.querySelector('#pwf');
+    const btn = f.querySelector('button[type=submit]'), who = f.querySelector('#who'), pwf = f.querySelector('#pwf'), codef = f.querySelector('#codef');
     let user = null, deb, seq = 0;
-    const reset = () => { user = null; who.innerHTML = ''; pwf.classList.add('hidden'); pw.required = false; btn.textContent = 'Continuar'; };
+    const reset = () => { user = null; who.innerHTML = ''; codef.classList.remove('hidden'); pwf.classList.add('hidden'); pw.required = false; btn.textContent = 'Continuar'; };
     async function lookup(focusPw) {
       const v = inp.value.trim();
       if (v.length < 3) { reset(); return; }
@@ -86,9 +86,11 @@ function renderLogin(msg = '') {
         if (my !== seq) return;
         user = { ...u, typed: v }; showMsg('');
         const ini = (String(u.name).split(/\s+/).filter((x) => x.length > 2).length ? String(u.name).split(/\s+/).filter((x) => x.length > 2) : [String(u.name)]).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
-        who.innerHTML = `<div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)}</small></div></div>`;
+        who.innerHTML = `<div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)}</small></div><button type="button" class="btn sm" id="not-me">Trocar</button></div>`;
+        who.querySelector('#not-me').onclick = () => { inp.value = ''; reset(); showMsg(''); inp.focus(); };
+        codef.classList.add('hidden'); // depois de achar o usuário fica só o nome e a senha
         pwf.classList.remove('hidden'); pw.required = true; btn.textContent = 'Entrar';
-        if (focusPw) pw.focus();
+        pw.focus();
       } catch (e) {
         if (my !== seq) return;
         reset(); if (e.status !== 404 || focusPw) showMsg(e.message);
