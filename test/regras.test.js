@@ -183,6 +183,14 @@ test('Comercial: rooming list, trocas e permissões', async () => {
   const login = async (u) => { const r = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username: u, password: 'senha-123' }) }); return r.headers.get('set-cookie').split(';')[0]; };
   const H = (c, extra = {}) => ({ cookie: c, 'x-requested-with': 'fetch', 'content-type': 'application/json', ...extra });
   try {
+    // login por número: mostra o nome e depois pede a senha
+    db.prepare("UPDATE users SET login_code = '612' WHERE username = 'com1'").run();
+    const lk = await (await fetch(base + '/api/login/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: '612' }) })).json();
+    assert.equal(lk.name, 'Comercial');
+    assert.equal((await fetch(base + '/api/login/lookup', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: '999' }) })).status, 404);
+    const byCode = await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: '612', password: 'senha-123' }) });
+    assert.equal(byCode.status, 200);
+    assert.equal((await fetch(base + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: '612', password: 'errada' }) })).status, 401);
     const c = await login('com1');
     // vê todas as reservas, não acessa o resto do sistema
     const list = await (await fetch(base + '/api/portal/reservations?q=99001', { headers: H(c) })).json();

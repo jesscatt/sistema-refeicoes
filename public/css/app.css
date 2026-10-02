@@ -515,3 +515,10 @@ button.wm:hover { outline: 2px solid var(--primary); }
 .leg.on { background: var(--ok-l); border: 1px solid var(--ok); }
 .leg.off { background: var(--danger-l); border: 1px solid var(--danger); }
 .leg.na { background: var(--paper-2); border: 1px solid var(--line-2); }
+
+/* Login em dois passos: número de acesso → nome + senha */
+.login-code { font-size: 22px; letter-spacing: .18em; text-align: center; font-variant-numeric: tabular-nums; }
+.login-who { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #f4f9fb; }
+.login-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: #fff; font-weight: 700; flex: none; }
+.login-who b { display: block; font-size: 16px; color: var(--ink, #10324a); }
+.login-who small { color: var(--muted); }

@@ -316,6 +316,10 @@ CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_log(created_at);
     db.exec("UPDATE users SET active = 0 WHERE role = 'cliente'");
     db.exec("DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE role = 'cliente')");
   }
+  // v5: número de acesso (login numérico, 3 dígitos ou mais)
+  if (!cols('users').includes('login_code')) db.exec('ALTER TABLE users ADD COLUMN login_code TEXT');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_code ON users(login_code)');
+  assignLoginCodes();
   if (!cols('reservations').includes('lunch_on_arrival')) db.exec('ALTER TABLE reservations ADD COLUMN lunch_on_arrival INTEGER NOT NULL DEFAULT 0');
   // Dias da semana em que o restaurante NÃO serve a refeição (0 = domingo ... 6 = sábado), ex.: "3" = fechado na quarta
   for (const m of ['cafe', 'almoco', 'janta']) {
@@ -332,6 +336,22 @@ function tx(fn) {
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
+  }
+}
+
+// Números de acesso: fixos para os perfis padrão, os demais em sequência a partir de 700
+function defaultCodes() { return { admin: '100', dev: '101', supervisao: '200', refeicao: '300', recepcao: '400', digiordana: '501', paradiso: '502', maestro: '503', comercial: '600' }; }
+function nextLoginCode(from = 700) {
+  const used = new Set(db.prepare('SELECT login_code FROM users WHERE login_code IS NOT NULL').all().map((r) => r.login_code));
+  let n = from;
+  while (used.has(String(n)) || Object.values(defaultCodes()).includes(String(n))) n++;
+  return String(n);
+}
+function assignLoginCodes() {
+  for (const u of db.prepare('SELECT id, username FROM users WHERE login_code IS NULL ORDER BY id').all()) {
+    let code = defaultCodes()[String(u.username).toLowerCase()];
+    if (!code || db.prepare('SELECT 1 FROM users WHERE login_code = ?').get(code)) code = nextLoginCode();
+    db.prepare('UPDATE users SET login_code = ? WHERE id = ?').run(code, u.id);
   }
 }
 
@@ -390,6 +410,7 @@ function seed() {
         .run(username, name, hashPassword(pw), 'admin');
       created.push({ username, pw, fromEnv: !!process.env[envVar] });
     }
+    assignLoginCodes();
     console.log('\n=== Usuários administradores criados ===');
     for (const c of created) console.log(`  ${c.username} / ${c.fromEnv ? '(senha definida por variável de ambiente)' : c.pw}`);
     console.log('  Troque as senhas no primeiro acesso.\n');
@@ -407,4 +428,4 @@ function notify({ role = null, restaurant_id = null, kind, title, body = null, l
     .run(role, restaurant_id, kind, title, body, link);
 }
 
-module.exports = { db, tx, getSetting, setSetting, maxPaxRoom, hashPassword, verifyPassword, audit, notify, DATA_DIR };
+module.exports = { db, tx, getSetting, setSetting, maxPaxRoom, nextLoginCode, assignLoginCodes, hashPassword, verifyPassword, audit, notify, DATA_DIR };

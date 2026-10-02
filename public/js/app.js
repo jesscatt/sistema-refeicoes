@@ -57,30 +57,55 @@ function renderLogin(msg = '') {
         <img class="login-logo" src="/img/logo-branco.png" alt="Termas Romanas · Recanto Maestro">
         <div class="login-title">Controle de refeições</div>
       </div>
-      <div class="login-body">
-      <form id="login-form" autocomplete="on">
-        <label class="f">Usuário<input class="input" name="username" autocomplete="username" required autofocus></label>
-        <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
-        <div class="banner danger ${msg ? '' : 'hidden'}" id="login-msg">${icon('alert')}<span>${esc(msg)}</span></div>
-        <button class="btn primary lg" type="submit">Entrar</button>
-      </form>
-      </div>
+      <div class="login-body" id="login-body"></div>
     </div>
   </div>`;
-  root.querySelector('#login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = new FormData(e.target);
-    const btn = e.target.querySelector('button');
-    btn.disabled = true;
-    try {
-      await api('POST', '/api/login', { username: f.get('username'), password: f.get('password') });
-      await boot();
-    } catch (err) {
-      const m = root.querySelector('#login-msg');
-      m.classList.remove('hidden'); m.querySelector('span').textContent = err.message;
-      btn.disabled = false;
-    }
-  });
+  const body = root.querySelector('#login-body');
+  const showMsg = (t) => { const m = body.querySelector('#login-msg'); m.classList.toggle('hidden', !t); m.querySelector('span').textContent = t || ''; };
+  const msgHtml = (t) => `<div class="banner danger ${t ? '' : 'hidden'}" id="login-msg">${icon('alert')}<span>${esc(t)}</span></div>`;
+
+  // Passo 1: número de acesso
+  function step1(code = '', err = '') {
+    body.innerHTML = `<form id="login-form" autocomplete="on">
+        <label class="f">Número de acesso<input class="input login-code" name="code" inputmode="numeric" autocomplete="username" placeholder="Ex.: 300" value="${esc(code)}" required autofocus></label>
+        ${msgHtml(err)}
+        <button class="btn primary lg" type="submit">Continuar</button>
+      </form>`;
+    const f = body.querySelector('form'), inp = f.querySelector('input'), btn = f.querySelector('button');
+    inp.focus(); inp.select();
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = inp.value.trim();
+      if (/^\d+$/.test(v) && v.length < 3) { showMsg('O número de acesso tem pelo menos 3 dígitos.'); return; }
+      btn.disabled = true;
+      try { step2(await api('POST', '/api/login/lookup', { code: v })); }
+      catch (err) { showMsg(err.message); btn.disabled = false; inp.select(); }
+    });
+  }
+
+  // Passo 2: aparece o nome do usuário e pede a senha
+  function step2(u, err = '') {
+    const ini = (String(u.name).split(/\s+/).filter((x) => x.length > 2).length ? String(u.name).split(/\s+/).filter((x) => x.length > 2) : [String(u.name)]).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
+    body.innerHTML = `<form id="login-form" autocomplete="on">
+        <div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)} · nº ${esc(u.code)}</small></div>
+          <button type="button" class="btn sm" id="not-me">Não sou eu</button></div>
+        <input type="hidden" name="code" autocomplete="username" value="${esc(u.code)}">
+        <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
+        ${msgHtml(err)}
+        <button class="btn primary lg" type="submit">Entrar</button>
+      </form>`;
+    const f = body.querySelector('form'), btn = f.querySelector('button[type=submit]');
+    f.querySelector('[name=password]').focus();
+    f.querySelector('#not-me').onclick = () => step1('');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      try { await api('POST', '/api/login', { code: u.code, password: f.querySelector('[name=password]').value }); await boot(); }
+      catch (err2) { showMsg(err2.message); btn.disabled = false; const p = f.querySelector('[name=password]'); p.value = ''; p.focus(); }
+    });
+  }
+
+  step1('', msg);
 }
 
 // ---------- Estrutura ----------

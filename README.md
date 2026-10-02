@@ -46,6 +46,12 @@ Testes das regras de negócio: `npm test`.
 
 Com Docker: `docker build -t refeicoes . && docker run -p 3000:3000 -v refeicoes-data:/app/data refeicoes` (o volume é informado no `docker run`; o Dockerfile não declara `VOLUME` porque o Railway não aceita).
 
+## Acesso (login por número)
+
+Cada usuário entra com um **número de acesso** (somente números, a partir de 3 dígitos). Na tela de entrada digita o número, o sistema mostra o nome do usuário para conferência e então pede a senha. O número é definido em *Usuários* (o sistema sugere o próximo livre).
+
+Números dos perfis padrão: admin `100` · dev `101` · supervisão `200` · refeição `300` · recepção `400` · Di Giordana `501` · Paradiso `502` · Maestro `503` · comercial `600`. Usuários novos recebem números a partir de `700`. O nome de usuário antigo continua funcionando no lugar do número.
+
 ## Perfis
 
 Todos entram pelo **Painel** (aberturas das refeições do dia e avisos).

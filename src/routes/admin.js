@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('node:crypto');
 const { route, HttpError } = require('../http');
-const { db, tx, hashPassword, audit, getSetting, setSetting } = require('../db');
+const { db, tx, hashPassword, audit, getSetting, setSetting, nextLoginCode } = require('../db');
 const { MEALS } = require('../util');
 
 const ADMIN = ['admin'];
@@ -9,8 +9,17 @@ const ROLES = ['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'ag
 
 // ---------- Usuários ----------
 route('GET', '/api/users', { roles: ADMIN }, () =>
-  db.prepare(`SELECT u.id, u.username, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
-    FROM users u LEFT JOIN restaurants r ON r.id = u.restaurant_id ORDER BY u.active DESC, u.role, u.name`).all());
+  db.prepare(`SELECT u.id, u.username, u.login_code, u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, u.active, u.must_change_password, u.created_at, u.last_login_at, r.name restaurant_name
+    FROM users u LEFT JOIN restaurants r ON r.id = u.restaurant_id ORDER BY u.active DESC, CAST(u.login_code AS INTEGER)`).all());
+
+route('GET', '/api/users/next-code', { roles: ADMIN }, () => ({ code: nextLoginCode() }));
+
+function validCode(v, exceptId = 0) {
+  const c = String(v ?? '').trim();
+  if (!/^\d{3,8}$/.test(c)) throw new HttpError(400, 'Número de acesso: somente números, de 3 a 8 dígitos.');
+  if (db.prepare('SELECT 1 FROM users WHERE login_code = ? AND id != ?').get(c, exceptId)) throw new HttpError(409, `O número ${c} já é de outro usuário.`);
+  return c;
+}
 
 function validUser(body, isNew) {
   const username = String(body.username || '').trim().toLowerCase();
@@ -23,13 +32,15 @@ function validUser(body, isNew) {
 }
 
 route('POST', '/api/users', { roles: ADMIN }, ({ body, user, ip }) => {
+  const code = validCode(body.login_code || nextLoginCode());
+  if (!String(body.username || '').trim()) body.username = 'u' + code; // o login é pelo número; nome de usuário interno
   const u = validUser(body, true);
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(u.username)) throw new HttpError(409, 'Já existe esse usuário.');
   const pw = body.password && String(body.password).length >= 8 ? String(body.password) : crypto.randomBytes(6).toString('base64url');
-  const r = db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, agency, reservation_number, must_change_password) VALUES (?,?,?,?,?,?,?,1)')
-    .run(u.username, u.name, hashPassword(pw), u.role, u.restaurant_id, u.agency, u.reservation_number);
-  audit(user, 'usuario_criado', { username: u.username, role: u.role }, ip);
-  return { id: Number(r.lastInsertRowid), temp_password: body.password ? null : pw };
+  const r = db.prepare('INSERT INTO users(username, login_code, name, password_hash, role, restaurant_id, agency, reservation_number, must_change_password) VALUES (?,?,?,?,?,?,?,?,1)')
+    .run(u.username, code, u.name, hashPassword(pw), u.role, u.restaurant_id, u.agency, u.reservation_number);
+  audit(user, 'usuario_criado', { username: u.username, login_code: code, role: u.role }, ip);
+  return { id: Number(r.lastInsertRowid), login_code: code, temp_password: body.password ? null : pw };
 });
 
 route('PUT', '/api/users/:id', { roles: ADMIN }, ({ params, body, user, ip }) => {
@@ -41,7 +52,8 @@ route('PUT', '/api/users/:id', { roles: ADMIN }, ({ params, body, user, ip }) =>
     const admins = db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'admin' AND active = 1").get().n;
     if (admins <= 1) throw new HttpError(400, 'É preciso manter pelo menos um administrador ativo.');
   }
-  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, agency = ?, reservation_number = ?, active = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, active, ex.id);
+  const code = body.login_code === undefined ? ex.login_code : validCode(body.login_code, ex.id);
+  db.prepare('UPDATE users SET name = ?, role = ?, restaurant_id = ?, agency = ?, reservation_number = ?, active = ?, login_code = ? WHERE id = ?').run(u.name, u.role, u.restaurant_id, u.agency, u.reservation_number, active, code, ex.id);
   if (!active) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(ex.id);
   audit(user, 'usuario_alterado', { username: ex.username, role: u.role, active }, ip);
   return { ok: true };

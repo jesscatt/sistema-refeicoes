@@ -16,9 +16,9 @@ export async function render(el) {
       <div class="page-head"><div class="grow"><h1>Usuários</h1><p>${users.filter((u) => u.active).length} ativos</p></div>
         <button class="btn primary" id="new">${icon('plus')} Novo usuário</button></div>
       <div class="card"><div class="table-wrap"><table class="t">
-        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Restaurante</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
+        <thead><tr><th>Nº de acesso</th><th>Nome</th><th>Perfil</th><th>Restaurante</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
         <tbody>${users.map((u) => `<tr>
-          <td><b>${esc(u.name)}</b></td><td>${esc(u.username)}</td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span></td>
+          <td><b style="font-size:16px;letter-spacing:.06em">${esc(u.login_code || '—')}</b></td><td><b>${esc(u.name)}</b></td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span></td>
           <td>${esc(u.restaurant_name || '')}</td><td class="small muted">${esc(u.last_login_at || 'nunca')}</td>
           <td>${u.active ? '<span class="badge ok">ativo</span>' : '<span class="badge danger">inativo</span>'}${u.must_change_password ? ' <span class="badge warn">trocar senha</span>' : ''}</td>
           <td class="row" style="justify-content:flex-end;gap:6px"><button class="btn sm" data-edit="${u.id}">Editar</button><button class="btn sm" data-reset="${u.id}">Nova senha</button></td></tr>`).join('')}</tbody>
@@ -29,21 +29,23 @@ export async function render(el) {
     el.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', async () => {
       const u = users.find((x) => x.id === Number(b.dataset.reset));
       if (!(await confirmBox(`Gerar nova senha provisória para ${esc(u.name)}?`, 'Gerar senha'))) return;
-      try { const r = await post(`/api/users/${u.id}/reset-password`); showPw(u.username, r.temp_password); } catch (e) { fail(e); }
+      try { const r = await post(`/api/users/${u.id}/reset-password`); showPw(`${u.name} (nº ${u.login_code})`, r.temp_password); } catch (e) { fail(e); }
     }));
   }
 
   function showPw(username, pw) {
-    modal({ title: 'Senha provisória', body: `<p>Entregue ao usuário <b>${esc(username)}</b>. Ele vai trocar no primeiro acesso.</p><pre style="font-size:20px;text-align:center">${esc(pw)}</pre>`, foot: '<button class="btn primary" data-close>Pronto</button>' });
+    modal({ title: 'Senha provisória', body: `<p>Entregue a <b>${esc(username)}</b>. Para entrar: digite o número de acesso, confira o nome e use esta senha. Ela será trocada no primeiro acesso.</p><pre style="font-size:20px;text-align:center">${esc(pw)}</pre>`, foot: '<button class="btn primary" data-close>Pronto</button>' });
   }
 
-  function form(u = null) {
+  async function form(u = null) {
+    let nextCode = '';
+    if (!u) { try { nextCode = (await get('/api/users/next-code')).code; } catch {} }
     const rests = state.meta.restaurants;
     const { el: m, close } = modal({
       title: u ? 'Editar usuário' : 'Novo usuário',
       body: `<form class="form-grid" id="uf">
         <label class="f full">Nome<input class="input" name="name" value="${esc(u?.name || '')}" required></label>
-        <label class="f">Usuário (login)<input class="input" name="username" value="${esc(u?.username || '')}" ${u ? 'disabled' : 'required'} autocomplete="off"></label>
+        <label class="f">Número de acesso (login)<input class="input" name="login_code" inputmode="numeric" pattern="[0-9]{3,8}" value="${esc(u?.login_code || nextCode || '')}" required autocomplete="off" title="Somente números, de 3 a 8 dígitos"></label>
         <label class="f">Perfil<select class="input" name="role">${Object.entries(ROLE_LABEL).filter(([k]) => k !== 'cliente').map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="f" id="restf">Restaurante<select class="input" name="restaurant_id">${rests.map((r) => `<option value="${r.id}" ${u?.restaurant_id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label>
 
@@ -64,7 +66,7 @@ export async function render(el) {
       if (f.active !== undefined) f.active = f.active === '1';
       try {
         if (u) { await put('/api/users/' + u.id, f); toast('Usuário salvo.'); close(); }
-        else { const r = await post('/api/users', f); close(); if (r.temp_password) showPw(f.username, r.temp_password); else toast('Usuário criado.'); }
+        else { const r = await post('/api/users', f); close(); if (r.temp_password) showPw(`${f.name} (nº ${r.login_code})`, r.temp_password); else toast(`Usuário criado · número de acesso ${r.login_code}.`); }
         load();
       } catch (e) { fail(e); }
     };

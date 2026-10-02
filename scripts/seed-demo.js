@@ -5,7 +5,7 @@ process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
 process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin1234';
 process.env.DEV_PASSWORD = process.env.DEV_PASSWORD || 'dev12345';
 
-const { db, hashPassword } = require('../src/db');
+const { db, hashPassword, assignLoginCodes } = require('../src/db');
 const { upsertReservations } = require('../src/importer');
 const { todayISO, addDays } = require('../src/util');
 
@@ -25,6 +25,7 @@ for (const [username, name, role, code, link = {}] of users) {
   db.prepare('INSERT INTO users(username, name, password_hash, role, restaurant_id, agency, reservation_number) VALUES (?,?,?,?,?,?,?)')
     .run(username, name, hashPassword('demo1234'), role, rest, link.agency || null, link.reservation_number || null);
 }
+assignLoginCodes();
 if (!process.env.SEED_DEMO) db.prepare("UPDATE users SET must_change_password = 0 WHERE username IN ('admin','dev')").run();
 
 const first = ['Ana', 'Bruno', 'Carla', 'Daniel', 'Eduarda', 'Felipe', 'Gabriela', 'Henrique', 'Isabela', 'João', 'Larissa', 'Marcos', 'Natália', 'Otávio', 'Paula', 'Rafael', 'Sofia', 'Tiago', 'Vanessa', 'William'];
