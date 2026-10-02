@@ -12,7 +12,7 @@ export async function render(el) {
     const d = await get('/api/reservations?' + qs);
     const off = Number(st.offset);
     el.querySelector('#tbody').innerHTML = d.rows.map((r) => `<tr class="click" data-id="${r.id}">
-      <td>${esc(r.reservation_number)}</td><td class="room">${roomHtml(r.room)}</td><td><b>${esc(r.guest_name)}</b>${r.room_changes ? ` <span class="badge terra">${icon('swap').replace('<svg', '<svg style="width:12px;height:12px"')} ${r.room_changes}</span>` : ''}</td>
+      <td>${esc(r.reservation_number)}</td><td class="room">${roomHtml(r.room)}</td><td><b>${esc(r.guest_name)}</b>${r.room_changes ? ` <span class="badge terra">${icon('swap').replace('<svg', '<svg style="width:12px;height:12px"')} ${r.room_changes}</span>` : ''}${r.guests ? `<div class="small" style="margin-top:3px">${String(r.guests).split('\n').filter(Boolean).map(esc).join('<br>')}</div>` : ''}</td>
       <td>${esc(br(r.checkin))}</td><td>${esc(br(r.checkout))}</td><td>${boardTag(r.board)}</td><td>${paxTxt(r.adults, r.children)}</td>
       <td><span class="badge">${esc(r.source)}</span></td><td>${r.status === 'ativa' ? '<span class="badge ok">ativa</span>' : '<span class="badge danger">cancelada</span>'}</td></tr>`).join('')
       || '<tr><td colspan="9"><div class="empty">Nenhuma reserva encontrada.</div></td></tr>';
@@ -37,7 +37,7 @@ export async function render(el) {
       </div>
     </div>
     <div class="card"><div class="table-wrap"><table class="t">
-      <thead><tr><th>Reserva</th><th>Quarto</th><th>Nome</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pax</th><th>Origem</th><th>Situação</th></tr></thead>
+      <thead><tr><th>Reserva</th><th>Quarto</th><th>Grupo / hóspedes</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pax</th><th>Origem</th><th>Situação</th></tr></thead>
       <tbody id="tbody"></tbody></table></div>
       <div class="row" style="padding:12px 16px;justify-content:flex-end"><button class="btn sm" id="prev">‹ Anterior</button><button class="btn sm" id="next">Próxima ›</button></div>
     </div>`;

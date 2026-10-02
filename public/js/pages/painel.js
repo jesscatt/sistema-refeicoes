@@ -93,7 +93,7 @@ export async function render(el) {
   }
 
   function mealCard(m, date) {
-    const serv = m.restaurants.filter((r) => r.serves || r.pax);
+    const serv = m.restaurants; // todos os restaurantes, inclusive fechados ou que não servem a refeição
     const total = serv.reduce((s, r) => s + r.pax, 0);
     const checked = serv.reduce((s, r) => s + r.checked_pax, 0);
     const link = canSee('distribuicao') ? `#/distribuicao?date=${date}&meal=${m.meal}` : canSee('servico') ? `#/servico?date=${date}&meal=${m.meal}` : canSee('recepcao') ? `#/recepcao?date=${date}` : '';
@@ -105,10 +105,10 @@ export async function render(el) {
       </div>
       <div class="split-bar">${serv.map((r) => `<i style="width:${total ? (r.pax / total) * 100 : 0}%;background:${esc(r.color)}" title="${esc(r.name)}"></i>`).join('')}</div>
       <div class="rests">${serv.map((r) => `
-        <div class="rest-line">
+        <div class="rest-line" style="${!r.serves && !r.pax ? 'opacity:.6' : ''}">
           <span class="nm">${restDot(r)}${esc(r.name)}${r.full ? ' <span class="badge danger">lotado</span>' : ''}</span>
-          <span class="num"><b>${r.pax}</b> <span class="muted small">pax</span></span>
-          <span class="pct">${pct(r.pct)} <span title="meta">/ ${pct(r.share)}</span></span>
+          ${!r.serves && !r.pax ? `<span class="num"></span><span class="pct"><span class="badge ${r.closed_today ? 'danger' : ''}">${r.closed_today ? 'fechado' : 'não serve'}</span></span>` : `<span class="num"><b>${r.pax}</b> <span class="muted small">pax</span></span>
+          <span class="pct">${pct(r.pct)} <span title="meta">/ ${pct(r.share)}</span></span>`}
           <span class="chk" title="marcados">${r.checked_pax ? '✓ ' + r.checked_pax : ''}</span>
         </div>`).join('')}</div>
       <div class="foot">

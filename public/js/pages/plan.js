@@ -21,13 +21,33 @@ export function printCards(items) {
   area.innerHTML = items.map(({ reservation: r, plan }) => `
     <div class="pcard">
       <div style="display:flex;align-items:center;gap:14px;border-bottom:1px solid #999;padding-bottom:8px;margin-bottom:8px"><img src="/img/logo-cor.png" alt="" style="height:54px"><div><div style="font-size:11px;letter-spacing:.2em;text-transform:uppercase">Suas refeições</div><h2>Quarto ${roomHtml(r.room)} · ${esc(r.guest_name)}</h2></div></div>
-      ${r.guests ? `<div><b>${esc(r.guests.split('\n').join(', '))}</b></div>` : ''}
+      ${r.guests ? `<div>${namesOf(r.guests).map((n) => `<b>${esc(n)}</b>`).join('<br>')}</div>` : ''}
       <div>Reserva ${esc(r.reservation_number)} · ${esc(br(r.checkin))} a ${esc(br(r.checkout))} · ${esc(r.board)} (${esc(state.meta.boards[r.board].label)}) · ${r.adults} adulto(s)${r.children ? `, ${r.children} criança(s)` : ''}</div>
       <table><thead><tr><th>Dia</th>${MEALS.map((m) => `<th>${MEAL_FULL[m]}<br><small>${esc(state.meta.meal_times.find((t) => t.meal === m).start)}–${esc(state.meta.meal_times.find((t) => t.meal === m).end)}</small></th>`).join('')}</tr></thead>
       <tbody>${plan.filter((d) => MEALS.some((m) => d.meals[m].included)).map((d) => `<tr><td>${esc(dayLabel(d.date))}</td>${MEALS.map((m) => `<td>${d.meals[m].included ? esc(d.meals[m].restaurant ? d.meals[m].restaurant.name : '—') : '—'}</td>`).join('')}</tr>`).join('')}</tbody></table>
       <div style="margin-top:6px;font-size:11px">Refeições fora da pensão são cobradas à parte no restaurante.</div>
     </div>`).join('');
   window.print();
+}
+
+const namesOf = (g) => String(g || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+// Hóspedes da reserva: nomes completos do quarto e, se for grupo, de todos os quartos
+function guestsBlock(r, group) {
+  const isGroup = group.length > 1;
+  const rows = isGroup ? group : [{ ...r }];
+  const total = rows.filter((g) => g.status === 'ativa').reduce((s, g) => s + namesOf(g.guests).length, 0);
+  const pax = rows.filter((g) => g.status === 'ativa').reduce((s, g) => s + g.adults + g.children, 0);
+  return `<div class="card" style="margin-bottom:14px;box-shadow:none">
+    <div class="card-head">${icon('users')}<h3 class="grow">${isGroup ? `Hóspedes do grupo · ${group.length} quartos` : 'Hóspedes do quarto'}</h3>
+      <span class="muted small">${total} nome(s) de ${pax} pax</span>${total ? '<button class="btn sm" data-copy>Copiar nomes</button>' : ''}</div>
+    <div class="table-wrap"><table class="t"><thead><tr><th>Quarto</th><th>Nome completo</th><th>Pax</th></tr></thead><tbody>
+      ${rows.map((g) => { const n = namesOf(g.guests); const me = g.id === r.id;
+        return `<tr style="${g.status !== 'ativa' ? 'opacity:.5;text-decoration:line-through' : ''}${me && isGroup ? ';background:var(--primary-l, #e6f4f7)' : ''}">
+          <td class="room">${roomHtml(g.room)}</td>
+          <td>${n.length ? n.map((x) => `<div>${esc(x)}</div>`).join('') : '<span class="muted small">nomes não informados</span>'}</td>
+          <td class="small">${g.adults} adt${g.children ? ` · ${g.children} chd` : ''}</td></tr>`; }).join('')}
+    </tbody></table></div></div>`;
 }
 
 export async function openReservation(id, onChange = () => {}) {
@@ -41,13 +61,13 @@ export async function openReservation(id, onChange = () => {}) {
     title: `Quarto ${roomHtml(r.room)} · ${esc(r.guest_name)}`,
     body: `
       <div class="row" style="margin-bottom:14px">
-        ${r.guests ? `<span class="badge info">${esc(r.guests.split('\n').join(', '))}</span>` : ''}
         <span class="badge">Reserva ${esc(r.reservation_number)}</span> ${boardTag(r.board)} <span class="muted">${esc(boards[r.board].label)}</span>
         <span class="badge">${esc(br(r.checkin))} → ${esc(br(r.checkout))}</span>
         <span class="badge">${r.adults} adt · ${r.children} chd</span>
         <span class="badge ${r.status === 'ativa' ? 'ok' : 'danger'}">${r.status}</span>
         <span class="badge info">origem: ${esc(r.source)}</span>
       </div>
+      ${guestsBlock(r, data.group || [])}
       ${data.group && data.group.length > 1 ? `<div class="banner info">${icon('users')}<span><b>Grupo com ${data.group.length} quartos</b> (${data.group.filter((g) => g.status === 'ativa').reduce((s, g) => s + g.adults + g.children, 0)} pax). O grupo vai sempre junto ao mesmo restaurante em cada refeição.
         <span class="small" style="display:block;margin-top:4px">${data.group.map((g) => `<a href="#" data-goto="${g.id}" style="${g.id === r.id ? 'font-weight:700' : ''};${g.status !== 'ativa' ? 'text-decoration:line-through' : ''}">${roomHtml(g.room)}</a>`).join(' · ')}</span></span></div>` : ''}
       ${r.lunch_on_arrival ? `<div class="banner ok">${icon('plate')}<span>Este grupo almoça no <b>dia da chegada</b> (e não no dia da saída).</span></div>` : ''}
@@ -74,6 +94,11 @@ export async function openReservation(id, onChange = () => {}) {
       ${edit ? '<button class="btn primary" data-save>Salvar</button>' : '<button class="btn" data-close>Fechar</button>'}`,
   });
   el.querySelector('[data-print]').onclick = () => printCards([data]);
+  el.querySelector('[data-copy]')?.addEventListener('click', () => {
+    const rows = data.group && data.group.length > 1 ? data.group.filter((g) => g.status === 'ativa') : [r];
+    const txt = rows.map((g) => namesOf(g.guests).map((n) => `${g.room}\t${n}`).join('\n')).filter(Boolean).join('\n');
+    navigator.clipboard.writeText(txt).then(() => toast('Nomes copiados.'), () => toast('Não foi possível copiar.', 'err'));
+  });
   el.querySelectorAll('[data-goto]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); if (Number(a.dataset.goto) !== r.id) { close(); openReservation(a.dataset.goto, onChange); } }));
   el.querySelector('[data-save]')?.addEventListener('click', async () => {
     const f = Object.fromEntries(new FormData(el.querySelector('#ed')));

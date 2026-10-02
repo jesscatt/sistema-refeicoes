@@ -353,6 +353,9 @@ route('POST', '/api/walkins', { roles: SERVICE }, ({ body, user, ip }) => {
   const restId = restaurantFor(user, body.restaurant_id);
   const adults = Math.max(0, Number(body.adults) || 0), children = Math.max(0, Number(body.children) || 0);
   if (adults + children === 0) throw new HttpError(400, 'Informe a quantidade de pessoas.');
+  const note = String(body.note ?? '').trim().replace(/\s+/g, ' ').slice(0, 300);
+  if (note.length < 3) throw new HttpError(400, 'A observação é obrigatória no consumo pago à parte (ex.: forma de pagamento, comanda).');
+  body.note = note;
   db.prepare('INSERT INTO walkins(date, meal, restaurant_id, room, reservation_id, adults, children, note, user_id) VALUES (?,?,?,?,?,?,?,?,?)')
     .run(date, meal, restId, body.room || null, body.reservation_id || null, adults, children, body.note || null, user.id);
   audit(user, 'avulso_registrado', { date, meal, quarto: body.room, adults, children }, ip);

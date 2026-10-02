@@ -79,7 +79,7 @@ route('GET', '/api/reservations/:id', { roles: DETAIL }, ({ params }) => {
     reservation: r,
     plan: stayPlan(r),
     room_changes: db.prepare(`SELECT c.*, u.name user_name FROM room_changes c LEFT JOIN users u ON u.id = c.user_id WHERE reservation_id = ? ORDER BY c.id DESC`).all(r.id),
-    group: db.prepare(`SELECT id, room, adults, children, board, checkin, checkout, status FROM reservations WHERE reservation_number = ? ORDER BY room_sort(room)`).all(r.reservation_number),
+    group: db.prepare(`SELECT id, room, adults, children, board, checkin, checkout, status, guests FROM reservations WHERE reservation_number = ? ORDER BY room_sort(room)`).all(r.reservation_number),
   };
 });
 

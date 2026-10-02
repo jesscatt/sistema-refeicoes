@@ -244,11 +244,12 @@ export async function render(el) {
         <div class="form-grid"><label class="f">Quarto<input class="input" name="room" value="${esc(room)}"></label>
         <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
         <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
-        <label class="f">Observação<input class="input" name="note" placeholder="Ex.: pagou no cartão"></label></div>`,
+        <label class="f" style="grid-column:1/-1">Observação <span style="color:var(--danger)">*</span><input class="input" name="note" required placeholder="Obrigatório. Ex.: pagou no cartão, comanda 1234"></label></div>`,
       foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Registrar</button>',
     });
     m.querySelector('[data-ok]').onclick = async () => {
       const v = (n) => m.querySelector(`[name=${n}]`).value;
+      if (v('note').trim().length < 3) { const f = m.querySelector('[name=note]'); f.focus(); f.style.borderColor = 'var(--danger)'; toast('Preencha a observação do pagamento à parte.', 'err'); return; }
       try {
         await post('/api/walkins', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, room: v('room'), reservation_id, adults: v('adults'), children: v('children'), note: v('note') });
         close(); toast('Consumo à parte registrado.'); st.q = ''; st.tab = 'avulso'; load();
