@@ -90,6 +90,7 @@
   .r .rb { grid-column: 1 / 3; height: .35em; background: var(--track); border-radius: 99px; overflow: hidden; }
   .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
   .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; margin-top: .55em; flex: none; }
+  .sfoot.two { grid-template-columns: 1fr 1fr; }
   .sfoot div { background: #eef5f9; border-radius: .5em; padding: .35em .7em; }
   .sfoot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; color: var(--muted); font-size: .8em; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .sfoot b { font-size: 1.35em; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -107,7 +108,7 @@
   </header>
   <section class="months" id="months"></section>
   <section class="bottom">
-    <div class="panel"><h2>Metas do mês <small id="mes-meta"></small></h2><div id="goals"></div><div class="sfoot" id="gfoot"></div></div>
+    <div class="panel"><h2>Metas do mês <small id="mes-meta"></small></h2><div id="goals"></div><div class="sfoot two" id="gfoot"></div></div>
     <div class="panel"><h2>Ranking de vendas <small id="periodo"></small></h2><div class="groups" id="groups"></div><div class="sfoot" id="sfoot"></div></div>
   </section>
 </div>
@@ -154,7 +155,7 @@
     document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Vendido</div><div>Falta</div></div>`
       + d.units.map((u) => row(u)).join('');
     const t = d.units_total;
-    document.getElementById('gfoot').innerHTML = `<div><span>Vendido até agora</span><b>${money(t.done || 0)}</b></div><div><span>Meta total</span><b>${money(t.goal)}</b></div>
+    document.getElementById('gfoot').innerHTML = `<div><span>Meta total</span><b>${money(t.goal)}</b></div>
       <div><span>Falta</span><b style="color:${t.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${t.goal == null ? '—' : t.missing === 0 ? 'Meta atingida' : money(t.missing)}</b></div>`;
     const s = d.sales;
     document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';
