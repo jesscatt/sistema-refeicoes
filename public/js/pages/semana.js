@@ -42,7 +42,7 @@ export async function render(el) {
         <div class="grow"></div>
         <button class="btn" id="xlsx">${icon('download')} Exportar Excel</button>
       </div>
-      ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado, então o R$ fica zerado. ${can('admin', 'supervisor') ? 'Cadastre em <a href="#/faturamento">Faturamento → Valores</a>.' : 'Peça à supervisão para cadastrar os valores.'}</span></div>` : ''}
+      ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem preço cadastrado; o valor correspondente fica zerado. ${can('admin', 'supervisor') ? 'Cadastre em <a href="#/financeiro?tab=precos">Controle de faturamento → Preços e configurações</a>.' : 'Solicite à supervisão o cadastro dos preços.'}</span></div>` : ''}
       ${pending ? `<div class="banner warn">${icon('alert')}<span><b>${pending} refeição(ões)</b> previstas no período sem nenhum registro do restaurante. Sem registro, a refeição não entra no valor a pagar.</span></div>` : ''}
 
       <div class="grid" style="grid-template-columns:repeat(${Math.min(Math.max(w.restaurants.length, 1), 3)}, minmax(0,1fr));margin-bottom:16px">
@@ -55,7 +55,7 @@ export async function render(el) {
           </div>`; }).join('')}
       </div>
       ${w.restaurants.length > 1 ? `<div class="card pad" style="margin-bottom:16px"><div class="row"><b class="grow">Total da semana</b>
-        <span><b>${nf(w.total.pag_adt + w.total.pag_chd)}</b> pax (${nf(w.total.pag_adt)} adultos · ${nf(w.total.pag_chd)} crianças)</span>
+        <span><b>${nf(w.total.pag_adt + w.total.pag_chd)}</b> pessoas (${nf(w.total.pag_adt)} adultos · ${nf(w.total.pag_chd)} crianças)</span>
         <span class="muted">·</span><span>previsto ${nf(w.total.prev_adt + w.total.prev_chd)} pessoas · ${diff(w.total.pag_adt + w.total.pag_chd - w.total.prev_adt - w.total.prev_chd)}</span>
         <span class="muted">·</span><b style="font-size:18px">${money(w.total.valor)}</b><span class="small muted">(previsto ${money(w.total.valor_prev)} · ${diff(w.total.valor - w.total.valor_prev, true)})</span></div></div>` : ''}
 
@@ -63,7 +63,7 @@ export async function render(el) {
         <div class="card" style="margin-bottom:16px">
           <div class="card-head" style="border-top:4px solid ${esc(r.restaurant.color)};border-radius:var(--radius) var(--radius) 0 0"><h3 class="grow">${restDot(r.restaurant)} ${esc(r.restaurant.name)}</h3></div>
           <div class="table-wrap"><table class="t">
-            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Realizado adultos</th><th class="n">Realizado crianças</th><th class="n">Realizado total</th><th class="n">Diferença (pessoas)</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
+            <thead><tr><th>Refeição</th><th class="n">Previsto</th><th class="n">Adultos realizados</th><th class="n">Crianças realizadas</th><th class="n">Total realizado</th><th class="n">Diferença (pessoas)</th><th class="n">Valor a pagar</th><th class="n">Dif. R$</th></tr></thead>
             <tbody>${r.meals.map((m) => `<tr>
               <td><b>${MEAL_LABEL[m.meal]}</b><div class="small muted">${money(m.price_adult)} adultos · ${money(m.price_child)} crianças${m.sem_real ? ` · <span style="color:#8a5a07">${m.sem_real} sem registro</span>` : ''}</div></td>
               <td class="n">${nf(m.prev_adt + m.prev_chd)}<div class="small muted">${nf(m.prev_adt)} / ${nf(m.prev_chd)}</div></td>
@@ -80,7 +80,7 @@ export async function render(el) {
               <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} crianças${x.sem_real ? ' · sem registro' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
                 <td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b><div class="small muted">${nf(m.pag_chd)} crianças</div></td></tr>`).join('')}</tbody>
             </table></div>
-            <p class="small muted" style="padding:0 18px 12px">Pax realizados por dia (registros dos restaurantes). “sem registro” = refeição prevista sem nenhum registro.</p>
+            <p class="small muted" style="padding:0 18px 12px">Pessoas atendidas por dia (registros dos restaurantes). “sem registro” = refeição prevista sem nenhum registro.</p>
           </details>
         </div>`).join('')}`;
     const go = (from, to) => { st.from = from; st.to = to; load().catch(fail); };

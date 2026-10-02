@@ -88,7 +88,7 @@ function renderLogin(msg = '') {
         if (my !== seq) return;
         user = { ...u, typed: v }; showMsg('');
         const ini = (String(u.name).split(/\s+/).filter((x) => x.length > 2).length ? String(u.name).split(/\s+/).filter((x) => x.length > 2) : [String(u.name)]).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
-        who.innerHTML = `<div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)}</small></div><button type="button" class="btn sm" id="not-me">Trocar</button></div>`;
+        who.innerHTML = `<div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)}</small></div><button type="button" class="btn sm" id="not-me">Alterar usuário</button></div>`;
         who.querySelector('#not-me').onclick = () => { inp.value = ''; reset(); showMsg(''); inp.focus(); };
         codef.classList.add('hidden'); // depois de achar o usuário fica só o nome e a senha
         pwf.classList.remove('hidden'); pw.required = true; btn.textContent = 'Entrar';

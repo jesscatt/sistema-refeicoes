@@ -271,7 +271,7 @@ function parseDivisionSheet(sh, month) {
 function parseFile(buf, filename = '', opts = {}) {
   const sheets = readXlsxSheets(buf);
   const type = detect(sheets);
-  if (!type) throw new Error('Não reconheci a planilha. Envie o "Controle semanal dos restaurantes" ou o "Controle de divisão" de um restaurante.');
+  if (!type) throw new Error('Planilha não reconhecida. Envie o "Controle semanal dos restaurantes" ou o "Controle de divisão" de um restaurante.');
   const R = restIds();
   const yearHint = Number((String(filename).match(/(20\d\d)/) || [])[1]) || new Date().getFullYear();
   const ms = sheetMonths(sheets, yearHint);
@@ -287,7 +287,7 @@ function parseFile(buf, filename = '', opts = {}) {
   } else {
     const n = norm(filename + ' ' + sheets.map((s) => s.name).join(' '));
     let rest = Number(opts.restaurant_id) || (/paradiso/.test(n) ? R.PAR : /churrasc|maestro/.test(n) ? R.MAE : /giordana/.test(n) ? R.DG : null);
-    if (!rest) throw new Error('Não identifiquei o restaurante pelo nome do arquivo. Escolha o restaurante e envie de novo.');
+    if (!rest) throw new Error('Não foi possível identificar o restaurante pelo nome do arquivo. Selecione o restaurante e envie novamente.');
     out.restaurant_id = rest;
     sheets.forEach((sh, i) => {
       if (!ms[i]) { out.warnings.push(`Aba "${sh.name}" ignorada (nome não é um mês).`); return; }
@@ -320,7 +320,7 @@ function commitFile(parsed, user) {
           const a = agg.get(k) || { kind: l.kind, restaurant_id: l.restaurant_id, meal: l.meal, adults: 0, children: 0, pa: null, pc: null, va: null, vc: null, notes: [] };
           a[l.who] = l.qty;
           if (l.who === 'adults') { a.pa = l.price; a.va = l.value; } else { a.pc = l.price; a.vc = l.value; }
-          if (l.prices.length > 1) a.notes.push(`${l.who === 'adults' ? 'ADT' : 'CHD'}: ${l.prices.join(' e ')}`);
+          if (l.prices.length > 1) a.notes.push(`${l.who === 'adults' ? 'Adultos' : 'Crianças'}: ${l.prices.join(' e ')}`);
           agg.set(k, a);
         }
         for (const a of agg.values()) {

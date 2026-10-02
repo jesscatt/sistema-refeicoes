@@ -223,7 +223,7 @@ route('GET', '/api/distribution/export.xlsx', { roles: [...VIEW] }, ({ query, us
   rows[0] = [{ v: 'RESORT TERMAS ROMANAS', s: 1 }, null, null, null, null, null, null, ...cols.map((c) => ({ v: c.title, s: 2 }))];
   rows[1] = [null, null, null, null, null, null, null, ...cols.map((c) => (c.meta === null ? { v: null, s: 6 } : { v: c.meta, s: 6 }))];
   const last = HEAD + resv.length;
-  rows[2] = [...['Reserva', 'Entrada', 'Saída', 'Pensão', 'Apto', 'Pax', 'Chd'].map((v) => ({ v, s: 3 })),
+  rows[2] = [...['Reserva', 'Entrada', 'Saída', 'Pensão', 'Apartamento', 'Pessoas', 'Crianças'].map((v) => ({ v, s: 3 })),
     ...cols.map((c, i) => ({ f: `SUM(${colName(FIRST + i)}${HEAD + 1}:${colName(FIRST + i)}${Math.max(last, HEAD + 1)})`, v: colTot.get(`${c.date}|${c.meal}|${c.rest.id}`) || 0, s: 4 }))];
   for (const r of resv) {
     const label = /^Reserva \d/.test(r.guest_name) ? r.reservation_number : `${r.reservation_number} ${r.guest_name}`;

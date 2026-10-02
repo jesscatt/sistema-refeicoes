@@ -27,7 +27,7 @@ function validUser(body, isNew) {
   if (!String(body.name || '').trim()) throw new HttpError(400, 'Informe o nome.');
   if (!ROLES.includes(body.role)) throw new HttpError(400, 'Perfil inválido.');
   const restId = body.role === 'restaurante' ? Number(body.restaurant_id) : null;
-  if (body.role === 'restaurante' && !db.prepare('SELECT 1 FROM restaurants WHERE id = ?').get(restId)) throw new HttpError(400, 'Escolha o restaurante do usuário.');
+  if (body.role === 'restaurante' && !db.prepare('SELECT 1 FROM restaurants WHERE id = ?').get(restId)) throw new HttpError(400, 'Selecione o restaurante do usuário.');
   return { username, name: String(body.name).trim(), role: body.role, restaurant_id: restId, agency: null, reservation_number: null, rest_admin: body.role === 'restaurante' && (body.rest_admin === true || body.rest_admin === 1 || body.rest_admin === '1' || body.rest_admin === 'on') ? 1 : 0 };
 }
 

@@ -1,14 +1,17 @@
 import { get, esc, fail } from '../ui.js';
 
 const LABELS = {
-  login: 'Entrou', logout: 'Saiu', login_falhou: 'Falha de login', senha_alterada: 'Trocou a senha',
-  reserva_criada: 'Criou reserva', reserva_alterada: 'Alterou reserva', reserva_cancelada: 'Cancelou reserva', reserva_reativada: 'Reativou reserva',
-  importacao_planilha: 'Importou planilha', distribuicao_refeita: 'Redistribuiu', cliente_movido: 'Moveu cliente', lista_publicada: 'Publicou lista', lista_publicada_auto: 'Lista publicada (automática)',
-  refeicao_marcada: 'Marcou refeição', marcacao_desfeita: 'Desfez marcação', avulso_registrado: 'Consumo à parte',
-  controle_real_alterado: 'Informou real', faturamento_fechado: 'Fechou faturamento', faturamento_reaberto: 'Reabriu faturamento', faturamento_exportado: 'Exportou faturamento',
-  relatorio_diario_exportado: 'Exportou controle diário', precos_alterados: 'Alterou valores', usuario_criado: 'Criou usuário', usuario_alterado: 'Alterou usuário', senha_resetada: 'Gerou nova senha',
-  restaurante_alterado: 'Alterou restaurante', horarios_alterados: 'Alterou horários', chave_api_criada: 'Criou chave de API', chave_api_revogada: 'Revogou chave de API',
-  integracao_configurada: 'Configurou integração', api_reservas: 'Reservas via API', silbeck_sincronizado: 'Sincronizou Silbeck', ia_consulta: 'Consultou IA', exportou_reservas: 'Exportou reservas',
+  login: 'Acesso ao sistema', logout: 'Saída do sistema', login_falhou: 'Falha de acesso', senha_alterada: 'Alteração de senha',
+  reserva_criada: 'Inclusão de reserva', reserva_alterada: 'Alteração de reserva', reserva_cancelada: 'Cancelamento de reserva', reserva_reativada: 'Reativação de reserva',
+  importacao_planilha: 'Importação de planilha', distribuicao_refeita: 'Redistribuição', cliente_movido: 'Transferência de restaurante', lista_publicada: 'Publicação de lista', lista_publicada_auto: 'Publicação automática de lista',
+  refeicao_marcada: 'Registro de atendimento', marcacao_desfeita: 'Cancelamento de atendimento', avulso_registrado: 'Consumo cobrado à parte',
+  controle_real_alterado: 'Informação de realizado', faturamento_fechado: 'Fechamento do faturamento', faturamento_reaberto: 'Reabertura do faturamento', faturamento_exportado: 'Exportação do faturamento',
+  relatorio_diario_exportado: 'Exportação do controle diário', precos_alterados: 'Alteração de preços', usuario_criado: 'Inclusão de usuário', usuario_alterado: 'Alteração de usuário', senha_resetada: 'Geração de senha provisória',
+  restaurante_alterado: 'Alteração de restaurante', horarios_alterados: 'Alteração de horários', chave_api_criada: 'Inclusão de chave de API', chave_api_revogada: 'Revogação de chave de API',
+  integracao_configurada: 'Configuração de integração', api_reservas: 'Reservas via API', silbeck_sincronizado: 'Sincronização com o Silbeck', ia_consulta: 'Consulta ao assistente de relatórios', exportou_reservas: 'Exportação de reservas',
+  voucher_recebido: 'Registro de voucher', voucher_removido: 'Exclusão de voucher', extra_lancado: 'Registro de refeição extra', extra_removido: 'Exclusão de refeição extra',
+  lancamento_financeiro: 'Lançamento financeiro', lancamento_financeiro_removido: 'Exclusão de lançamento financeiro', historico_importado: 'Importação de histórico',
+  controle_faturamento_exportado: 'Exportação do controle de faturamento', controle_restaurante_exportado: 'Exportação do controle do restaurante', financeiro_configurado: 'Configuração do controle financeiro', politica_alterada: 'Alteração de política',
 };
 
 export async function render(el) {

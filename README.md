@@ -52,6 +52,27 @@ Cada usuário entra com um **login numérico** (somente números, a partir de 3 
 
 Logins dos perfis padrão: admin `100` · dev `101` · supervisão `200` · refeição `300` · recepção `400` · Di Giordana `501` · Paradiso `502` · Maestro `503` · comercial `600`. Usuários novos recebem números a partir de `700`. O nome de usuário antigo continua funcionando no lugar do login numérico.
 
+## Padrão de nomenclatura
+
+Todos os textos do sistema seguem a mesma terminologia formal:
+
+| Termo padrão | Não utilizar |
+|---|---|
+| Apartamento | quarto, apto, UH (aceitos apenas na leitura de planilhas) |
+| Pessoas · adultos · crianças | pax, adt, chd |
+| Registro de atendimento / Registrar atendimento | marcação, marcar, presença |
+| Cancelar registro | desfazer marcação |
+| Restaurante designado | deveria comer em |
+| Atendimento fora da lista | cliente fora da lista |
+| Consumo cobrado à parte | pago à parte, avulso |
+| Refeição extra | extra (sozinho) |
+| Registro de voucher | receber voucher |
+| Preços | valores (para o preço por refeição) |
+| Não oferece (a refeição) | não serve |
+| Excluir · Salvar · Pesquisar | apagar · gravar · buscar |
+
+Mensagens em terceira pessoa ("Não foi encontrada…", "Selecione…", "Informe…") e confirmações em forma de pergunta ("Deseja excluir…?").
+
 ## Perfis
 
 Todos entram pelo **Painel** (aberturas das refeições do dia e avisos).

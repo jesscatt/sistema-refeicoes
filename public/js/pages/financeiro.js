@@ -33,10 +33,10 @@ export async function render(el) {
     el.innerHTML = `
       <div class="page-head">
         <div class="grow"><h1>${office ? 'Controle de faturamento' : 'Controle do restaurante'}</h1>
-          <p>${office ? 'Os três restaurantes no mês, controle de cada restaurante por semana, extras, vouchers e outros pontos. Os números vêm das marcações dos restaurantes; meses anteriores vêm das planilhas importadas.' : 'Quantidades e valores do seu restaurante por semana e no mês. Os números vêm das marcações feitas no sistema.'}</p></div>
+          <p>${office ? 'Os três restaurantes no mês, controle de cada restaurante por semana, extras, vouchers e outros pontos. Os números provêm dos registros de atendimento dos restaurantes; meses anteriores vêm das planilhas importadas.' : 'Quantidades e valores do seu restaurante por semana e no mês. Os números vêm das marcações feitas no sistema.'}</p></div>
         ${st.tab === 'precos' || st.tab === 'historico' ? '' : `<select class="input sm" id="month" style="width:auto">${info.months.map((m) => `<option value="${m}" ${m === st.month ? 'selected' : ''}>${mesLabel(m)}</option>`).join('')}</select>
-        <button class="btn" id="x1">${icon('download')} Este mês</button>
-        <button class="btn" id="x2">${icon('download')} Todos os meses</button>`}
+        <button class="btn" id="x1">${icon('download')} Exportar mês</button>
+        <button class="btn" id="x2">${icon('download')} Exportar todos os meses</button>`}
       </div>
       ${tabs.length > 1 ? `<div class="seg" id="tabs" style="margin-bottom:16px;flex-wrap:wrap">${tabs.map(([k, l]) => `<button data-t="${k}" class="${st.tab === k ? 'on' : ''}">${esc(l)}</button>`).join('')}</div>` : ''}
       <div id="body"><div class="empty">Carregando…</div></div>`;
@@ -250,7 +250,7 @@ export async function render(el) {
       res.innerHTML = `<div class="card">
         <div class="card-head"><h3 class="grow">${p.type === 'controle' ? 'Controle de faturamento' : `Controle de divisão · ${esc(p.restaurant || '')}`} · ${p.months.length} mês(es)</h3>${p.saved ? '<span class="badge ok">importado</span>' : '<button class="btn primary" id="go">Importar</button>'}</div>
         ${p.warnings.length ? `<div class="banner warn" style="margin:0 16px 10px">${icon('alert')}<span>${p.warnings.map(esc).join('<br>')}</span></div>` : ''}
-        <div class="table-wrap"><table class="t"><thead><tr><th>Mês</th><th>Aba</th>${p.type === 'controle' ? '<th class="n">Pax realizado</th><th class="n">Pax projeção</th><th class="n">Lançamentos</th><th class="n">Total</th>' : '<th class="n">Dias</th><th class="n">Pax</th><th class="n">Extras</th>'}</tr></thead><tbody>
+        <div class="table-wrap"><table class="t"><thead><tr><th>Mês</th><th>Aba</th>${p.type === 'controle' ? '<th class="n">Pessoas (realizado)</th><th class="n">Pessoas (projeção)</th><th class="n">Lançamentos</th><th class="n">Total</th>' : '<th class="n">Dias</th><th class="n">Pax</th><th class="n">Extras</th>'}</tr></thead><tbody>
           ${p.months.map((m) => `<tr><td><b>${mesLabel(m.month)}</b></td><td class="small muted">${esc(m.sheet)}</td>${p.type === 'controle' ? `<td class="n">${n0(m.realizado_pax)}</td><td class="n">${n0(m.projecao_pax)}</td><td class="n">${m.entries}</td><td class="n"><b>${brl(m.total)}</b></td>` : `<td class="n">${m.days}</td><td class="n">${n0(m.pax)}</td><td class="n">${m.extras}</td>`}</tr>`).join('')}
         </tbody></table></div></div>`;
       res.querySelector('#go')?.addEventListener('click', async () => {

@@ -30,7 +30,7 @@ export async function render(el) {
     const semTotal = Object.values(tot).reduce((s, t) => s + t.sem, 0);
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Previsto x realizado</h1><p><b>Previsto</b>: pessoas previstas na distribuição. <b>Realizado</b>: pax registrados pelos restaurantes (lista e fora da lista), calculado automaticamente e sem edição manual.</p></div>
+        <div class="grow"><h1>Previsto x realizado</h1><p><b>Previsto</b>: pessoas previstas na distribuição. <b>Realizado</b>: pessoas registradas pelos restaurantes (lista e fora da lista), apurado automaticamente e sem edição manual.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto">
         <select class="input sm" id="rest" style="width:auto">${state.meta.restaurants.map((r) => `<option value="${r.id}" ${r.id === rest.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
         ${can('admin', 'supervisor') ? `<button class="btn" id="csv">${icon('download')} Relatório diário</button>` : ''}
@@ -40,7 +40,7 @@ export async function render(el) {
       <div class="card"><div class="table-wrap" style="max-height:72vh"><table class="t ctl">
         <thead>
           <tr><th rowspan="2">Dia</th>${meals.map((m) => `<th class="grp" colspan="5">${MEAL_LABEL[m]}</th>`).join('')}</tr>
-          <tr>${meals.map(() => '<th class="n gs">Prev. adultos</th><th class="n">Prev. crianças</th><th class="n">Real. adultos</th><th class="n">Real. crianças</th><th class="n">Dif.</th>').join('')}</tr>
+          <tr>${meals.map(() => '<th class="n gs">Adultos previstos</th><th class="n">Crianças previstas</th><th class="n">Adultos realizados</th><th class="n">Crianças realizadas</th><th class="n">Diferença</th>').join('')}</tr>
         </thead>
         <tbody>${days.map((date) => {
           const wd = weekday(date);

@@ -138,7 +138,7 @@ async function handle(req, res, publicDir, apiKeyAuth) {
       }
       // Proteção CSRF: toda alteração exige o cabeçalho enviado pelo próprio app
       if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'fetch') throw new HttpError(403, 'Requisição bloqueada.');
-      if (ctx.user.must_change_password && !match.opts.allowPwChange) throw new HttpError(428, 'Troque sua senha para continuar.');
+      if (ctx.user.must_change_password && !match.opts.allowPwChange) throw new HttpError(428, 'Altere a senha para continuar.');
     }
     if (req.method !== 'GET') {
       const buf = await readBody(req, match.opts.raw || 2 * 1024 * 1024);

@@ -170,7 +170,7 @@ function parseRows(rows) {
   const head = findHeaderRow(rows);
   const missing = REQUIRED.filter((f) => head.map[f] === undefined);
   if (head.idx < 0 || missing.length) {
-    return { ok: false, error: `Não encontrei as colunas: ${missing.map((f) => LABELS[f]).join(', ')}. Verifique o cabeçalho da planilha.`, headerRow: head.idx, mapping: head.map };
+    return { ok: false, error: `Não foram encontradas as colunas: ${missing.map((f) => LABELS[f]).join(', ')}. Verifique o cabeçalho da planilha.`, headerRow: head.idx, mapping: head.map };
   }
   const header = rows[head.idx];
   const dataRows = [];

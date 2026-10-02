@@ -1,12 +1,12 @@
 import { get, post, put, esc, icon, fail, toast, modal, state, ROLE_LABEL, confirmBox } from '../ui.js';
 
 const ROLE_HELP = {
-  admin: 'Faz tudo: usuários, configurações, logs, reabrir mês.',
-  supervisor: 'Vê tudo, cadastra valores, fecha o faturamento e gera os relatórios oficiais.',
-  refeicao: 'Importa planilhas, revisa e ajusta a divisão, publica listas, vê faturamento.',
+  admin: 'Acesso integral: usuários, configurações, auditoria e reabertura de mês.',
+  supervisor: 'Consulta de todas as informações, cadastro de preços, fechamento do faturamento e emissão dos relatórios oficiais.',
+  refeicao: 'Importação de planilhas, revisão e ajuste da divisão, publicação das listas e consulta ao faturamento.',
   recepcao: 'Consulta de refeições dos hóspedes e impressão dos cartões (somente leitura).',
-  restaurante: 'Registra os atendimentos do seu restaurante, as refeições extras e (na Di Giordana) vouchers. Se for administrador do restaurante, vê também o controle semanal e os valores do mês.',
-  agencia: 'Equipe comercial: envia os rooming lists das agências, confere as trocas de apartamento e ajusta apartamentos, nomes e pessoas de todas as reservas. Não muda a pensão nem a divisão.',
+  restaurante: 'Registro dos atendimentos do restaurante, das refeições extras e (na Di Giordana) dos vouchers. O administrador do restaurante também consulta o controle semanal e os valores do mês.',
+  agencia: 'Equipe comercial: envio dos rooming lists das agências, conferência das trocas de apartamento e ajuste de apartamentos, nomes e pessoas das reservas. Não altera a pensão nem a divisão.',
 };
 
 export async function render(el) {
@@ -48,7 +48,7 @@ export async function render(el) {
         <label class="f">Login (número)<input class="input" name="login_code" inputmode="numeric" pattern="[0-9]{3,8}" value="${esc(u?.login_code || nextCode || '')}" required autocomplete="off" title="Somente números, de 3 a 8 dígitos"></label>
         <label class="f">Perfil<select class="input" name="role">${Object.entries(ROLE_LABEL).filter(([k]) => k !== 'cliente').map(([k, v]) => `<option value="${k}" ${u?.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
         <label class="f" id="restf">Restaurante<select class="input" name="restaurant_id">${rests.map((r) => `<option value="${r.id}" ${u?.restaurant_id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></label>
-        <label class="row full" id="radm" style="gap:8px;cursor:pointer"><input type="checkbox" name="rest_admin" ${u?.rest_admin ? 'checked' : ''}><span><b>Administrador do restaurante</b> — além das marcações, vê o controle semanal, os valores de cada semana e o total do mês do seu restaurante.</span></label>
+        <label class="row full" id="radm" style="gap:8px;cursor:pointer"><input type="checkbox" name="rest_admin" ${u?.rest_admin ? 'checked' : ''}><span><b>Administrador do restaurante</b> — além dos registros de atendimento, consulta o controle semanal, os valores de cada semana e o total do mês do seu restaurante.</span></label>
 
         ${u ? `<label class="f">Situação<select class="input" name="active"><option value="1" ${u.active ? 'selected' : ''}>Ativo</option><option value="0" ${u.active ? '' : 'selected'}>Inativo</option></select></label>`
           : '<label class="f">Senha inicial (opcional)<input class="input" name="password" type="text" placeholder="em branco = gerar" autocomplete="off"></label>'}

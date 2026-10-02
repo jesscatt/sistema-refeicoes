@@ -35,7 +35,7 @@ export async function render(el) {
       <div class="card" style="margin-top:18px">
         <div class="card-head">${icon('swap')}<h3 class="grow">Trocas de apartamento recentes</h3>${canSee('trocas') ? '<a class="btn sm" href="#/trocas">Ver todas</a>' : ''}</div>
         ${d.roomChanges.length ? `<div class="table-wrap"><table class="t"><tbody>${d.roomChanges.map((c) => `
-          <tr><td class="room">${esc(c.old_room)} → ${esc(c.new_room)}</td><td>${esc(c.guest_name)} <span class="muted small">· reserva ${esc(c.reservation_number)}</span></td>
+          <tr><td class="room">${esc(c.old_room)} → ${esc(c.new_room)}</td><td>${esc(c.guest_name)} <span class="muted small">· Reserva nº ${esc(c.reservation_number)}</span></td>
           <td class="muted small">${esc(c.created_at.slice(8, 10) + '/' + c.created_at.slice(5, 7) + ' ' + c.created_at.slice(11, 16))}</td></tr>`).join('')}</tbody></table></div>`
           : '<div class="empty">Nenhuma troca registrada.</div>'}
       </div>`;
@@ -53,7 +53,7 @@ export async function render(el) {
     const isThisWeek = wk.days.includes(wk.today);
     return `<div class="card" style="margin-bottom:18px">
       <div class="card-head">${icon('plate')}<h3 class="grow">Restaurantes abertos ${isThisWeek ? 'nesta semana' : 'na semana'} · ${br(wk.from)} a ${br(wk.to)}</h3>
-        <span class="row small muted" style="gap:10px"><span class="leg on"></span>aberto <span class="leg off"></span>fechado <span class="leg na"></span>não serve${edit ? ' · clique para abrir ou fechar' : ''}</span></div>
+        <span class="row small muted" style="gap:10px"><span class="leg on"></span>aberto <span class="leg off"></span>fechado <span class="leg na"></span>não oferece${edit ? ' · selecione para abrir ou fechar' : ''}</span></div>
       <div class="table-wrap"><table class="t week">
         <thead><tr><th>Restaurante</th>${wk.days.map((d) => `<th class="${d === wk.today ? 'today' : ''}">${wdOf(d)}<div>${br(d)}${d === wk.today ? ' · hoje' : ''}</div></th>`).join('')}</tr></thead>
         <tbody>${wk.restaurants.map((r) => `<tr>
@@ -109,12 +109,12 @@ export async function render(el) {
           <span class="nm">${restDot(r)}${esc(r.name)}${r.full ? ' <span class="badge danger">lotado</span>' : ''}</span>
           ${!r.serves && !r.pax ? `<span class="num"></span><span class="pct"><span class="badge ${r.closed_today ? 'danger' : ''}">${r.closed_today ? 'fechado' : 'não oferece'}</span></span>` : `<span class="num"><b>${r.pax}</b> <span class="muted small">pessoas</span></span>
           <span class="pct">${pct(r.pct)} <span title="meta">/ ${pct(r.share)}</span></span>`}
-          <span class="chk" title="marcados">${r.checked_pax ? '✓ ' + r.checked_pax : ''}</span>
+          <span class="chk" title="atendidos">${r.checked_pax ? '✓ ' + r.checked_pax : ''}</span>
         </div>`).join('')}</div>
       <div class="foot">
-        ${m.published ? `<span class="badge ok">${icon('check')} Lista publicada</span>` : `<span class="badge warn">Lista às ${publishAt(m)}</span>`}
+        ${m.published ? `<span class="badge ok">${icon('check')} Lista publicada</span>` : `<span class="badge warn">Liberação da lista às ${publishAt(m)}</span>`}
         <span class="grow" style="flex:1"></span>
-        ${checked ? `<span class="muted">${checked} marcados</span>` : ''}
+        ${checked ? `<span class="muted">${checked} atendidos</span>` : ''}
         ${link ? `<a class="btn sm" href="${link}">Abrir</a>` : ''}
       </div>
     </div>`;

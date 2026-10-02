@@ -25,7 +25,7 @@ export async function render(el) {
   el.innerHTML = `
     <div class="page-head">
       <div class="grow"><h1>Reservas</h1><p id="count"></p></div>
-      ${can('admin', 'supervisor', 'refeicao') ? `<button class="btn" id="csv">${icon('download')} Exportar</button>` : ''}
+      ${can('admin', 'supervisor', 'refeicao') ? `<button class="btn" id="csv">${icon('download')} Exportar CSV</button>` : ''}
       ${edit ? `<button class="btn primary" id="new">${icon('plus')} Nova reserva</button>` : ''}
     </div>
     <div class="card pad" style="margin-bottom:14px">
@@ -37,7 +37,7 @@ export async function render(el) {
       </div>
     </div>
     <div class="card"><div class="table-wrap"><table class="t">
-      <thead><tr><th>Reserva</th><th>Apartamento</th><th>Grupo / hóspedes</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pax</th><th>Origem</th><th>Situação</th></tr></thead>
+      <thead><tr><th>Reserva</th><th>Apartamento</th><th>Grupo / hóspedes</th><th>Entrada</th><th>Saída</th><th>Pensão</th><th>Pessoas</th><th>Origem</th><th>Situação</th></tr></thead>
       <tbody id="tbody"></tbody></table></div>
       <div class="row" style="padding:12px 16px;justify-content:flex-end"><button class="btn sm" id="prev">‹ Anterior</button><button class="btn sm" id="next">Próxima ›</button></div>
     </div>`;

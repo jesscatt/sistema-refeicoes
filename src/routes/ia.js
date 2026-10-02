@@ -39,7 +39,7 @@ function buildContext(month) {
 
 route('POST', '/api/ia', { roles: ['admin', 'supervisor', 'refeicao'] }, async ({ body, user, ip }) => {
   const question = String(body.question || '').trim().slice(0, 2000);
-  if (!question) throw new HttpError(400, 'Escreva o que você quer saber.');
+  if (!question) throw new HttpError(400, 'Informe a consulta desejada.');
   if (!process.env.ANTHROPIC_API_KEY) throw new HttpError(501, 'Assistente de IA ainda não configurado. Defina a variável ANTHROPIC_API_KEY no servidor.');
   const month = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : todayISO().slice(0, 7);
   const context = buildContext(month);
@@ -49,7 +49,7 @@ route('POST', '/api/ia', { roles: ['admin', 'supervisor', 'refeicao'] }, async (
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 2000,
-      system: 'Você é o analista de refeições de um hotel com três restaurantes. Responda em português do Brasil, de forma objetiva, '
+      system: 'Você é o analista de refeições de um hotel com três restaurantes. Responda em português do Brasil, em linguagem formal e objetiva, '
         + 'usando somente os dados fornecidos em JSON. Quando fizer contas, mostre os números usados. Use tabelas em Markdown quando ajudar. '
         + 'Aponte diferenças entre previsto, marcado e real, desvios da divisão 60/20/20 e riscos de prejuízo. Se faltar dado, diga qual.',
       messages: [{ role: 'user', content: `Dados do sistema:\n${JSON.stringify(context)}\n\nPergunta: ${question}` }],

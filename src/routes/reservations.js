@@ -97,7 +97,7 @@ function readReservationBody(body) {
 
 route('POST', '/api/reservations', { roles: EDIT }, ({ body, user, ip }) => {
   const rec = readReservationBody(body);
-  if (db.prepare("SELECT 1 FROM reservations WHERE reservation_number = ? AND room_key(room) = ? AND status = 'ativa'").get(rec.reservation_number, roomKey(rec.room))) throw new HttpError(409, 'Essa reserva já tem esse quarto cadastrado.');
+  if (db.prepare("SELECT 1 FROM reservations WHERE reservation_number = ? AND room_key(room) = ? AND status = 'ativa'").get(rec.reservation_number, roomKey(rec.room))) throw new HttpError(409, 'Este apartamento já está cadastrado nesta reserva.');
   const id = tx(() => {
     const r = db.prepare(`INSERT INTO reservations(reservation_number, guest_name, checkin, checkout, room, board, adults, children, source, notes, lunch_on_arrival)
       VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(rec.reservation_number, rec.guest_name, rec.checkin, rec.checkout, rec.room, rec.board, rec.adults, rec.children, 'manual', body.notes || null, body.lunch_on_arrival ? 1 : 0);

@@ -41,7 +41,7 @@ function guestsBlock(r, group) {
   return `<div class="card" style="margin-bottom:14px;box-shadow:none">
     <div class="card-head">${icon('users')}<h3 class="grow">${isGroup ? `Hóspedes do grupo · ${group.length} apartamentos` : 'Hóspedes do apartamento'}</h3>
       <span class="muted small">${total} nome(s) de ${pax} pessoas</span>${total ? '<button class="btn sm" data-copy>Copiar nomes</button>' : ''}</div>
-    <div class="table-wrap"><table class="t"><thead><tr><th>Apartamento</th><th>Nome completo</th><th>Pax</th></tr></thead><tbody>
+    <div class="table-wrap"><table class="t"><thead><tr><th>Apartamento</th><th>Nome completo</th><th>Pessoas</th></tr></thead><tbody>
       ${rows.map((g) => { const n = namesOf(g.guests); const me = g.id === r.id;
         return `<tr style="${g.status !== 'ativa' ? 'opacity:.5;text-decoration:line-through' : ''}${me && isGroup ? ';background:var(--primary-l, #e6f4f7)' : ''}">
           <td class="room">${roomHtml(g.room)}</td>

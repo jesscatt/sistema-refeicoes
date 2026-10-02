@@ -314,7 +314,7 @@ export async function render(el) {
         <div class="form-grid"><label class="f">Apartamento<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" value="${esc(room)}"></label>
         <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
         <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
-        <label class="f" style="grid-column:1/-1">Observação <span style="color:var(--danger)">*</span><input class="input" name="note" required placeholder="Obrigatório. Ex.: pagou no cartão, comanda 1234"></label></div>`,
+        <label class="f" style="grid-column:1/-1">Observação <span style="color:var(--danger)">*</span><input class="input" name="note" required placeholder="Obrigatório. Ex.: pagamento em cartão, comanda nº 1234"></label></div>`,
       foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Registrar</button>',
     });
     m.querySelector('[data-ok]').onclick = async () => {

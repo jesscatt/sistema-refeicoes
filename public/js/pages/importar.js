@@ -15,7 +15,7 @@ export async function render(el) {
         <input type="file" id="file" accept=".xlsx,.csv,.txt" hidden>
       </label>
       <div class="grid g3" style="margin-top:18px">
-        <div class="card pad"><h3>1. Conferir</h3><p class="muted small">Antes de gravar, você vê cada linha: nova, alterada, sem mudança ou com erro.</p></div>
+        <div class="card pad"><h3>1. Conferir</h3><p class="muted small">Antes da gravação, cada linha é apresentada para conferência: nova, alterada, sem alteração ou com erro.</p></div>
         <div class="card pad"><h3>2. Trocas de apartamento</h3><p class="muted small">Se uma reserva já existente vier com outro apartamento, a troca é registrada e recepção e restaurantes são avisados.</p></div>
         <div class="card pad"><h3>3. Divisão</h3><p class="muted small">Utiliza a divisão informada na planilha ou realiza a divisão automaticamente (60/20/20), sempre com o grupo inteiro no mesmo restaurante e alternando os restaurantes ao longo da estadia.</p></div>
       </div>`;

@@ -124,7 +124,7 @@ function readXlsxSheets(buf) {
 
 function readXlsx(buf) {
   const sheets = readXlsxSheets(buf);
-  if (!sheets.length) throw new Error('Não encontrei a primeira aba da planilha.');
+  if (!sheets.length) throw new Error('Não foi encontrada a primeira aba da planilha.');
   return sheets[0].rows;
 }
 

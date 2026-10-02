@@ -46,7 +46,7 @@ export async function render(el) {
             <button class="btn sm" data-addroom="${esc(g.num)}">${icon('plus')} Apartamento</button>
             <button class="btn sm" data-rlg="${esc(g.num)}">${icon('upload')} Rooming list</button></summary>
           <div class="table-wrap"><table class="t">
-            <thead><tr><th>Apartamento</th><th>Hóspedes</th><th>Estadia</th><th>Pax</th><th>Pensão</th><th></th></tr></thead>
+            <thead><tr><th>Apartamento</th><th>Hóspedes</th><th>Estadia</th><th>Pessoas</th><th>Pensão</th><th></th></tr></thead>
             <tbody>${g.rooms.map((r) => {
               const done = r.checkout < data.today, off = r.status !== 'ativa';
               const names = guestList(r.guests);
@@ -92,7 +92,7 @@ export async function render(el) {
       <div class="card pad" style="margin-bottom:14px">
         <label class="f" style="max-width:640px">Reserva / grupo deste rooming list
           <select class="input" id="res"><option value="">— a planilha tem a coluna Reserva / descobrir pelo apartamento —</option>
-            ${rl.groups.map((x) => `<option value="${esc(x.reservation_number)}" ${x.reservation_number === rl.reservation ? 'selected' : ''}>${esc(x.reservation_number)} · ${esc(x.name)} · ${x.rooms} qtos · ${esc(br(x.checkin).slice(0, 5))} → ${esc(br(x.checkout).slice(0, 5))}</option>`).join('')}
+            ${rl.groups.map((x) => `<option value="${esc(x.reservation_number)}" ${x.reservation_number === rl.reservation ? 'selected' : ''}>${esc(x.reservation_number)} · ${esc(x.name)} · ${x.rooms} aptos. · ${esc(br(x.checkin).slice(0, 5))} → ${esc(br(x.checkout).slice(0, 5))}</option>`).join('')}
           </select></label>
         ${g ? `<p class="small muted" style="margin:8px 0 0">Apartamentos novos entram nesse grupo com a mesma pensão e as mesmas datas (${esc(br(g.checkin))} → ${esc(br(g.checkout))}).</p>` : ''}
       </div>
@@ -146,7 +146,7 @@ export async function render(el) {
       </div>
       ${need ? `<div class="banner danger">${icon('alert')}<span><b>${need} apartamento(s)</b> sem reserva definida. Escolha acima a reserva/grupo deste rooming list.</span></div>` : ''}
       ${p.missing.length ? `<div class="card pad" style="margin-bottom:14px;border-color:#e8c47e">
-        <b>${p.missing.length} apartamento(s) do grupo não estão neste rooming list.</b> Marque os que saíram (serão removidos das listas de refeição):
+        <b>${p.missing.length} apartamento(s) do grupo não estão neste rooming list.</b> Selecione os apartamentos que deixaram o grupo (serão retirados das listas de refeição):
         <div class="row" style="margin-top:8px">${p.missing.map((m) => `<label class="badge" style="cursor:pointer;gap:6px;padding:5px 10px"><input type="checkbox" data-rm="${m.id}" ${rl.removeIds.has(m.id) ? 'checked' : ''}> ${roomHtml(m.room)} · ${paxTxt(m.adults, m.children)}${m.guests.length ? ' · ' + esc(m.guests[0]) : ''}</label>`).join('')}</div>
       </div>` : ''}
       <div class="card"><div class="table-wrap" style="max-height:60vh"><table class="t">
@@ -158,12 +158,12 @@ export async function render(el) {
           <td class="small">${i.names.map(esc).join('<br>') || '<span class="muted">—</span>'}</td>
           <td class="n"><input class="input sm" type="number" min="0" data-f="adults" value="${i.adults}" style="width:56px"></td>
           <td class="n"><input class="input sm" type="number" min="0" data-f="children" value="${i.children}" style="width:56px"></td>
-          <td class="small muted">${i.old ? `${paxTxt(i.old.adults, i.old.children)}${i.old.guests.length ? '<br>' + i.old.guests.map(esc).join(', ') : ''}${i.old.status !== 'ativa' ? '<br><b>removido (será reativado)</b>' : ''}` : (i.action === 'novo' ? `entra no grupo · ${esc(i.template.board)} · ${esc(br(i.template.checkin).slice(0, 5))}→${esc(br(i.template.checkout).slice(0, 5))}` : '')}</td>
+          <td class="small muted">${i.old ? `${paxTxt(i.old.adults, i.old.children)}${i.old.guests.length ? '<br>' + i.old.guests.map(esc).join(', ') : ''}${i.old.status !== 'ativa' ? '<br><b>removido (será reativado)</b>' : ''}` : (i.action === 'novo' ? `será incluído no grupo · ${esc(i.template.board)} · ${esc(br(i.template.checkin).slice(0, 5))}→${esc(br(i.template.checkout).slice(0, 5))}` : '')}</td>
           <td class="small" style="color:var(--danger)">${(i.errors || []).map(esc).join('<br>')}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div class="row" style="justify-content:flex-end;margin-top:14px">
         <button class="btn" id="other">Outro arquivo</button>
-        <button class="btn primary" id="send" ${c('erro') + need ? 'disabled' : ''}>${icon('check')} Gravar rooming list</button>
+        <button class="btn primary" id="send" ${c('erro') + need ? 'disabled' : ''}>${icon('check')} Salvar rooming list</button>
       </div>`;
   }
 
@@ -183,7 +183,7 @@ export async function render(el) {
         const r = await post('/api/portal/rooming/commit', { filename: rl.filename, groups, remove_ids: [...rl.removeIds], reservation_number: rl.reservation });
         toast(`${r.updated} atualizado(s), ${r.created} novo(s), ${r.removed} removido(s). Resort avisado.`, 'ok', 'Rooming list gravado');
         view = 'lista'; rl = null; load();
-      } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Gravar rooming list'; }
+      } catch (e) { fail(e); btn.disabled = false; btn.textContent = 'Salvar rooming list'; }
     };
   }
 
@@ -202,7 +202,7 @@ export async function render(el) {
   function edit(r) {
     const { el: m, close } = modal({
       title: `Alterar apartamento ${roomHtml(r.room)}`,
-      body: roomForm(r) + '<p class="muted small">Trocar o número do apartamento registra a troca e avisa recepção e restaurantes na hora. Para tirar uma pessoa, apague o nome e ajuste adultos/crianças. Para tirar o apartamento inteiro, use “Remover”.</p>',
+      body: roomForm(r) + '<p class="muted small">A alteração do número do apartamento registra a troca e notifica imediatamente a recepção e os restaurantes. Para retirar uma pessoa, exclua o nome e ajuste a quantidade de adultos e crianças. Para retirar o apartamento inteiro, use “Remover”.</p>',
       foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Salvar</button>',
     });
     m.querySelector('[data-ok]').onclick = async () => {
@@ -218,7 +218,7 @@ export async function render(el) {
   function addRoom(num) {
     const { el: m, close } = modal({
       title: `Incluir apartamento na reserva ${esc(num)}`,
-      body: roomForm({}) + '<p class="muted small">O apartamento entra no grupo com a mesma pensão e datas dos demais apartamentos e já vai para a divisão das refeições.</p>',
+      body: roomForm({}) + '<p class="muted small">O apartamento é incluído no grupo com a mesma pensão e as mesmas datas dos demais e passa a integrar a divisão das refeições.</p>',
       foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Incluir</button>',
     });
     m.querySelector('[data-ok]').onclick = async () => {

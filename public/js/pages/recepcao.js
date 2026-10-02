@@ -37,10 +37,10 @@ export async function render(el) {
         <button class="btn" id="print">${icon('print')} Imprimir cartões (${list.length})</button>
       </div>
       <div class="card"><div class="table-wrap"><table class="t">
-        <thead><tr><th>Apartamento</th><th>Hóspede</th><th>Pax</th><th>Pensão</th><th>Estadia</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
+        <thead><tr><th>Apartamento</th><th>Hóspede</th><th>Pessoas</th><th>Pensão</th><th>Estadia</th>${MEALS.map((m) => `<th>${MEAL_LABEL[m]}</th>`).join('')}</tr></thead>
         <tbody>${list.map((r) => `<tr class="click" data-id="${r.id}">
-          <td class="room">${roomHtml(r.room)}${r.old_room ? `<div class="small" style="color:var(--primary-d);font-weight:600">era ${esc(r.old_room)}</div>` : ''}</td>
-          <td><b>${esc(r.guest_name)}</b>${r.guests ? `<div class="small">${esc(r.guests.split('\n').join(', '))}</div>` : ''}<div class="muted small">reserva ${esc(r.reservation_number)}</div></td>
+          <td class="room">${roomHtml(r.room)}${r.old_room ? `<div class="small" style="color:var(--primary-d);font-weight:600">anterior: ${esc(r.old_room)}</div>` : ''}</td>
+          <td><b>${esc(r.guest_name)}</b>${r.guests ? `<div class="small">${esc(r.guests.split('\n').join(', '))}</div>` : ''}<div class="muted small">Reserva nº ${esc(r.reservation_number)}</div></td>
           <td>${paxTxt(r.adults, r.children)}</td>
           <td>${boardTag(r.board)}</td>
           <td class="small">${esc(br(r.checkin).slice(0, 5))} → ${esc(br(r.checkout).slice(0, 5))} ${r.arriving ? '<span class="badge info">chega</span>' : ''}${r.leaving ? '<span class="badge warn">sai</span>' : ''}</td>
@@ -54,7 +54,7 @@ export async function render(el) {
     el.querySelectorAll('tr[data-id]').forEach((tr) => tr.addEventListener('click', () => openReservation(tr.dataset.id, () => load())));
     el.querySelector('#print').onclick = async () => {
       if (!list.length) return;
-      if (list.length > 150) { toast('Muitos cartões de uma vez; filtre por chegadas.', 'err'); return; }
+      if (list.length > 150) { toast('Quantidade excessiva de cartões para impressão; filtre pelas chegadas do dia.', 'err'); return; }
       try { printCards(await Promise.all(list.map((r) => get('/api/reservations/' + r.id)))); } catch (e) { fail(e); }
     };
   }

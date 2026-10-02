@@ -12,7 +12,7 @@ export async function render(el) {
   const st = { month: today().slice(0, 7), history: [] };
   function draw() {
     el.innerHTML = `
-      <div class="page-head"><div class="grow"><h1>Assistente de relatórios</h1><p>Pergunte em português. A IA lê os números do sistema (previsto, marcado, real, valores) do mês escolhido e dos dois anteriores e monta o relatório.</p></div>
+      <div class="page-head"><div class="grow"><h1>Assistente de relatórios</h1><p>Formule a pergunta em português. O assistente consulta os números do sistema (previsto, realizado e valores) do mês escolhido e dos dois anteriores e monta o relatório.</p></div>
         <input type="month" class="input sm" id="month" value="${esc(st.month)}" style="width:auto"></div>
       <div class="card pad" style="margin-bottom:16px">
         <textarea class="input" id="q" rows="3" placeholder="Ex.: Quantos almoços de criança o Paradiso serviu em setembro e quanto isso custou?"></textarea>

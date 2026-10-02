@@ -168,7 +168,7 @@ function parseRooming(rows) {
     const vals = rows.slice(best.i + 1, best.i + 30).map((r) => (r || [])[map.pax]).filter((v) => v !== null && v !== undefined && v !== '');
     if (vals.length && vals.filter((v) => /[a-zA-Z]{2,}/.test(String(v))).length > vals.length / 2) { map.name = map.pax; delete map.pax; }
   }
-  if (map.name === undefined && map.adults === undefined && map.pax === undefined) throw new HttpError(400, 'Não encontrei a coluna com o nome dos hóspedes (Nome/Hóspede/Passageiro).');
+  if (map.name === undefined && map.adults === undefined && map.pax === undefined) throw new HttpError(400, 'Não foi encontrada a coluna com o nome dos hóspedes (Nome/Hóspede/Passageiro).');
   const groups = new Map();
   let lastRoom = '', lastRes = '';
   for (let i = best.i + 1; i < rows.length; i++) {

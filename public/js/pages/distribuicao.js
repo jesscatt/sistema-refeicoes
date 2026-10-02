@@ -31,7 +31,7 @@ export async function render(el) {
         <button class="btn" id="csv">${icon('download')} CSV</button>
         <button class="btn" id="print">${icon('print')} Imprimir listas</button>
       </div>
-      ${edit ? `<p class="muted small" style="margin-top:-6px">“Redistribuir” refaz a divisão só de quem não foi travado (${icon('lock').replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')}) nem marcado. Mover alguém manualmente leva o grupo inteiro e trava naquele restaurante.</p>` : ''}
+      ${edit ? `<p class="muted small" style="margin-top:-6px">“Redistribuir” refaz a divisão somente dos hóspedes não fixados (${icon('lock').replace('<svg', '<svg style="width:13px;height:13px;vertical-align:-2px"')}) nem marcado. Mover alguém manualmente leva o grupo inteiro e trava naquele restaurante.</p>` : ''}
       <div class="dist-cols" style="grid-template-columns:repeat(${Math.max(serving.length, 1)}, minmax(0,1fr))">
         ${serving.map((r) => col(r, total, shareTot, serving)).join('') || '<div class="card empty">Nenhum restaurante serve esta refeição.</div>'}
       </div>`;
@@ -49,7 +49,7 @@ export async function render(el) {
     };
     el.querySelector('#print').onclick = printAll;
     el.querySelector('#rebal')?.addEventListener('click', async () => {
-      if (!(await confirmBox('Refazer a divisão de quem não está travado nem marcado? Os cartões já entregues podem mudar.', 'Redistribuir'))) return;
+      if (!(await confirmBox('Deseja refazer a divisão dos hóspedes não fixados e sem atendimento registrado? Os cartões já entregues poderão ser alterados.', 'Redistribuir'))) return;
       try { const r = await post('/api/distribution/rebalance', { date: d.date, meal: d.meal }); toast(`${r.moved} reserva(s) mudaram de restaurante.`); load(); } catch (e) { fail(e); }
     });
     el.querySelector('#pub')?.addEventListener('click', async () => {
@@ -88,8 +88,8 @@ export async function render(el) {
       const head = G.rooms[0];
       return `<details class="grp">
         <summary class="guest grp-head">
-          <span class="room"><span class="badge info">${G.rooms.length} qtos</span></span>
-          <span style="min-width:0"><div class="nm"><b>${esc(G.name)}</b></div><div class="sub">grupo ${esc(G.num)} · ${pax} pessoas${G.rooms.some((x) => x.att_status) ? ` · <b style="color:var(--ok)">${G.rooms.filter((x) => x.att_status).length} marcados</b>` : ''}</div></span>
+          <span class="room"><span class="badge info">${G.rooms.length} aptos.</span></span>
+          <span style="min-width:0"><div class="nm"><b>${esc(G.name)}</b></div><div class="sub">Grupo · Reserva nº ${esc(G.num)} · ${pax} pessoas${G.rooms.some((x) => x.att_status) ? ` · <b style="color:var(--ok)">${G.rooms.filter((x) => x.att_status).length} marcados</b>` : ''}</div></span>
           <span class="row" style="gap:4px">${actions(head, r, serving)}</span>
         </summary>
         ${G.rooms.map((x) => line(x, true)).join('')}
@@ -97,10 +97,10 @@ export async function render(el) {
     }).join('');
     return `<div class="card dist-col" style="--c:${esc(r.color)}">
       <div class="card-head"><div class="grow"><h3>${esc(r.name)}</h3><div class="meta">${r.pax} pessoas (${r.adults} adultos · ${r.children} crianças) · ${rows.length} apartamentos · ${groups.length} reservas${r.cap ? ` · capacidade ${r.cap}` : ''}</div></div>
-        <div style="text-align:right"><b style="font-size:22px">${pct(r.pct)}</b><div class="meta">meta ${pct(target)}</div></div></div>
+        <div style="text-align:right"><b style="font-size:22px">${pct(r.pct)}</b><div class="meta">meta de divisão: ${pct(target)}</div></div></div>
       <div class="target"><i style="width:${Math.min(100, r.pct * 100)}%"></i><b style="left:${target * 100}%"></b></div>
       ${r.full ? '<div class="banner danger" style="margin:0 14px 10px">Capacidade atingida</div>' : ''}
-      <div class="list-scroll">${body || '<div class="empty">Ninguém aqui.</div>'}</div>
+      <div class="list-scroll">${body || '<div class="empty">Não há hóspedes designados.</div>'}</div>
     </div>`;
   }
 
