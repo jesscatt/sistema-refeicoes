@@ -56,7 +56,16 @@ function restaurantsFor(meal, date = null) {
     return db.prepare(`SELECT id, code, name, color, share_${meal} AS share, cap_${meal} AS cap, closed_${meal} AS closed
       FROM restaurants WHERE active = 1 AND share_${meal} > 0 ORDER BY share_${meal} DESC, id`).all();
   }
-  return restaurantStatus(meal, date).filter((r) => r.open).sort((a, b) => b.share - a.share || a.id - b.id);
+  const open = restaurantStatus(meal, date).filter((r) => r.open).sort((a, b) => b.share - a.share || a.id - b.id);
+  // Com apenas dois restaurantes abertos no almoço ou no jantar, a divisão passa a ser 60/40
+  // (o de maior percentual fica com 60%). Configurável em settings: two_open_split (padrão 60).
+  if (open.length === 2 && (meal === 'almoco' || meal === 'janta')) {
+    const { getSetting } = require('./db');
+    const main = Math.min(100, Math.max(0, Number(getSetting('two_open_split', '60')) || 60)) / 100;
+    open[0] = { ...open[0], share: main };
+    open[1] = { ...open[1], share: Math.round((1 - main) * 100) / 100 };
+  }
+  return open;
 }
 
 function paxLoads(date, meal) {
@@ -222,8 +231,11 @@ function syncMany(resIds) {
 
 // Resumo de um dia/refeição por restaurante
 function daySummary(date, meal) {
-  const open = new Set(restaurantsFor(meal, date).map((r) => r.id));
-  const rests = db.prepare(`SELECT id, code, name, color, share_${meal} share, cap_${meal} cap FROM restaurants WHERE active = 1 ORDER BY id`).all();
+  const openList = restaurantsFor(meal, date);
+  const open = new Set(openList.map((r) => r.id));
+  const eff = new Map(openList.map((r) => [r.id, r.share]));
+  const rests = db.prepare(`SELECT id, code, name, color, share_${meal} share, cap_${meal} cap FROM restaurants WHERE active = 1 ORDER BY id`).all()
+    .map((r) => (eff.has(r.id) ? { ...r, share: eff.get(r.id) } : r));
   const asg = db.prepare(`
     SELECT a.restaurant_id, COUNT(*) reservas, SUM(r.adults) adults, SUM(r.children) children
     FROM assignments a JOIN reservations r ON r.id = a.reservation_id

@@ -11,7 +11,7 @@ export async function render(el) {
     const boards = Object.fromEntries(d.boards.map((b) => [b.board, b]));
     el.innerHTML = `
       <div class="page-head">
-        <div class="grow"><h1>Painel geral</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40)</p></div>
+        <div class="grow"><h1>Painel geral</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40; com dois restaurantes abertos, 60/40)</p></div>
         ${dateBar({ date: st.date })}
       </div>
       ${openCard(rd)}

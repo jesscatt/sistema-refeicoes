@@ -395,3 +395,20 @@ test('apartamentos: 3 números e a torre (A a H), 101 a 610, torre A sem 105 e 1
   const { normalizeRecord } = require('../src/importer');
   assert.match(normalizeRecord({ reservation_number: '1', checkin: '2026-10-10', checkout: '2026-10-11', room: '105A', board: 'CM', pax: 1 }).errors.join(), /torre A não tem/);
 });
+
+test('com dois restaurantes abertos no almoço/jantar a divisão é 60/40', () => {
+  const { restaurantsFor, rebalance, daySummary } = require('../src/meals');
+  const d = '2027-03-10';
+  const mae = db.prepare("SELECT id FROM restaurants WHERE code = 'MAE'").get().id;
+  db.prepare("INSERT OR REPLACE INTO restaurant_days(date, restaurant_id, meal, is_open, note) VALUES (?, ?, 'almoco', 0, 'teste')").run(d, mae);
+  const rs = restaurantsFor('almoco', d);
+  assert.deepEqual(rs.map((r) => r.share), [0.6, 0.4]);
+  assert.deepEqual(restaurantsFor('janta', d).map((r) => r.share), [0.6, 0.2, 0.2], 'jantar com os três abertos continua 60/20/20');
+  upsertReservations(Array.from({ length: 50 }, (_, i) => ({ reservation_number: `6040${i}`, checkin: '2027-03-09', checkout: '2027-03-11', room: `${1 + (i % 6)}${String(1 + Math.floor(i / 6) % 10).padStart(2, '0')}${'AB'[Math.floor(i / 60)] || 'A'}`.replace(/^(\\d)(05|06)A$/, '$1$2B'), board: 'FAP', pax: 2, children: 0 })));
+  rebalance(d, 'almoco');
+  const sum = daySummary(d, 'almoco').filter((r) => r.serves);
+  const tot = sum.reduce((s, r) => s + r.pax, 0);
+  const dg = sum.find((r) => r.code === 'DG');
+  assert.ok(Math.abs(dg.pax / tot - 0.6) < 0.06, `DG ${dg.pax}/${tot}`);
+  assert.equal(dg.share, 0.6);
+});
