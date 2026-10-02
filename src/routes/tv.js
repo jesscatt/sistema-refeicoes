@@ -74,7 +74,7 @@ function dashboard() {
     const hit = sales.rows.filter((r) => norm(r.seller).split(' ')[0] === n.split(' ')[0] || norm(r.seller).startsWith(n));
     return {
       name, full_names: hit.map((h) => h.seller),
-      value: hit.reduce((s, h) => s + h.value, 0), room_nights: hit.reduce((s, h) => s + (h.room_nights || 0), 0) * f, apts: hit.reduce((s, h) => s + (h.apts || 0), 0) * f,
+      value: hit.reduce((s, h) => s + h.value, 0), room_nights: Math.round(hit.reduce((s, h) => s + (h.room_nights || 0), 0) * f), apts: Math.round(hit.reduce((s, h) => s + (h.apts || 0), 0) * f), // sempre número inteiro
     };
   }).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
   const groups = GROUPS.map((g) => { const ranking = rankOf(sellersCfg(g), g.half ? 0.5 : 1); return { key: g.key, label: g.label, ranking, total: ranking.reduce((s, r) => s + r.value, 0) }; });
