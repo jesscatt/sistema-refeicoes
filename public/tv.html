@@ -73,8 +73,14 @@
   .groups { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: .8em; min-height: 0; }
   .grp { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
   .grp h3 { margin: 0 0 .35em; display: flex; justify-content: space-between; align-items: baseline; gap: .5em; font-size: 1.05em; text-transform: uppercase; letter-spacing: .05em; color: var(--ink); border-bottom: 3px solid var(--teal); padding-bottom: .2em; white-space: nowrap; }
-  .grp.agencia h3 { border-color: var(--blue); }
-  .grp h3 b { color: var(--blue); font-variant-numeric: tabular-nums; font-size: 1.05em; letter-spacing: 0; }
+  /* cor de cada equipe (tons pastéis) */
+  .grp.final { --tone: #e4f5ee; --tone-line: #a8dcc5; --tone-ink: #1d7a55; --tone-bar: linear-gradient(90deg, #6cc59f, #3fae80); }
+  .grp.agencia { --tone: #eeeafa; --tone-line: #c9bfeb; --tone-ink: #5b4aa6; --tone-bar: linear-gradient(90deg, #a898e0, #7d6bcc); }
+  .grp h3 { border-color: var(--tone-line) !important; background: var(--tone); border-radius: .45em .45em 0 0; padding: .2em .5em; color: var(--tone-ink); }
+  .grp .r { background: var(--tone); border-color: var(--tone-line); }
+  .grp .r .rb { background: rgba(255,255,255,.75); }
+  .grp .r .rb i { background: var(--tone-bar); }
+  .grp h3 b { color: var(--tone-ink); font-variant-numeric: tabular-nums; font-size: 1.05em; letter-spacing: 0; }
   .rank { flex: 1; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .35em; min-height: 0; }
   .r { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-items: center; column-gap: .55em; row-gap: .12em; background: #f6fafc; border: 1px solid var(--line); border-radius: .55em; padding: .1em .8em; min-height: 0; overflow: hidden; align-content: center; }
   .r.zero { opacity: .65; }
@@ -85,7 +91,7 @@
   .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
   .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6em; margin-top: .55em; flex: none; }
   .sfoot div { background: #eef5f9; border-radius: .5em; padding: .35em .7em; }
-  .sfoot span { display: block; color: var(--muted); font-size: .8em; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .sfoot span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; color: var(--muted); font-size: .8em; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .sfoot b { font-size: 1.35em; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .err { position: fixed; inset: auto 1em 1em auto; background: #fbe3e0; color: #8a2a20; border: 1px solid #f0b9b2; padding: .6em 1em; border-radius: .6em; display: none; }
   .gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); text-align: center; color: var(--muted); font-size: 1.4em; }
@@ -101,7 +107,7 @@
   </header>
   <section class="months" id="months"></section>
   <section class="bottom">
-    <div class="panel"><h2>Metas e previsão do mês <small id="mes-meta"></small></h2><div id="goals"></div></div>
+    <div class="panel"><h2>Metas do mês <small id="mes-meta"></small></h2><div id="goals"></div><div class="sfoot" id="gfoot"></div></div>
     <div class="panel"><h2>Ranking de vendas <small id="periodo"></small></h2><div class="groups" id="groups"></div><div class="sfoot" id="sfoot"></div></div>
   </section>
 </div>
@@ -142,11 +148,14 @@
       return `<div class="goal ${cls}"><div class="n">${esc(u.label)}</div>
         <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.max(1, Math.min(100, p))}%"></i>`}</div>
         <div class="p">${p == null ? '' : pct(p, 0)}</div>
-        <div class="v">${money(u.goal)}</div>
+        <div class="v">${money(u.done || 0)}</div>
         <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : money(u.missing)}</div></div>`;
     };
-    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Previsão</div><div>Falta</div></div>`
-      + d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
+    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Real</div><div>Falta</div></div>`
+      + d.units.map((u) => row(u)).join('');
+    const t = d.units_total;
+    document.getElementById('gfoot').innerHTML = `<div><span>Realizado total</span><b>${money(t.done || 0)}</b></div><div><span>Meta total</span><b>${money(t.goal)}</b></div>
+      <div><span>Falta</span><b style="color:${t.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${t.goal == null ? '—' : t.missing === 0 ? 'Meta atingida' : money(t.missing)}</b></div>`;
     const s = d.sales;
     document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';
     document.getElementById('groups').innerHTML = s.groups.map((g) => {
