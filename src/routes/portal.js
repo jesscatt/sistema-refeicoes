@@ -8,7 +8,7 @@
  * A pensão não muda por aqui. Toda alteração fica no log e avisa o setor de refeições e a recepção.
  */
 const { route, HttpError } = require('../http');
-const { db, tx, audit, notify } = require('../db');
+const { db, tx, audit, notify, maxPaxRoom } = require('../db');
 const { roomKey, normRoom, normKey, toInt, todayISO, addDays, toCSV } = require('../util');
 const { syncReservation, syncMany } = require('../meals');
 const { normalizeRecord, splitReservation } = require('../importer');
@@ -82,6 +82,8 @@ function matchRooming(user, groups, defaultRes = '') {
     if (!informed) { it.adults = Math.max(0, it.names.length - (g.childCount || 0)); it.children = g.childCount || 0; }
     it.adults = Math.max(0, toInt(it.adults, 0)); it.children = Math.max(0, toInt(it.children, 0));
     if (it.adults + it.children === 0) errs.push('sem hóspedes nem quantidade de pessoas');
+    const max = maxPaxRoom();
+    if (it.adults + it.children > max || it.names.length > max) errs.push(`${Math.max(it.adults + it.children, it.names.length)} pessoas no quarto; a política do resort é de no máximo ${max} por quarto`);
     // encontra o quarto
     let found = null;
     if (it.reservation_number) {
@@ -240,6 +242,7 @@ route('PUT', '/api/portal/reservations/:id', { roles: PORTAL }, ({ user, params,
   const { rec, errors } = normalizeRecord({ ...ex, ...patch, reservation_number: ex.reservation_number, board: ex.board });
   if (errors.length) throw new HttpError(400, 'Verifique: ' + errors.join(', '));
   const guests = body.guests === undefined ? ex.guests : guestsText(body.guests);
+  if (cleanGuests(guests).length > maxPaxRoom()) throw new HttpError(400, `A política do resort é de no máximo ${maxPaxRoom()} pessoas por quarto.`);
   if (roomKey(rec.room) !== roomKey(ex.room)) {
     if (roomTaken(rec.room, rec.checkin, rec.checkout, ex.id)) throw new HttpError(409, `O quarto ${rec.room} já está ocupado nessas datas. Confirme o número com a recepção.`);
   }

@@ -25,6 +25,14 @@ export async function render(el) {
       </div>
 
       <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><h3 class="grow">Políticas do resort</h3><button class="btn sm primary" id="save-pol">Salvar</button></div>
+        <div class="row" style="gap:12px;align-items:flex-end;padding:16px 20px">
+          <label class="f" style="max-width:260px">Máximo de pessoas por quarto<input class="input" type="number" min="1" max="20" id="max-pax" value="${meta.max_pax_room}"></label>
+          <p class="muted small" style="margin:0 0 10px">Adultos + crianças. Vale para importação, reservas, rooming list, Comercial e API do site: quartos acima do limite são recusados.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
         <div class="card-head"><h3 class="grow">Horários e aviso das listas</h3><button class="btn sm primary" id="save-times">Salvar</button></div>
         <div class="table-wrap"><table class="t"><thead><tr><th>Refeição</th><th>Início</th><th>Fim</th><th>Aviso (min antes)</th></tr></thead>
           <tbody>${meta.meal_times.map((t) => `<tr data-meal="${t.meal}"><td><b>${esc(t.label)}</b></td>
@@ -92,6 +100,9 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
         }
         toast('Restaurantes salvos.'); load();
       } catch (e) { fail(e); }
+    };
+    el.querySelector('#save-pol').onclick = async () => {
+      try { await put('/api/settings/policy', { max_pax_room: el.querySelector('#max-pax').value }); toast('Política salva.'); load(); } catch (e) { fail(e); }
     };
     el.querySelector('#save-times').onclick = async () => {
       const list = [...el.querySelectorAll('tr[data-meal]')].map((tr) => ({ meal: tr.dataset.meal, start: tr.querySelector('[name=start]').value, end: tr.querySelector('[name=end]').value, notify_before_min: tr.querySelector('[name=notify_before_min]').value }));

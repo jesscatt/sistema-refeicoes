@@ -129,6 +129,14 @@ route('DELETE', '/api/api-keys/:id', { roles: ADMIN }, ({ params, user, ip }) =>
   return { ok: true };
 });
 
+route('PUT', '/api/settings/policy', { roles: ADMIN }, ({ body, user, ip }) => {
+  const n = parseInt(body.max_pax_room, 10);
+  if (!(n >= 1 && n <= 20)) throw new HttpError(400, 'Informe um número entre 1 e 20.');
+  setSetting('max_pax_room', n);
+  audit(user, 'politica_alterada', { max_pax_room: n }, ip);
+  return { ok: true };
+});
+
 route('GET', '/api/settings/integration', { roles: ADMIN }, () => ({
   silbeck_url: getSetting('silbeck_url', ''),
   silbeck_token_set: !!getSetting('silbeck_token'),

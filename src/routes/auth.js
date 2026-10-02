@@ -52,6 +52,7 @@ route('GET', '/api/meta', { allowPwChange: true, portal: true }, () => ({
   meal_times: db.prepare('SELECT * FROM meal_times ORDER BY sort').all(),
   boards: BOARDS,
   meals: MEAL_LABEL,
+  max_pax_room: require('../db').maxPaxRoom(),
   roles: {
     admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição',
     recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial',

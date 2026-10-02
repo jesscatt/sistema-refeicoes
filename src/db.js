@@ -335,6 +335,9 @@ function tx(fn) {
   }
 }
 
+// Política do resort: máximo de pessoas por quarto (adultos + crianças). Padrão 5.
+function maxPaxRoom() { return Math.max(1, parseInt(getSetting('max_pax_room', '5'), 10) || 5); }
+
 function getSetting(key, def = null) {
   const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
   return r ? r.value : def;
@@ -404,4 +407,4 @@ function notify({ role = null, restaurant_id = null, kind, title, body = null, l
     .run(role, restaurant_id, kind, title, body, link);
 }
 
-module.exports = { db, tx, getSetting, setSetting, hashPassword, verifyPassword, audit, notify, DATA_DIR };
+module.exports = { db, tx, getSetting, setSetting, maxPaxRoom, hashPassword, verifyPassword, audit, notify, DATA_DIR };

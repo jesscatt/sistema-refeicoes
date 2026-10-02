@@ -290,3 +290,14 @@ test('realizado vem dos registros dos restaurantes e não é editável', () => {
   const w = weekly(r.date, r.date, r.restaurant_id);
   assert.equal(w.total.pag_adt, row.checked_adults);
 });
+
+test('política: no máximo 5 pessoas por quarto', () => {
+  const { normalizeRecord } = require('../src/importer');
+  const { setSetting } = require('../src/db');
+  const base = { reservation_number: '77001', checkin: '2026-10-10', checkout: '2026-10-12', room: '101A', board: 'MAP' };
+  assert.equal(normalizeRecord({ ...base, pax: 5, children: 2 }).errors.length, 0, '5 pessoas cabe');
+  assert.match(normalizeRecord({ ...base, pax: 6, children: 1 }).errors.join(), /no máximo 5/);
+  setSetting('max_pax_room', 6);
+  assert.equal(normalizeRecord({ ...base, pax: 6 }).errors.length, 0, 'limite configurável');
+  setSetting('max_pax_room', 5);
+});

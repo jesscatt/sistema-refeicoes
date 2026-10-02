@@ -63,6 +63,7 @@ O realizado de cada refeição vem automaticamente dos registros dos restaurante
 
 ## Regras principais
 
+- **Política de ocupação:** no máximo **5 pessoas por quarto** (adultos + crianças). Vale na importação, no cadastro e na edição de reservas, no rooming list, no Comercial e na API do site; quartos acima do limite são recusados com o motivo. O limite pode ser ajustado em *Configurações → Políticas do resort*.
 **Pensões** — `CM` só café · `MAP` café + jantar · `MAPA` café + almoço · `FAP` todas.
 Janelas na estadia (entrada E, saída S): café e almoço de E+1 até S; jantar de E até S−1. Ajustável em `src/meals.js` (`inWindow`).
 

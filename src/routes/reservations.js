@@ -83,6 +83,12 @@ route('GET', '/api/reservations/:id', { roles: DETAIL }, ({ params }) => {
   };
 });
 
+function guestsWithinPolicy(g) {
+  const { maxPaxRoom } = require('../db');
+  const n = String(g ?? '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean).length;
+  if (n > maxPaxRoom()) throw new HttpError(400, `${n} hóspedes informados; a política do resort é de no máximo ${maxPaxRoom()} pessoas por quarto.`);
+}
+
 function readReservationBody(body) {
   const { rec, errors } = normalizeRecord(body);
   if (errors.length) throw new HttpError(400, 'Verifique: ' + errors.join(', '));
@@ -115,6 +121,7 @@ route('PUT', '/api/reservations/:id', { roles: EDIT }, ({ params, body, user, ip
       for (const role of ['recepcao', 'restaurante', 'refeicao']) notify({ role, kind: 'room_change', title, body: bodyTxt, link: '#/trocas' });
     }
     const loa = body.lunch_on_arrival === undefined ? ex.lunch_on_arrival : (body.lunch_on_arrival ? 1 : 0);
+    if (body.guests !== undefined) guestsWithinPolicy(body.guests);
     if (body.guests !== undefined) db.prepare('UPDATE reservations SET guests = ? WHERE id = ?').run(String(body.guests).split(/\r?\n/).map((x) => x.trim()).filter(Boolean).slice(0, 20).join('\n'), ex.id);
     db.prepare(`UPDATE reservations SET guest_name=?, checkin=?, checkout=?, room=?, board=?, adults=?, children=?, notes=?, lunch_on_arrival=?,
       updated_at = datetime('now','localtime') WHERE id = ?`)

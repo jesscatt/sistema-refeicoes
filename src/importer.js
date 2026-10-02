@@ -3,7 +3,7 @@
 // Formato de referência: planilha "DIVISÃO" do Resort Termas Romanas
 //   Reserva ("50893 ANR TUR") | Entrada | Saída | Pensão | Apto ("101C") | Pax (total, inclui crianças) | Chd
 //   + uma coluna por refeição/restaurante/dia ("JANTAR DI GIORDANA QUARTA-FEIRA 30/09") com o pax enviado.
-const { db, tx, notify } = require('./db');
+const { db, tx, notify, maxPaxRoom } = require('./db');
 const { normKey, parseDate, parseBoard, toInt, BOARDS, roomKey, normRoom, addDays, MEALS, isISODate } = require('./util');
 const { syncMany, isEligible, boardHas } = require('./meals');
 
@@ -101,6 +101,8 @@ function normalizeRecord(raw) {
   if (!rec.room) errors.push('sem quarto');
   if (!rec.board) errors.push(`pensão "${raw.board ?? ''}" não reconhecida (use CM, MAP, MAPA ou FAP)`);
   if (rec.adults + rec.children === 0) errors.push('quantidade de pessoas zerada');
+  const max = maxPaxRoom();
+  if (rec.adults + rec.children > max) errors.push(`${rec.adults + rec.children} pessoas no quarto; a política do resort é de no máximo ${max} por quarto`);
   return { rec, errors };
 }
 
