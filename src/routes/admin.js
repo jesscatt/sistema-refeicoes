@@ -63,7 +63,8 @@ route('POST', '/api/users/:id/reset-password', { roles: ADMIN }, ({ params, user
   const ex = db.prepare('SELECT * FROM users WHERE id = ?').get(params.id);
   if (!ex) throw new HttpError(404, 'Usuário não encontrado.');
   const pw = crypto.randomBytes(6).toString('base64url');
-  db.prepare('UPDATE users SET password_hash = ?, must_change_password = 1 WHERE id = ?').run(hashPassword(pw), ex.id);
+  // admin e dev não são obrigados a trocar a senha provisória
+  db.prepare('UPDATE users SET password_hash = ?, must_change_password = ? WHERE id = ?').run(hashPassword(pw), ['admin', 'dev'].includes(String(ex.username).toLowerCase()) ? 0 : 1, ex.id);
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(ex.id);
   audit(user, 'senha_resetada', { username: ex.username }, ip);
   return { temp_password: pw };

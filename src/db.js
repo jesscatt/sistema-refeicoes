@@ -515,6 +515,8 @@ function seed() {
     ins.run('janta', 'Jantar', '19:00', '22:30', 40, 3);
   }
   seedPrices();
+  // admin e dev não são obrigados a trocar a senha
+  db.exec("UPDATE users SET must_change_password = 0 WHERE username IN ('admin','dev') AND must_change_password = 1");
   if (!getSetting('voucher_init')) { db.exec("UPDATE restaurants SET accepts_voucher = 1 WHERE code = 'DG'"); setSetting('voucher_init', '1'); }
   const rests = db.prepare('SELECT id FROM restaurants').all();
   const insP = db.prepare('INSERT OR IGNORE INTO prices(restaurant_id, meal, price_adult, price_child) VALUES (?,?,0,0)');
@@ -525,14 +527,14 @@ function seed() {
     const created = [];
     for (const [username, name, envVar] of [['admin', 'Administrador', 'ADMIN_PASSWORD'], ['dev', 'Desenvolvimento', 'DEV_PASSWORD']]) {
       const pw = process.env[envVar] || crypto.randomBytes(6).toString('base64url');
-      db.prepare('INSERT INTO users(username, name, password_hash, role, must_change_password) VALUES (?,?,?,?,1)')
+      db.prepare('INSERT INTO users(username, name, password_hash, role, must_change_password) VALUES (?,?,?,?,0)')
         .run(username, name, hashPassword(pw), 'admin');
       created.push({ username, pw, fromEnv: !!process.env[envVar] });
     }
     assignLoginCodes();
     console.log('\n=== Usuários administradores criados ===');
     for (const c of created) console.log(`  ${c.username} / ${c.fromEnv ? '(senha definida por variável de ambiente)' : c.pw}`);
-    console.log('  Troque as senhas no primeiro acesso.\n');
+    console.log('  (admin e dev não precisam trocar a senha no primeiro acesso)\n');
   }
 }
 seed();
