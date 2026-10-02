@@ -151,10 +151,10 @@
         <div class="v">${money(u.done || 0)}</div>
         <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : money(u.missing)}</div></div>`;
     };
-    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Real</div><div>Falta</div></div>`
+    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div style="text-align:left">Progresso</div><div></div><div>Vendido</div><div>Falta</div></div>`
       + d.units.map((u) => row(u)).join('');
     const t = d.units_total;
-    document.getElementById('gfoot').innerHTML = `<div><span>Realizado total</span><b>${money(t.done || 0)}</b></div><div><span>Meta total</span><b>${money(t.goal)}</b></div>
+    document.getElementById('gfoot').innerHTML = `<div><span>Vendido até agora</span><b>${money(t.done || 0)}</b></div><div><span>Meta total</span><b>${money(t.goal)}</b></div>
       <div><span>Falta</span><b style="color:${t.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${t.goal == null ? '—' : t.missing === 0 ? 'Meta atingida' : money(t.missing)}</b></div>`;
     const s = d.sales;
     document.getElementById('periodo').textContent = s.period_from ? `Período: ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from).slice(0, 5) + ' a ' + dmy(s.period_to).slice(0, 5)}` : 'Relatório de vendas ainda não enviado';

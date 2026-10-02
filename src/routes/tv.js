@@ -47,11 +47,13 @@ function dashboard() {
   const saved = Object.fromEntries(db.prepare('SELECT * FROM tv_units WHERE month = ?').all(cur).map((r) => [r.unit, r]));
   const units = UNITS.map(([k, label]) => {
     const s = saved[k] || {};
-    const value = s.value ?? null, other = s.other_value ?? null, goal = s.goal ?? null;
+    // Vendido até agora: no Resort, o faturamento do mês no Silbeck (diárias já vendidas); nas demais unidades, o valor lançado
+    const silbeck = k === 'resort' && fc[cur] && fc[cur].revenue != null ? fc[cur].revenue : null;
+    const value = silbeck ?? s.value ?? null, other = s.other_value ?? null, goal = s.goal ?? null;
     // Antecipações/outras receitas somam no realizado e na previsão total (como na planilha: total = previsões + antecipações)
     const done = (value || 0) + (other || 0);
     const target = goal != null ? goal + (other || 0) : null;
-    return { unit: k, label, value, other, other_note: s.other_note || null, done, goal, target, missing: target != null ? Math.max(0, target - done) : null, pct: target ? done / target : null };
+    return { unit: k, label, value, source: silbeck != null ? 'silbeck' : 'lancado', other, other_note: s.other_note || null, done, goal, target, missing: target != null ? Math.max(0, target - done) : null, pct: target ? done / target : null };
   });
   const tv = units.reduce((s, u) => s + (u.value || 0), 0), to = units.reduce((s, u) => s + (u.other || 0), 0), tg = units.reduce((s, u) => s + (u.goal || 0), 0);
   // Ranking de vendas por canal (cliente final e agências), somente os vendedores configurados
@@ -91,7 +93,7 @@ route('GET', '/api/tv/admin', { roles: TV_EDIT }, () => {
   const ms = months4();
   return {
     ...dashboard(), key: tvKey(), sellers: Object.fromEntries(GROUPS.map((g) => [g.key, sellersCfg(g).join(', ')])), months4: ms,
-    unit_rows: ms.map((m) => ({ month: m, units: UNITS.map(([k, label]) => { const r = db.prepare('SELECT * FROM tv_units WHERE month = ? AND unit = ?').get(m, k) || {}; return { unit: k, label, value: r.value ?? null, other_value: r.other_value ?? null, other_note: r.other_note || '', goal: r.goal ?? null }; }), sales_goal: Number(getSetting('tv_sales_goal_' + m, '')) || null })),
+    unit_rows: ms.map((m) => ({ month: m, units: UNITS.map(([k, label]) => { const r = db.prepare('SELECT * FROM tv_units WHERE month = ? AND unit = ?').get(m, k) || {}; const f = k === 'resort' ? db.prepare('SELECT revenue FROM tv_forecast WHERE month = ?').get(m) : null; return { unit: k, label, silbeck: f ? f.revenue : null, value: r.value ?? null, other_value: r.other_value ?? null, other_note: r.other_note || '', goal: r.goal ?? null }; }), sales_goal: Number(getSetting('tv_sales_goal_' + m, '')) || null })),
     forecasts: db.prepare('SELECT month, revenue, apts_pct, beds_pct, generated_at, imported_at, filename FROM tv_forecast ORDER BY month DESC LIMIT 12').all(),
     sales_all: lastSales(), current: cur,
   };

@@ -54,14 +54,15 @@ export async function render(el) {
         <div class="card-head"><h3 class="grow">Valores e previsões por unidade</h3>
           <div class="seg" id="mtabs">${d.unit_rows.map((r, i) => `<button data-mi="${i}" class="${i === mi ? 'on' : ''}">${mesLabel(r.month)}</button>`).join('')}</div></div>
         ${(() => { const row = d.unit_rows[mi]; const n = (v) => Number(v) || 0;
-          const tot = row.units.reduce((t, u) => ({ v: t.v + n(u.value), o: t.o + n(u.other_value), g: t.g + n(u.goal) }), { v: 0, o: 0, g: 0 });
-          return `<div class="table-wrap"><table class="t" id="utab" data-month="${row.month}"><thead><tr><th>${mesLabel(row.month).toUpperCase()}</th><th>Valor real emitido em notas</th><th>Antecipações / outras receitas</th><th>Descrição da receita</th><th>Previsão (meta)</th><th class="n">Falta</th></tr></thead><tbody>
+          const sold = (u) => (u.silbeck != null ? u.silbeck : u.value);
+          const tot = row.units.reduce((t, u) => ({ v: t.v + n(sold(u)), o: t.o + n(u.other_value), g: t.g + n(u.goal) }), { v: 0, o: 0, g: 0 });
+          return `<div class="table-wrap"><table class="t" id="utab" data-month="${row.month}"><thead><tr><th>${mesLabel(row.month).toUpperCase()}</th><th>Vendido até agora<div class="small muted" style="text-transform:none;font-weight:500">Resort: usa o Silbeck</div></th><th>Antecipações / outras receitas</th><th>Descrição da receita</th><th>Previsão (meta)</th><th class="n">Falta</th></tr></thead><tbody>
           ${row.units.map((u) => `<tr data-unit="${u.unit}"><td><b>${esc(u.label)}</b></td>
-            <td><input class="input sm" data-k="value" value="${fmt(u.value)}" placeholder="0,00" style="width:150px"></td>
+            <td>${u.silbeck != null ? `<input class="input sm" value="${fmt(u.silbeck)}" disabled title="Faturamento do mês no Silbeck" style="width:150px"><div class="small muted">do Silbeck</div>` : `<input class="input sm" data-k="value" value="${fmt(u.value)}" placeholder="0,00" style="width:150px">`}</td>
             <td><input class="input sm" data-k="other_value" value="${fmt(u.other_value)}" placeholder="0,00" style="width:150px"></td>
             <td><input class="input sm" data-k="other_note" value="${esc(u.other_note || '')}" placeholder="Ex.: venda de terreno" style="width:180px"></td>
             <td><input class="input sm" data-k="goal" value="${fmt(u.goal)}" placeholder="0,00" style="width:150px"></td>
-            <td class="n">${u.goal == null ? '—' : brl(Math.max(0, n(u.goal) - n(u.value)))}</td></tr>`).join('')}
+            <td class="n">${u.goal == null ? '—' : brl(Math.max(0, n(u.goal) - n(sold(u))))}</td></tr>`).join('')}
           </tbody><tfoot><tr><td><b>TOTAL</b></td><td><b>${brl(tot.v)}</b></td><td><b>${brl(tot.o)}</b></td><td></td><td><b>${brl(tot.g + tot.o)}</b><div class="small muted">previsões + antecipações</div></td><td class="n"><b>${brl(Math.max(0, tot.g - tot.v))}</b></td></tr></tfoot></table></div>
           <div class="row" style="padding:12px 16px;gap:12px;border-top:1px solid var(--line);align-items:flex-end">
             <label class="f" style="margin:0;max-width:220px">Meta de vendas do mês<input class="input" id="sgoal" value="${fmt(row.sales_goal)}" placeholder="0,00"></label>
@@ -95,7 +96,7 @@ export async function render(el) {
     el.querySelectorAll('#mtabs [data-mi]').forEach((b) => b.addEventListener('click', () => { mi = Number(b.dataset.mi); draw(); }));
     el.querySelector('#usave').onclick = async () => {
       const tab = el.querySelector('#utab');
-      const units = [...tab.querySelectorAll('tr[data-unit]')].map((tr) => ({ unit: tr.dataset.unit, ...Object.fromEntries([...tr.querySelectorAll('input')].map((i) => [i.dataset.k, i.value])) }));
+      const units = [...tab.querySelectorAll('tr[data-unit]')].map((tr) => ({ unit: tr.dataset.unit, ...Object.fromEntries([...tr.querySelectorAll('input[data-k]')].map((i) => [i.dataset.k, i.value])) }));
       try { await put('/api/tv/units', { month: tab.dataset.month, units, sales_goal: el.querySelector('#sgoal').value }); toast(`Valores de ${mesLabel(tab.dataset.month)} salvos.`); load(); } catch (e) { fail(e); }
     };
     el.querySelector('#copy').onclick = () => navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não foi possível copiar.', 'err'));
