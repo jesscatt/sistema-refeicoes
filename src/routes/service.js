@@ -282,8 +282,8 @@ route('GET', '/api/service/search', { roles: SERVICE }, ({ query, user }) => {
     const t = db.prepare('SELECT * FROM attendance WHERE reservation_id = ? AND date = ? AND meal = ?').get(r.id, date, meal);
     let state, message;
     if (r.status !== 'ativa') { state = 'cancelada'; message = 'Reserva cancelada.'; }
-    else if (!boardHas(r.board, meal)) { state = 'sem_refeicao'; message = `A pensão ${r.board} (${BOARDS[r.board].label}) não inclui ${MEAL_LABEL[meal].toLowerCase()}. A refeição deve ser cobrada à parte.`; }
-    else if (!inWindow(r, date, meal)) { state = 'sem_refeicao'; message = `${MEAL_LABEL[meal]} não incluído nesta data da estadia (entrada em ${r.checkin.split('-').reverse().join('/')}, saída em ${r.checkout.split('-').reverse().join('/')}). A refeição deve ser cobrada à parte.`; }
+    else if (!boardHas(r.board, meal)) { state = 'sem_refeicao'; message = `A pensão ${r.board} (${BOARDS[r.board].label}) não inclui ${MEAL_LABEL[meal].toLowerCase()}. A refeição é cobrada diretamente pelo restaurante, sem registro no sistema.`; }
+    else if (!inWindow(r, date, meal)) { state = 'sem_refeicao'; message = `${MEAL_LABEL[meal]} não incluído nesta data da estadia (entrada em ${r.checkin.split('-').reverse().join('/')}, saída em ${r.checkout.split('-').reverse().join('/')}). A refeição é cobrada diretamente pelo restaurante, sem registro no sistema.`; }
     else if (t) { state = 'ja_marcado'; message = `Atendimento já registrado no restaurante ${rm[t.restaurant_id].name} às ${t.created_at.slice(11, 16)}.`; }
     else if (a && a.restaurant_id === restId) { state = 'na_lista'; message = 'Consta na lista deste restaurante.'; }
     else { state = 'outro_restaurante'; message = `Designado ao restaurante ${a ? rm[a.restaurant_id].name : '(sem designação)'}. O registro neste restaurante será feito como atendimento fora da lista.`; }
@@ -310,7 +310,7 @@ route('POST', '/api/attendance', { roles: SERVICE }, ({ body, user, ip }) => {
   const r = db.prepare('SELECT * FROM reservations WHERE id = ?').get(body.reservation_id);
   if (!r) throw new HttpError(404, 'Reserva não encontrada.');
   if (!isEligible(r, date, meal)) {
-    throw new HttpError(400, `O hóspede não possui ${MEAL_LABEL[meal].toLowerCase()} na pensão (${r.board}). A refeição deve ser cobrada à parte.`, { state: 'sem_refeicao' });
+    throw new HttpError(400, `O hóspede não possui ${MEAL_LABEL[meal].toLowerCase()} na pensão (${r.board}). A refeição é cobrada diretamente pelo restaurante, sem registro no sistema.`, { state: 'sem_refeicao' });
   }
   const adults = body.adults !== undefined ? Math.max(0, Math.min(Number(body.adults) || 0, r.adults)) : r.adults;
   const children = body.children !== undefined ? Math.max(0, Math.min(Number(body.children) || 0, r.children)) : r.children;
@@ -348,24 +348,9 @@ route('DELETE', '/api/attendance/:id', { roles: SERVICE }, ({ params, user, ip }
 });
 
 // Cliente sem a refeição na pensão que consumiu e pagou à parte (registro de controle)
-route('POST', '/api/walkins', { roles: SERVICE }, ({ body, user, ip }) => {
-  const { date, meal } = dayMeal(body);
-  const restId = restaurantFor(user, body.restaurant_id);
-  const adults = Math.max(0, Number(body.adults) || 0), children = Math.max(0, Number(body.children) || 0);
-  if (adults + children === 0) throw new HttpError(400, 'Informe a quantidade de pessoas.');
-  if (body.room && String(body.room).trim()) {
-    const { roomError, canonRoom } = require('../util');
-    const re = roomError(body.room);
-    if (re) throw new HttpError(400, re.charAt(0).toUpperCase() + re.slice(1) + '.');
-    body.room = canonRoom(body.room);
-  }
-  const note = String(body.note ?? '').trim().replace(/\s+/g, ' ').slice(0, 300);
-  if (note.length < 3) throw new HttpError(400, 'A observação é obrigatória no consumo cobrado à parte (ex.: forma de pagamento, número da comanda).');
-  body.note = note;
-  db.prepare('INSERT INTO walkins(date, meal, restaurant_id, room, reservation_id, adults, children, note, user_id) VALUES (?,?,?,?,?,?,?,?,?)')
-    .run(date, meal, restId, body.room || null, body.reservation_id || null, adults, children, body.note || null, user.id);
-  audit(user, 'avulso_registrado', { date, meal, quarto: body.room, adults, children }, ip);
-  return { ok: true };
+// Consumo cobrado à parte: o hóspede paga diretamente ao restaurante; não é registrado no sistema.
+route('POST', '/api/walkins', { roles: SERVICE }, () => {
+  throw new HttpError(410, 'O consumo cobrado à parte é pago diretamente ao restaurante e não é registrado no sistema.');
 });
 
 route('DELETE', '/api/walkins/:id', { roles: SERVICE }, ({ params, user }) => {

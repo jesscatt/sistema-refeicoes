@@ -56,7 +56,6 @@ export async function render(el) {
           <div class="seg" id="tabs">
             <button data-t="lista" class="${st.tab === 'lista' ? 'on' : ''}">Lista do restaurante (${data.list.length})</button>
             <button data-t="fora" class="${st.tab === 'fora' ? 'on' : ''}">Atendimentos fora da lista (${data.extras.length})</button>
-            <button data-t="avulso" class="${st.tab === 'avulso' ? 'on' : ''}">Consumos cobrados à parte (${data.walkins.length})</button>
             <button data-t="extra" class="${st.tab === 'extra' ? 'on' : ''}">Refeições extras (${reg.extras.reduce((a, x) => a + x.adults + x.children, 0)})</button>
             ${acceptsVoucher() ? `<button data-t="voucher" class="${st.tab === 'voucher' ? 'on' : ''}">Vouchers registrados (${reg.vouchers.reduce((a, x) => a + x.adults + x.children, 0)})</button>` : ''}
           </div>
@@ -64,14 +63,12 @@ export async function render(el) {
           <button class="btn sm primary" id="fora">${icon('plus')} Registrar fora da lista</button>
           ${acceptsVoucher() ? `<button class="btn sm primary" id="voucher">${icon('card')} Registrar voucher</button>` : ''}
           <button class="btn sm" id="extra">${icon('plus')} Registrar refeição extra</button>
-          <button class="btn sm" id="walk">${icon('plus')} Registrar consumo cobrado à parte</button>
         </div>
         <div id="tab-body">${tabBody()}</div>
       </div>`;
     bindDateBar(el, st, () => { st.q = ''; load().catch(fail); });
     el.querySelector('#rest')?.addEventListener('change', (e) => { st.restaurant_id = e.target.value; load().catch(fail); });
     el.querySelectorAll('#tabs [data-t]').forEach((b) => b.addEventListener('click', () => { st.tab = b.dataset.t; draw(); }));
-    el.querySelector('#walk').onclick = () => walkinModal({});
     el.querySelector('#extra').onclick = () => extraModal();
     el.querySelector('#voucher')?.addEventListener('click', () => voucherModal());
     el.querySelector('#fora').onclick = () => foraModal();
@@ -134,10 +131,7 @@ export async function render(el) {
         ${data.extras.map((x) => `<tr><td class="room">${roomHtml(x.room)}</td><td>${esc(x.guest_name)}${guestLine(x)}</td><td>${paxTxt(x.att_adults, x.att_children)}</td><td>${restTag(x.assigned_restaurant)}</td><td>${esc(x.att_at.slice(11, 16))}</td>
         <td><button class="btn sm ghost" data-undo="${x.attendance_id}">${icon('undo')} Cancelar registro</button></td></tr>`).join('')}</tbody></table></div>`;
     }
-    if (!data.walkins.length) return '<div class="empty">Não há consumos cobrados à parte neste serviço.</div>';
-    return `<div class="table-wrap"><table class="t"><thead><tr><th>Apartamento</th><th>Pessoas</th><th>Observação</th><th>Horário</th><th></th></tr></thead><tbody>
-      ${data.walkins.map((w) => `<tr><td class="room">${esc(w.room || '—')}</td><td>${paxTxt(w.adults, w.children)}</td><td>${esc(w.note || '')}</td><td>${esc(w.created_at.slice(11, 16))}</td>
-      <td><button class="btn sm ghost" data-delwalk="${w.id}">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`;
+    return '';
   }
 
   function bindList() {
@@ -151,9 +145,6 @@ export async function render(el) {
     }));
     el.querySelectorAll('[data-undo]').forEach((b) => b.addEventListener('click', async () => { if (await confirmBox('Deseja cancelar este registro de atendimento?', 'Cancelar registro')) unmark(b.dataset.undo); }));
     el.querySelector('[data-fora]')?.addEventListener('click', () => foraModal());
-    el.querySelectorAll('[data-delwalk]').forEach((b) => b.addEventListener('click', async () => {
-      try { await del('/api/walkins/' + b.dataset.delwalk); await load(); } catch (e) { fail(e); }
-    }));
     el.querySelectorAll('[data-delextra]').forEach((b) => b.addEventListener('click', async () => {
       if (!(await confirmBox('Deseja excluir este registro de refeição extra?', 'Excluir', true))) return;
       try { await del('/api/extras/' + b.dataset.delextra); await load(); } catch (e) { fail(e); }
@@ -185,8 +176,7 @@ export async function render(el) {
     try { r = await get(`/api/service/search?q=${encodeURIComponent(q)}&${qs()}`); } catch (e) { fail(e); return; }
     if (seq !== searchSeq) return;
     let html = r.moved.map((m) => `<div class="banner info">${icon('swap')}<span><b>Troca de apartamento:</b> ${esc(m.guest_name)} foi transferido do apartamento ${esc(m.old_room)} para o apartamento <b>${esc(m.new_room)}</b>.</span></div>`).join('');
-    if (r.notFound) html += `<div class="result sem_refeicao"><span class="room">?</span><div><b>${esc(r.notFound)}</b><div class="msg">Verifique o número do apartamento. Caso não se trate de hóspede com pensão, a refeição deve ser cobrada à parte.</div></div>
-      <div class="act"><button class="btn" data-walkroom="${esc(q)}">Registrar consumo cobrado à parte</button></div></div>`;
+    if (r.notFound) html += `<div class="result sem_refeicao"><span class="room">?</span><div><b>${esc(r.notFound)}</b><div class="msg">Verifique o número do apartamento. Caso não se trate de hóspede com pensão, a refeição é cobrada diretamente pelo restaurante, sem registro no sistema.</div></div></div>`;
     html += r.results.map((x) => {
       const canMark = x.state === 'na_lista' || x.state === 'outro_restaurante';
       const here = x.attendance && x.attendance.restaurant_id === data.restaurant.id;
@@ -199,7 +189,6 @@ export async function render(el) {
             <div><span class="stepper-l">Adultos</span>${stepper('a', x.adults, x.adults)}</div>
             ${x.children ? `<div><span class="stepper-l">Crianças</span>${stepper('c', x.children, x.children)}</div>` : ''}
             <button class="btn lg ${x.state === 'na_lista' ? 'olive' : ''}" data-mark>${icon('check')} ${x.state === 'na_lista' ? 'Registrar atendimento' : 'Registrar fora da lista'}</button>` : ''}
-          ${x.state === 'sem_refeicao' ? `<button class="btn" data-walkres="${x.reservation_id}" data-room="${esc(x.room)}">Registrar consumo cobrado à parte</button>` : ''}
           ${here ? `<button class="btn" data-undo2="${x.attendance.id}">${icon('undo')} Cancelar registro</button>` : ''}
         </div></div>`;
     }).join('');
@@ -211,8 +200,6 @@ export async function render(el) {
       mark(Number(card.dataset.res), a ? Number(a.dataset.v) : undefined, c ? Number(c.dataset.v) : 0);
     }));
     box.querySelectorAll('[data-undo2]').forEach((b) => b.addEventListener('click', () => unmark(b.dataset.undo2)));
-    box.querySelectorAll('[data-walkres]').forEach((b) => b.addEventListener('click', () => walkinModal({ room: b.dataset.room, reservation_id: Number(b.dataset.walkres) })));
-    box.querySelectorAll('[data-walkroom]').forEach((b) => b.addEventListener('click', () => walkinModal({ room: b.dataset.walkroom })));
   }
 
   function guestLine(g) {
@@ -237,7 +224,7 @@ export async function render(el) {
       let r;
       try { r = await get(`/api/service/search?q=${encodeURIComponent(q)}&${qs()}`); } catch (err) { fail(err); return; }
       let html = r.moved.map((x) => `<div class="banner info">${icon('swap')}<span><b>Troca de apartamento:</b> ${esc(x.guest_name)} foi transferido do apartamento ${esc(x.old_room)} para o apartamento <b>${esc(x.new_room)}</b>. Pesquise pelo novo apartamento.</span></div>`).join('');
-      if (r.notFound) html += `<div class="banner danger">${icon('alert')}<span>${esc(r.notFound)} Caso não se trate de hóspede com pensão, registre como consumo cobrado à parte.</span></div>`;
+      if (r.notFound) html += `<div class="banner danger">${icon('alert')}<span>${esc(r.notFound)} Caso não se trate de hóspede com pensão, a refeição é cobrada diretamente pelo restaurante.</span></div>`;
       html += r.results.map((x) => {
         const head = `<div class="row" style="gap:10px"><span class="room" style="font-size:22px">${roomHtml(x.room)}</span><div class="grow" style="min-width:0"><b>${esc(x.guest_name)}</b>${guestLine(x)}<div class="small muted">Reserva nº ${esc(x.reservation_number)} · ${boardTag(x.board)} · ${paxTxt(x.adults, x.children)}</div></div></div>`;
         if (x.state === 'outro_restaurante') return `<div class="result outro_restaurante" style="grid-template-columns:1fr;margin-bottom:10px" data-res="${x.reservation_id}">${head}
@@ -246,8 +233,7 @@ export async function render(el) {
           <div class="grow"></div><button class="btn lg primary" data-go>${icon('check')} Registrar atendimento neste restaurante</button></div></div>`;
         if (x.state === 'na_lista') return `<div class="result na_lista" style="grid-template-columns:1fr;margin-bottom:10px" data-res="${x.reservation_id}">${head}<div class="msg">O hóspede consta na lista deste restaurante; não se trata de atendimento fora da lista.</div>
           <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn olive" data-go>${icon('check')} Registrar atendimento</button></div></div>`;
-        return `<div class="result ${x.state}" style="grid-template-columns:1fr;margin-bottom:10px">${head}<div class="msg">${esc(x.message)}</div>
-          ${x.state === 'sem_refeicao' ? `<div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn" data-walk="${x.reservation_id}" data-room="${esc(x.room)}">Registrar consumo cobrado à parte</button></div>` : ''}</div>`;
+        return `<div class="result ${x.state}" style="grid-template-columns:1fr;margin-bottom:10px">${head}<div class="msg">${esc(x.message)}</div></div>`;
       }).join('');
       box.innerHTML = html;
       box.querySelectorAll('.stepper').forEach(bindStepper);
@@ -258,7 +244,6 @@ export async function render(el) {
         await mark(Number(card.dataset.res), a ? Number(a.dataset.v) : undefined, c ? Number(c.dataset.v) : 0);
         st.tab = 'fora'; draw();
       }));
-      box.querySelectorAll('[data-walk]').forEach((b) => b.addEventListener('click', () => { close(); walkinModal({ room: b.dataset.room, reservation_id: Number(b.dataset.walk) }); }));
     });
   }
 
@@ -306,27 +291,6 @@ export async function render(el) {
       const qty = Number(m.querySelector('.stepper[data-k="q"]').dataset.v) || 0;
       if (qty < 1) { toast('Informe a quantidade de vouchers.', 'err'); return; }
       try { await post('/api/vouchers', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, qty, note: m.querySelector('[name=note]').value }); close(); toast(`${qty} voucher(s) registrado(s) no ${MEAL_FULL[data.meal].toLowerCase()}.`); st.tab = 'voucher'; load(); } catch (e) { fail(e); }
-    };
-  }
-
-  function walkinModal({ room = '', reservation_id = null }) {
-    const { el: m, close } = modal({
-      title: 'Consumo cobrado à parte',
-      body: `<p class="muted" style="margin-top:0">Destinado a hóspedes sem esta refeição na pensão ou a não hóspedes. O registro é mantido para controle e não integra a conta do hotel.</p>
-        <div class="form-grid"><label class="f">Apartamento<input class="input" name="room" data-room maxlength="4" autocomplete="off" placeholder="101A" title="3 números e a letra da torre (A a H), ex.: 101A" value="${esc(room)}"></label>
-        <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
-        <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
-        <label class="f" style="grid-column:1/-1">Observação <span style="color:var(--danger)">*</span><input class="input" name="note" required placeholder="Obrigatório. Ex.: pagamento em cartão, comanda nº 1234"></label></div>`,
-      foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Registrar</button>',
-    });
-    m.querySelector('[data-ok]').onclick = async () => {
-      const v = (n) => m.querySelector(`[name=${n}]`).value;
-      if (v('room').trim() && roomError(v('room'))) { const f = m.querySelector('[name=room]'); f.focus(); f.style.borderColor = 'var(--danger)'; toast(roomError(v('room')), 'err'); return; }
-      if (v('note').trim().length < 3) { const f = m.querySelector('[name=note]'); f.focus(); f.style.borderColor = 'var(--danger)'; toast('Informe a observação do consumo cobrado à parte.', 'err'); return; }
-      try {
-        await post('/api/walkins', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, room: v('room'), reservation_id, adults: v('adults'), children: v('children'), note: v('note') });
-        close(); toast('Consumo cobrado à parte registrado.'); st.q = ''; st.tab = 'avulso'; load();
-      } catch (e) { fail(e); }
     };
   }
 

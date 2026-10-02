@@ -33,7 +33,6 @@ export async function render(el) {
         <div class="card stat"><div class="k">Total do mês</div><div class="v">${money(b.total)}</div></div>
         <div class="card stat"><div class="k">Pessoas (realizado)</div><div class="v">${sum('billed_adults') + sum('billed_children')}<small>${sum('billed_adults')} adultos · ${sum('billed_children')} crianças</small></div></div>
         <div class="card stat"><div class="k">Previsto</div><div class="v">${sum('forecast_adults') + sum('forecast_children')}<small>pessoas</small></div></div>
-        <div class="card stat"><div class="k">Consumo cobrado à parte</div><div class="v">${sum('walkin_adults') + sum('walkin_children')}<small>pessoas (fora da conta)</small></div></div>
       </div>
       <div class="card pad" style="margin-bottom:16px"><div class="bars">
         ${Object.values(byRest).map((x) => `<div class="b"><span class="row" style="gap:8px">${restDot(x.r)}<b>${esc(x.r.name)}</b></span><div class="track"><i style="width:${(x.value / maxV) * 100}%;background:${esc(x.r.color)}"></i></div><span class="num"><b>${money(x.value)}</b></span></div>`).join('')}

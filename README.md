@@ -64,7 +64,7 @@ Todos os textos do sistema seguem a mesma terminologia formal:
 | Cancelar registro | desfazer marcação |
 | Restaurante designado | deveria comer em |
 | Atendimento fora da lista | cliente fora da lista |
-| Consumo cobrado à parte | pago à parte, avulso |
+| Cobrado diretamente pelo restaurante (não registrado no sistema) | pago à parte, avulso |
 | Refeição extra | extra (sozinho) |
 | Registro de voucher | receber voucher |
 | Preços | valores (para o preço por refeição) |
@@ -93,6 +93,7 @@ O realizado de cada refeição vem automaticamente dos registros dos restaurante
 
 ## Regras principais
 
+- **Refeição fora da pensão:** o hóspede paga diretamente ao restaurante; o sistema apenas informa e **não registra** esse consumo.
 - **Apartamentos:** 3 números + letra da torre (ex.: `101A`). 8 torres (A a H), 6 andares com 10 aptos (101 a 610); a torre A não tem 105 e 106. Qualquer outro valor é recusado (importação, reservas, rooming list, Comercial, consumo à parte e API).
 - **Política de ocupação:** no máximo **5 pessoas por quarto** (adultos + crianças). Vale na importação, no cadastro e na edição de reservas, no rooming list, no Comercial e na API do site; quartos acima do limite são recusados com o motivo. O limite pode ser ajustado em *Configurações → Políticas do resort*.
 

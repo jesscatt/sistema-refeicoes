@@ -126,11 +126,11 @@ route('GET', '/api/billing/export.csv', { roles: BILL_CLOSE }, ({ query, user, i
   const b = c ? JSON.parse(c.snapshot) : billing(month);
   audit(user, 'faturamento_exportado', { month, fechado: !!c }, ip);
   const rows = b.lines.map((t) => [t.restaurant.name, MEAL_LABEL[t.meal], t.forecast_adults, t.forecast_children, t.billed_adults, t.billed_children,
-    t.billed_adults + t.billed_children - t.forecast_adults - t.forecast_children, t.price_adult, t.price_child, t.value, t.walkin_adults + t.walkin_children, t.days_without_real]);
-  rows.push(['TOTAL', '', '', '', '', '', '', '', '', b.total, '', '']);
+    t.billed_adults + t.billed_children - t.forecast_adults - t.forecast_children, t.price_adult, t.price_child, t.value, t.days_without_real]);
+  rows.push(['TOTAL', '', '', '', '', '', '', '', '', b.total, '']);
   rows.push([c ? `Fechado em ${c.closed_at}` : 'Prévia (mês não fechado)']);
   return {
-    __raw: toCSV(['Restaurante', 'Refeição', 'Adultos previstos', 'Crianças previstas', 'Adultos realizados', 'Crianças realizadas', 'Diferença (pessoas)', 'Preço (adulto)', 'Preço (criança)', 'Total R$', 'Consumo cobrado à parte (pessoas)', 'Refeições sem registro'], rows),
+    __raw: toCSV(['Restaurante', 'Refeição', 'Adultos previstos', 'Crianças previstas', 'Adultos realizados', 'Crianças realizadas', 'Diferença (pessoas)', 'Preço (adulto)', 'Preço (criança)', 'Total R$', 'Refeições sem registro'], rows),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="faturamento-${month}.csv"` },
   };
 });
@@ -140,9 +140,9 @@ route('GET', '/api/reports/daily.csv', { roles: BILL_CLOSE }, ({ query, user, ip
   const rests = Object.fromEntries(db.prepare('SELECT id, name FROM restaurants').all().map((r) => [r.id, r.name]));
   audit(user, 'relatorio_diario_exportado', { month }, ip);
   return {
-    __raw: toCSV(['Data', 'Refeição', 'Restaurante', 'Adultos previstos', 'Crianças previstas', 'Adultos realizados', 'Crianças realizadas', 'Fora da lista (apartamentos)', 'Diferença (realizado - previsto)', 'Consumo cobrado à parte (pessoas)'],
+    __raw: toCSV(['Data', 'Refeição', 'Restaurante', 'Adultos previstos', 'Crianças previstas', 'Adultos realizados', 'Crianças realizadas', 'Fora da lista (apartamentos)', 'Diferença (realizado - previsto)'],
       controlRows(month).map((r) => [r.date.split('-').reverse().join('/'), MEAL_LABEL[r.meal], rests[r.restaurant_id], r.forecast_adults, r.forecast_children, r.checked_adults, r.checked_children, r.fora_lista,
-        r.checked_adults + r.checked_children - r.forecast_adults - r.forecast_children, r.walkin_adults + r.walkin_children])),
+        r.checked_adults + r.checked_children - r.forecast_adults - r.forecast_children])),
     headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="controle-diario-${month}.csv"` },
   };
 });
