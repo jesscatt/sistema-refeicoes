@@ -156,10 +156,10 @@ Substitui as planilhas mensais **Controle semanal dos restaurantes (projeção d
 
 ## Painel da TV
 
-Tela para a TV com o **faturamento previsto e a ocupação** do mês atual e dos três meses seguintes, as **metas do mês** (Resort, Park, Azeite, Envase e total, com o que falta para a meta) e o **ranking de vendas** (Walk-ins/Reservas) dos vendedores do cliente final (padrão: Tissiano, Nicolas, Maria, Carlos).
+Tela para a TV com o **faturamento previsto e a ocupação** do mês atual e dos três meses seguintes, as **metas e previsão do mês** (Resort, Parque, Azeite, Terceiros, Envase e total: valor real emitido em notas, antecipações/outras receitas, previsão e o que falta) e o **ranking de vendas** (Walk-ins/Reservas) dos vendedores do cliente final (padrão: Tissiano, Nicolas, Maria, Carlos).
 
 - *Gestão → Painel da TV* (administrador, supervisão e comercial): envie os PDFs do Silbeck — **Previsão de Faturamento/Ocupação** (um por mês) e **Lista de Walk-ins/Reservas por Funcionário**. Vários arquivos de uma vez; cada envio substitui o anterior do mesmo mês.
-- Informe o realizado e a meta de Park, Azeite e Envase (o Resort usa o faturamento previsto do Silbeck quando fica em branco) e a meta de vendas.
+- Informe, por mês, o valor real emitido em notas, as antecipações/outras receitas (com a descrição) e a previsão de cada unidade, além da meta de vendas. O total da previsão soma as previsões e as antecipações, como na planilha.
 - Abra o **link do painel** no navegador da TV: não exige login, atualiza a cada minuto. *Gerar novo link* invalida o anterior.
 - O servidor usa o `pdftotext` (pacote `poppler-utils`, já incluído no Dockerfile).
 

@@ -324,6 +324,8 @@ CREATE TABLE IF NOT EXISTS tv_units (
   month TEXT NOT NULL,
   unit TEXT NOT NULL,
   value REAL,
+  other_value REAL,
+  other_note TEXT,
   goal REAL,
   updated_by INTEGER REFERENCES users(id),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
@@ -445,6 +447,19 @@ CREATE TABLE IF NOT EXISTS hist_month (
   if (!cols('restaurants').includes('accepts_voucher')) {
     db.exec('ALTER TABLE restaurants ADD COLUMN accepts_voucher INTEGER NOT NULL DEFAULT 0');
     db.exec("UPDATE restaurants SET accepts_voucher = 1 WHERE code = 'DG'");
+  }
+  // v7: painel da TV — antecipações/outras receitas; "park" passa a "parque"; previsões de outubro/2026 da planilha
+  if (!cols('tv_units').includes('other_value')) { db.exec('ALTER TABLE tv_units ADD COLUMN other_value REAL'); db.exec('ALTER TABLE tv_units ADD COLUMN other_note TEXT'); }
+  db.exec("UPDATE tv_units SET unit = 'parque' WHERE unit = 'park' AND NOT EXISTS (SELECT 1 FROM tv_units t WHERE t.month = tv_units.month AND t.unit = 'parque')");
+  if (!getSetting('tv_seed_2026_10')) {
+    const up = db.prepare(`INSERT INTO tv_units(month, unit, value, other_value, other_note, goal) VALUES (?,?,?,?,?,?)
+      ON CONFLICT(month, unit) DO UPDATE SET goal = COALESCE(goal, excluded.goal), other_value = COALESCE(other_value, excluded.other_value), other_note = COALESCE(other_note, excluded.other_note)`);
+    up.run('2026-10', 'resort', null, 160000, 'Venda terreno', 4500000);
+    up.run('2026-10', 'parque', null, null, null, 200000);
+    up.run('2026-10', 'azeite', null, null, null, 300000);
+    up.run('2026-10', 'terceiros', null, null, null, 115000);
+    up.run('2026-10', 'envase', null, null, null, 5000);
+    setSetting('tv_seed_2026_10', '1');
   }
   // v5: número de acesso (login numérico, 3 dígitos ou mais)
   if (!cols('users').includes('login_code')) db.exec('ALTER TABLE users ADD COLUMN login_code TEXT');

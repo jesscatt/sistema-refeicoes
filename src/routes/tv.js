@@ -8,7 +8,7 @@ const { todayISO, monthRange, addDays } = require('../util');
 const { parseSilbeckPdf } = require('../silbeck-pdf');
 
 const TV_EDIT = ['admin', 'supervisor', 'agencia'];
-const UNITS = [['resort', 'Resort'], ['park', 'Park'], ['azeite', 'Azeite'], ['envase', 'Envase']];
+const UNITS = [['resort', 'Resort'], ['parque', 'Parque'], ['azeite', 'Azeite'], ['terceiros', 'Terceiros'], ['envase', 'Envase']];
 const DEFAULT_SELLERS = 'Tissiano, Nicolas, Maria, Carlos';
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
@@ -36,16 +36,17 @@ function dashboard() {
     const f = fc[m];
     return f ? { month: m, revenue: f.revenue, apts_pct: f.apts_pct, beds_pct: f.beds_pct, apts_occ: f.apts_occ, apts_total: f.apts_total, adr_apt: f.adr_apt, stay_avg: f.stay_avg, generated_at: f.generated_at } : { month: m, revenue: null };
   });
-  // Unidades do mês atual: Resort usa o faturamento do Silbeck quando o valor não foi informado
+  // Unidades do mês atual (planilha de metas): valor real emitido em notas + antecipações/outras receitas x previsão
   const saved = Object.fromEntries(db.prepare('SELECT * FROM tv_units WHERE month = ?').all(cur).map((r) => [r.unit, r]));
   const units = UNITS.map(([k, label]) => {
     const s = saved[k] || {};
-    let value = s.value, source = 'informado';
-    if (k === 'resort' && (value === null || value === undefined) && fc[cur]) { value = fc[cur].revenue; source = 'silbeck'; }
-    const goal = s.goal ?? null;
-    return { unit: k, label, value: value ?? null, goal, missing: goal != null && value != null ? Math.max(0, goal - value) : null, pct: goal ? (value || 0) / goal : null, source };
+    const value = s.value ?? null, other = s.other_value ?? null, goal = s.goal ?? null;
+    // Antecipações/outras receitas somam no realizado e na previsão total (como na planilha: total = previsões + antecipações)
+    const done = (value || 0) + (other || 0);
+    const target = goal != null ? goal + (other || 0) : null;
+    return { unit: k, label, value, other, other_note: s.other_note || null, done, goal, target, missing: target != null ? Math.max(0, target - done) : null, pct: target ? done / target : null };
   });
-  const tv = units.reduce((s, u) => s + (u.value || 0), 0), tg = units.reduce((s, u) => s + (u.goal || 0), 0);
+  const tv = units.reduce((s, u) => s + (u.value || 0), 0), to = units.reduce((s, u) => s + (u.other || 0), 0), tg = units.reduce((s, u) => s + (u.goal || 0), 0);
   // Ranking de vendas: somente os vendedores do cliente final configurados
   const sales = lastSales();
   const ranking = sellersCfg().map((name) => {
@@ -60,7 +61,7 @@ function dashboard() {
   const salesGoal = Number(getSetting('tv_sales_goal_' + cur, '')) || null;
   return {
     now: new Date().toISOString(), month: cur, months, units,
-    units_total: { value: tv, goal: tg || null, missing: tg ? Math.max(0, tg - tv) : null, pct: tg ? tv / tg : null },
+    units_total: { value: tv, other: to, done: tv + to, goal: tg ? tg + to : null, missing: tg ? Math.max(0, tg - tv) : null, pct: tg ? (tv + to) / (tg + to) : null },
     sales: { period_from: sales.period_from, period_to: sales.period_to, generated_at: sales.generated_at, ranking, total: salesTotal, goal: salesGoal, missing: salesGoal ? Math.max(0, salesGoal - salesTotal) : null, pct: salesGoal ? salesTotal / salesGoal : null },
   };
 }
@@ -82,7 +83,7 @@ route('GET', '/api/tv/admin', { roles: TV_EDIT }, () => {
   const ms = months4();
   return {
     ...dashboard(), key: tvKey(), sellers: sellersCfg().join(', '), months4: ms,
-    unit_rows: ms.map((m) => ({ month: m, units: UNITS.map(([k, label]) => { const r = db.prepare('SELECT * FROM tv_units WHERE month = ? AND unit = ?').get(m, k) || {}; return { unit: k, label, value: r.value ?? null, goal: r.goal ?? null }; }), sales_goal: Number(getSetting('tv_sales_goal_' + m, '')) || null })),
+    unit_rows: ms.map((m) => ({ month: m, units: UNITS.map(([k, label]) => { const r = db.prepare('SELECT * FROM tv_units WHERE month = ? AND unit = ?').get(m, k) || {}; return { unit: k, label, value: r.value ?? null, other_value: r.other_value ?? null, other_note: r.other_note || '', goal: r.goal ?? null }; }), sales_goal: Number(getSetting('tv_sales_goal_' + m, '')) || null })),
     forecasts: db.prepare('SELECT month, revenue, apts_pct, beds_pct, generated_at, imported_at, filename FROM tv_forecast ORDER BY month DESC LIMIT 12').all(),
     sales_all: lastSales(), current: cur,
   };
@@ -113,13 +114,13 @@ route('PUT', '/api/tv/units', { roles: TV_EDIT }, ({ body, user, ip }) => {
   const month = /^\d{4}-\d{2}$/.test(body.month || '') ? body.month : null;
   if (!month) throw new HttpError(400, 'Informe o mês.');
   const val = (v) => (v === '' || v === null || v === undefined ? null : Math.round(Number(String(v).replace(/\./g, '').replace(',', '.')) * 100) / 100);
-  const up = db.prepare(`INSERT INTO tv_units(month, unit, value, goal, updated_by) VALUES (?,?,?,?,?)
-    ON CONFLICT(month, unit) DO UPDATE SET value = excluded.value, goal = excluded.goal, updated_by = excluded.updated_by, updated_at = datetime('now','localtime')`);
+  const up = db.prepare(`INSERT INTO tv_units(month, unit, value, other_value, other_note, goal, updated_by) VALUES (?,?,?,?,?,?,?)
+    ON CONFLICT(month, unit) DO UPDATE SET value = excluded.value, other_value = excluded.other_value, other_note = excluded.other_note, goal = excluded.goal, updated_by = excluded.updated_by, updated_at = datetime('now','localtime')`);
   for (const u of body.units || []) {
     if (!UNITS.some(([k]) => k === u.unit)) continue;
-    const v = val(u.value), g = val(u.goal);
-    if ((v !== null && !Number.isFinite(v)) || (g !== null && !Number.isFinite(g))) throw new HttpError(400, 'Valor inválido.');
-    up.run(month, u.unit, v, g, user.id);
+    const v = val(u.value), o = val(u.other_value), g = val(u.goal);
+    if ([v, o, g].some((x) => x !== null && !Number.isFinite(x))) throw new HttpError(400, 'Valor inválido.');
+    up.run(month, u.unit, v, o, String(u.other_note || '').trim().slice(0, 80) || null, g, user.id);
   }
   if (body.sales_goal !== undefined) setSetting('tv_sales_goal_' + month, val(body.sales_goal) ?? '');
   audit(user, 'tv_metas_alteradas', body, ip);

@@ -8,17 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #021c2e; --bg2: #04263d; --card: #062f4b; --line: rgba(255,255,255,.10);
-    --ink: #f3f8fb; --muted: #9fbccd; --blue: #035b8a; --teal: #00b1c5; --green: #2fb36b; --amber: #f0b429; --red: #ef6b5b;
+    --bg: #eaf2f7; --bg2: #ffffff; --card: #ffffff; --line: #d5e3ec;
+    --ink: #0b2a40; --muted: #5b7486; --blue: #035b8a; --teal: #00a3b6; --green: #1f9d57; --amber: #c27c00; --red: #c8463a; --track: #e3edf3;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
   body { font-size: clamp(12px, 0.95vw, 22px); }
-  .tv { height: 100vh; display: grid; grid-template-rows: auto auto 1fr; gap: 1.2vw; padding: 1.4vw 1.8vw; background:
-    radial-gradient(1200px 700px at 0% 0%, rgba(0,177,197,.16), transparent 60%), radial-gradient(1000px 600px at 100% 100%, rgba(3,91,138,.35), transparent 60%), var(--bg); }
-  header { display: flex; align-items: center; gap: 1.4vw; border-bottom: 1px solid var(--line); padding-bottom: 1vw; }
-  header img { height: 3.6vw; }
+  .tv { height: 100vh; display: grid; grid-template-rows: auto auto 1fr; gap: 1.1vw; padding: 0 1.8vw 1.4vw; background: var(--bg); }
+  header { display: flex; align-items: center; gap: 1.4vw; margin: 0 -1.8vw; padding: 1vw 1.8vw; color: #fff;
+    background: linear-gradient(90deg, #024a72, #035b8a 55%, #0a7ea1); border-bottom: .35vw solid var(--teal); }
+  header .s, header .clock span { color: #cfe6f3 !important; }
+  header img { height: 4.6vw; }
   header .t { flex: 1; }
   header h1 { margin: 0; font-size: 2.1em; font-weight: 800; letter-spacing: .01em; }
   header .s { color: var(--muted); font-size: 1em; margin-top: .2em; }
@@ -26,8 +27,8 @@
   .clock b { display: block; font-size: 2.6em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
   .clock span { color: var(--muted); }
   .months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1vw; }
-  .m { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.3vw; position: relative; overflow: hidden; }
-  .m.cur { border-color: rgba(0,177,197,.6); box-shadow: 0 0 0 2px rgba(0,177,197,.25) inset; }
+  .m { background: var(--card); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.3vw; position: relative; overflow: hidden; box-shadow: 0 .3vw 1vw rgba(3,91,138,.08); }
+  .m.cur { border: 2px solid var(--teal); }
   .m .lbl { font-size: .95em; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; }
   .m .lbl i { font-style: normal; color: var(--teal); }
   .m .rev { font-size: 2.35em; font-weight: 800; margin: .35em 0 .2em; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -35,48 +36,53 @@
   .occ { display: flex; align-items: center; gap: 1vw; }
   .ring { width: 5.2vw; height: 5.2vw; flex: none; }
   .ring circle { fill: none; stroke-width: 10; }
-  .ring .bg { stroke: rgba(255,255,255,.12); }
+  .ring .bg { stroke: var(--track); }
   .ring .fg { stroke: var(--teal); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
   .ring text { fill: var(--ink); font-size: 26px; font-weight: 800; text-anchor: middle; dominant-baseline: central; font-family: Inter, sans-serif; }
   .occ .d { color: var(--muted); line-height: 1.55; }
   .occ .d b { color: var(--ink); font-variant-numeric: tabular-nums; }
   .m .na { color: var(--muted); margin-top: 1.4em; font-size: 1.1em; }
   .bottom { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1vw; min-height: 0; }
-  .panel { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.4vw; display: flex; flex-direction: column; min-height: 0; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.4vw; display: flex; flex-direction: column; min-height: 0; box-shadow: 0 .3vw 1vw rgba(3,91,138,.08); }
+  .panel h2 { color: var(--blue); }
   .panel h2 { margin: 0 0 .7vw; font-size: 1.35em; text-transform: uppercase; letter-spacing: .1em; display: flex; justify-content: space-between; align-items: baseline; }
   .panel h2 small { font-size: .62em; color: var(--muted); letter-spacing: .04em; text-transform: none; font-weight: 500; }
-  .goal { display: grid; grid-template-columns: 8.5em 1fr 9.5em 9.5em 9.5em; align-items: center; gap: .9vw; padding: .62vw 0; border-bottom: 1px solid var(--line); }
+  .goal { display: grid; grid-template-columns: 7.2em 1fr 8.6em 8.6em 8.6em 8.6em; align-items: center; gap: .8vw; padding: .55vw 0; border-bottom: 1px solid var(--line); }
+  .goal.head { padding: 0 0 .3vw; border-bottom: 2px solid var(--line); }
+  .goal.head div { color: var(--muted); font-size: .72em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; text-align: right; }
+  .goal.head div:first-child { text-align: left; }
+  .goal .v .note { display: block; color: var(--muted); font-size: .62em; font-weight: 600; margin-top: .1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .goal:last-child { border-bottom: 0; }
   .goal .n { font-weight: 800; font-size: 1.2em; }
   .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.12em; white-space: nowrap; }
   .goal .v small { display: block; color: var(--muted); font-weight: 500; font-size: .7em; text-transform: uppercase; letter-spacing: .08em; }
   .goal .v.miss { color: var(--amber); }
   .goal .v.ok { color: var(--green); }
-  .bar { height: 1.05vw; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; position: relative; }
+  .bar { height: 1.05vw; background: var(--track); border-radius: 99px; overflow: hidden; position: relative; }
   .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
   .bar i.done { background: linear-gradient(90deg, #1f8f55, var(--green)); }
-  .bar b { position: absolute; right: .5em; top: 50%; transform: translateY(-50%); font-size: .72em; }
-  .goal.total { margin-top: .3vw; border-top: 2px solid rgba(0,177,197,.45); border-bottom: 0; }
+  .bar b { position: absolute; right: .5em; top: 50%; transform: translateY(-50%); font-size: .72em; color: var(--ink); }
+  .goal.total { margin-top: .3vw; border-top: 2px solid var(--teal); border-bottom: 0; background: #eef8fa; border-radius: .6vw; padding: .6vw .6vw; }
   .goal.total .n { color: var(--teal); }
   .rank { flex: 1; display: flex; flex-direction: column; gap: .6vw; min-height: 0; }
-  .r { display: grid; grid-template-columns: 2.6em 1fr auto; align-items: center; gap: 1vw; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: .8vw; padding: .75vw 1vw; }
-  .r .pos { width: 2.3em; height: 2.3em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.15em; background: rgba(255,255,255,.1); }
+  .r { display: grid; grid-template-columns: 2.6em 1fr auto; align-items: center; gap: 1vw; background: #f6fafc; border: 1px solid var(--line); border-radius: .8vw; padding: .75vw 1vw; }
+  .r .pos { width: 2.3em; height: 2.3em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.15em; background: var(--track); }
   .r:nth-child(1) .pos { background: #d4a72c; color: #1d1600; }
   .r:nth-child(2) .pos { background: #b9c4cc; color: #1a2228; }
   .r:nth-child(3) .pos { background: #b0773f; color: #1c1006; }
-  .r.zero .pos { background: rgba(255,255,255,.1) !important; color: var(--muted) !important; }
+  .r.zero .pos { background: var(--track) !important; color: var(--muted) !important; }
   .r.zero { opacity: .7; }
   .r .nm { font-weight: 800; font-size: 1.45em; }
   .r .nm small { display: block; color: var(--muted); font-weight: 500; font-size: .55em; margin-top: .15em; }
   .r .val { text-align: right; font-weight: 800; font-size: 1.55em; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .r .val small { display: block; color: var(--muted); font-size: .5em; font-weight: 600; }
-  .r .rb { grid-column: 2 / 4; height: .5vw; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+  .r .rb { grid-column: 2 / 4; height: .5vw; background: var(--track); border-radius: 99px; overflow: hidden; }
   .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
   .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8vw; margin-top: .8vw; }
-  .sfoot div { background: rgba(255,255,255,.05); border-radius: .7vw; padding: .6vw .9vw; }
+  .sfoot div { background: #eef5f9; border-radius: .7vw; padding: .6vw .9vw; }
   .sfoot span { display: block; color: var(--muted); font-size: .78em; text-transform: uppercase; letter-spacing: .08em; }
   .sfoot b { font-size: 1.3em; font-variant-numeric: tabular-nums; }
-  .err { position: fixed; inset: auto 1vw 1vw auto; background: #5c1b16; color: #ffd9d4; padding: .6em 1em; border-radius: .6em; display: none; }
+  .err { position: fixed; inset: auto 1vw 1vw auto; background: #fbe3e0; color: #8a2a20; border: 1px solid #f0b9b2; padding: .6em 1em; border-radius: .6em; display: none; }
   .gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); text-align: center; color: var(--muted); font-size: 1.4em; }
   .gate b { color: var(--ink); display: block; font-size: 1.5em; margin-bottom: .4em; }
 </style>
@@ -90,7 +96,7 @@
   </header>
   <section class="months" id="months"></section>
   <section class="bottom">
-    <div class="panel"><h2>Metas do mês <small id="mes-meta"></small></h2><div id="goals"></div></div>
+    <div class="panel"><h2>Metas e previsão do mês <small id="mes-meta"></small></h2><div id="goals"></div></div>
     <div class="panel"><h2>Ranking de vendas <small id="periodo"></small></h2><div class="rank" id="rank"></div><div class="sfoot" id="sfoot"></div></div>
   </section>
 </div>
@@ -128,11 +134,13 @@
       const p = u.pct == null ? null : u.pct * 100;
       return `<div class="goal ${cls}"><div class="n">${esc(u.label)}</div>
         <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.min(100, p)}%"></i><b>${pct(p, 0)}</b>`}</div>
-        <div class="v">${brl0(u.value)}<small>Realizado</small></div>
-        <div class="v">${brl0(u.goal)}<small>Meta</small></div>
-        <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : brl0(u.missing)}<small>Falta</small></div></div>`;
+        <div class="v">${u.value ? brl0(u.value) : '—'}</div>
+        <div class="v">${u.other ? brl0(u.other) : '—'}${u.other_note ? `<span class="note">${esc(u.other_note)}</span>` : ''}</div>
+        <div class="v">${brl0(u.goal)}</div>
+        <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : brl0(u.missing)}</div></div>`;
     };
-    document.getElementById('goals').innerHTML = d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
+    document.getElementById('goals').innerHTML = `<div class="goal head"><div>Unidade</div><div></div><div>Valor real (notas)</div><div>Antecipações</div><div>Previsão</div><div>Falta</div></div>`
+      + d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
     const s = d.sales, max = Math.max(1, ...s.ranking.map((r) => r.value));
     document.getElementById('periodo').textContent = s.period_from ? `Walk-ins e reservas · ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from) + ' a ' + dmy(s.period_to)}` : 'Relatório de vendas ainda não enviado';
     document.getElementById('rank').innerHTML = s.ranking.map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>

@@ -9,7 +9,7 @@ const dmy = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : ''
 const fmt = (v) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export async function render(el) {
-  let d;
+  let d, mi = 0;
   async function load() { d = await get('/api/tv/admin'); draw(); }
 
   function draw() {
@@ -49,13 +49,21 @@ export async function render(el) {
       </div>
 
       <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><h3 class="grow">Valores e metas por unidade</h3><span class="muted small">Resort em branco = faturamento previsto do Silbeck</span></div>
-        <div class="table-wrap"><table class="t"><thead><tr><th>Mês</th>${d.unit_rows[0].units.map((u) => `<th>${esc(u.label)} · realizado</th><th>${esc(u.label)} · meta</th>`).join('')}<th>Meta de vendas</th><th></th></tr></thead><tbody>
-          ${d.unit_rows.map((row) => `<tr data-month="${row.month}"><td><b>${mesLabel(row.month)}</b></td>
-            ${row.units.map((u) => `<td><input class="input sm" data-unit="${u.unit}" data-k="value" value="${fmt(u.value)}" placeholder="${u.unit === 'resort' ? 'Silbeck' : '0,00'}" style="width:120px"></td><td><input class="input sm" data-unit="${u.unit}" data-k="goal" value="${fmt(u.goal)}" placeholder="0,00" style="width:120px"></td>`).join('')}
-            <td><input class="input sm" data-k="sales_goal" value="${fmt(row.sales_goal)}" placeholder="0,00" style="width:120px"></td>
-            <td><button class="btn sm primary" data-save="${row.month}">Salvar</button></td></tr>`).join('')}
-        </tbody></table></div>
+        <div class="card-head"><h3 class="grow">Valores e previsões por unidade</h3>
+          <div class="seg" id="mtabs">${d.unit_rows.map((r, i) => `<button data-mi="${i}" class="${i === mi ? 'on' : ''}">${mesLabel(r.month)}</button>`).join('')}</div></div>
+        ${(() => { const row = d.unit_rows[mi]; const n = (v) => Number(v) || 0;
+          const tot = row.units.reduce((t, u) => ({ v: t.v + n(u.value), o: t.o + n(u.other_value), g: t.g + n(u.goal) }), { v: 0, o: 0, g: 0 });
+          return `<div class="table-wrap"><table class="t" id="utab" data-month="${row.month}"><thead><tr><th>${mesLabel(row.month).toUpperCase()}</th><th>Valor real emitido em notas</th><th>Antecipações / outras receitas</th><th>Descrição da receita</th><th>Previsão (meta)</th><th class="n">Falta</th></tr></thead><tbody>
+          ${row.units.map((u) => `<tr data-unit="${u.unit}"><td><b>${esc(u.label)}</b></td>
+            <td><input class="input sm" data-k="value" value="${fmt(u.value)}" placeholder="0,00" style="width:150px"></td>
+            <td><input class="input sm" data-k="other_value" value="${fmt(u.other_value)}" placeholder="0,00" style="width:150px"></td>
+            <td><input class="input sm" data-k="other_note" value="${esc(u.other_note || '')}" placeholder="Ex.: venda de terreno" style="width:180px"></td>
+            <td><input class="input sm" data-k="goal" value="${fmt(u.goal)}" placeholder="0,00" style="width:150px"></td>
+            <td class="n">${u.goal == null ? '—' : brl(Math.max(0, n(u.goal) - n(u.value)))}</td></tr>`).join('')}
+          </tbody><tfoot><tr><td><b>TOTAL</b></td><td><b>${brl(tot.v)}</b></td><td><b>${brl(tot.o)}</b></td><td></td><td><b>${brl(tot.g + tot.o)}</b><div class="small muted">previsões + antecipações</div></td><td class="n"><b>${brl(Math.max(0, tot.g - tot.v))}</b></td></tr></tfoot></table></div>
+          <div class="row" style="padding:12px 16px;gap:12px;border-top:1px solid var(--line);align-items:flex-end">
+            <label class="f" style="margin:0;max-width:220px">Meta de vendas do mês<input class="input" id="sgoal" value="${fmt(row.sales_goal)}" placeholder="0,00"></label>
+            <span class="grow"></span><button class="btn primary" id="usave">Salvar ${mesLabel(row.month)}</button></div>`; })()}
       </div>
 
       <div class="card pad">
@@ -82,11 +90,12 @@ export async function render(el) {
     el.querySelector('#save-sellers').onclick = async () => {
       try { await put('/api/tv/settings', { sellers: el.querySelector('#sellers').value }); toast('Vendedores salvos.'); load(); } catch (e) { fail(e); }
     };
-    el.querySelectorAll('[data-save]').forEach((b) => b.addEventListener('click', async () => {
-      const tr = b.closest('tr');
-      const units = d.unit_rows[0].units.map((u) => ({ unit: u.unit, value: tr.querySelector(`[data-unit="${u.unit}"][data-k="value"]`).value, goal: tr.querySelector(`[data-unit="${u.unit}"][data-k="goal"]`).value }));
-      try { await put('/api/tv/units', { month: tr.dataset.month, units, sales_goal: tr.querySelector('[data-k="sales_goal"]').value }); toast(`Valores de ${mesLabel(tr.dataset.month)} salvos.`); load(); } catch (e) { fail(e); }
-    }));
+    el.querySelectorAll('#mtabs [data-mi]').forEach((b) => b.addEventListener('click', () => { mi = Number(b.dataset.mi); draw(); }));
+    el.querySelector('#usave').onclick = async () => {
+      const tab = el.querySelector('#utab');
+      const units = [...tab.querySelectorAll('tr[data-unit]')].map((tr) => ({ unit: tr.dataset.unit, ...Object.fromEntries([...tr.querySelectorAll('input')].map((i) => [i.dataset.k, i.value])) }));
+      try { await put('/api/tv/units', { month: tab.dataset.month, units, sales_goal: el.querySelector('#sgoal').value }); toast(`Valores de ${mesLabel(tab.dataset.month)} salvos.`); load(); } catch (e) { fail(e); }
+    };
     el.querySelector('#copy').onclick = () => navigator.clipboard.writeText(link).then(() => toast('Link copiado.'), () => toast('Não foi possível copiar.', 'err'));
     el.querySelector('#newkey').onclick = async () => {
       if (!(await confirmBox('Deseja gerar um novo link? O link atual deixará de funcionar na TV.', 'Gerar novo link', true))) return;
