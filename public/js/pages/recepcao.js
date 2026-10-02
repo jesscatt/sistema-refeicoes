@@ -43,7 +43,7 @@ export async function render(el) {
           <td><b>${esc(r.guest_name)}</b>${r.guests ? `<div class="small">${esc(r.guests.split('\n').join(', '))}</div>` : ''}<div class="muted small">Reserva nº ${esc(r.reservation_number)}</div></td>
           <td>${paxTxt(r.adults, r.children)}</td>
           <td>${boardTag(r.board)}</td>
-          <td class="small">${esc(br(r.checkin).slice(0, 5))} → ${esc(br(r.checkout).slice(0, 5))} ${r.arriving ? '<span class="badge info">chega</span>' : ''}${r.leaving ? '<span class="badge warn">sai</span>' : ''}</td>
+          <td class="small">Entrada: ${esc(br(r.checkin))}<br>Saída: ${esc(br(r.checkout))}${r.arriving ? '<br><span class="badge info">Entrada hoje</span>' : ''}${r.leaving ? '<br><span class="badge warn">Saída hoje</span>' : ''}</td>
           ${MEALS.map((m) => `<td>${r.meals[m] ? restTag(r.meals[m]) : '<span class="muted small">—</span>'}</td>`).join('')}
         </tr>`).join('') || `<tr><td colspan="8"><div class="empty">Nenhum hóspede encontrado.</div></td></tr>`}</tbody>
       </table></div></div>`;

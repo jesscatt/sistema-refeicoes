@@ -170,12 +170,12 @@ export async function render(el) {
             ${d.vouchers.map((v) => `<tr><td>Vouchers · ${v.meal ? MEAL_ROW[v.meal] : esc(v.item)}</td><td class="n">${n0(v.count)} voucher(s)</td><td class="n small muted">${n0(v.adults + v.children)} pessoas</td><td class="n">${brl(v.value)}</td></tr>`).join('')}
             ${!d.extras.length && !d.vouchers.length ? '<tr><td><div class="empty">Nenhum extra no mês.</div></td></tr>' : ''}
           </tbody></table></div>
-          ${d.restaurant.accepts_voucher ? '<div style="padding:10px 16px"><button class="btn sm" id="vlist">Ver vouchers recebidos</button></div>' : ''}</div>
+          ${d.restaurant.accepts_voucher ? '<div style="padding:10px 16px"><button class="btn sm" id="vlist">Consultar vouchers registrados</button></div>' : ''}</div>
       </div>`;
     body.querySelector('#vlist')?.addEventListener('click', async () => {
       try {
         const rows = await get(`/api/vouchers?month=${st.month}&restaurant_id=${d.restaurant.id}`);
-        modal({ wide: true, title: `Vouchers · ${esc(d.restaurant.name)} · ${mesLabel(st.month)}`, body: rows.length ? `<div class="table-wrap"><table class="t"><thead><tr><th>Data</th><th>Refeição</th><th>Voucher</th><th>Pax</th><th>Recebido por</th></tr></thead><tbody>${rows.map((v) => `<tr><td>${br(v.date)}</td><td>${MEAL_LABEL[v.meal]}</td><td><b>${esc(v.code)}</b></td><td>${v.adults} adultos${v.children ? ` + ${v.children} crianças` : ''}</td><td class="small">${esc(v.user_name || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhum voucher no mês.</div>', foot: '<button class="btn" data-close>Fechar</button>' });
+        modal({ wide: true, title: `Vouchers · ${esc(d.restaurant.name)} · ${mesLabel(st.month)}`, body: rows.length ? `<div class="table-wrap"><table class="t"><thead><tr><th>Data</th><th>Refeição</th><th class="n">Quantidade</th><th>Observação</th><th>Registrado por</th></tr></thead><tbody>${rows.map((v) => `<tr><td>${br(v.date)}</td><td>${MEAL_LABEL[v.meal]}</td><td class="n"><b>${v.adults + v.children}</b></td><td>${esc(v.note || '')}</td><td class="small">${esc(v.user_name || '')}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nenhum voucher no mês.</div>', foot: '<button class="btn" data-close>Fechar</button>' });
       } catch (e) { fail(e); }
     });
   }

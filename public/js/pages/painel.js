@@ -17,8 +17,8 @@ export async function render(el) {
       ${openCard(rd)}
       <div class="stats">
         <div class="card stat"><div class="k">Hospedados</div><div class="v">${d.inhouse.adults + d.inhouse.children}<small>pessoas · ${d.inhouse.reservas} reservas</small></div></div>
-        <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>adt</small> ${d.inhouse.children}<small>chd</small></div></div>
-        <div class="card stat"><div class="k">Entradas · Saídas</div><div class="v">${d.arrivals}<small>entram</small> ${d.departures}<small>saem</small></div></div>
+        <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>ADT</small> ${d.inhouse.children}<small>CHD</small></div></div>
+        <div class="card stat"><div class="k">Entradas · Saídas</div><div class="v">${d.arrivals}<small>entradas</small> ${d.departures}<small>saídas</small></div></div>
         <div class="card stat"><div class="k">Pensões</div><div class="v" style="font-size:15px;font-family:var(--font);display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
           ${['CM', 'MAP', 'MAPA', 'FAP', 'SA'].filter((b) => boards[b]).map((b) => `<span class="badge"><b>${b}</b> ${boards[b].n}</span>`).join('') || '<span class="muted">—</span>'}
         </div></div>

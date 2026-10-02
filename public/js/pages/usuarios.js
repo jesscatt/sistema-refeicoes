@@ -1,4 +1,4 @@
-import { get, post, put, esc, icon, fail, toast, modal, state, ROLE_LABEL, confirmBox } from '../ui.js';
+import { dt, get, post, put, esc, icon, fail, toast, modal, state, ROLE_LABEL, confirmBox } from '../ui.js';
 
 const ROLE_HELP = {
   admin: 'Acesso integral: usuários, configurações, auditoria e reabertura de mês.',
@@ -19,7 +19,7 @@ export async function render(el) {
         <thead><tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Restaurante</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead>
         <tbody>${users.map((u) => `<tr>
           <td><b style="font-size:16px;letter-spacing:.06em">${esc(u.login_code || '—')}</b></td><td><b>${esc(u.name)}</b></td><td><span class="badge terra">${ROLE_LABEL[u.role]}</span>${u.role === 'restaurante' && u.rest_admin ? ' <span class="badge info">administrador</span>' : ''}</td>
-          <td>${esc(u.restaurant_name || '')}</td><td class="small muted">${esc(u.last_login_at || 'nunca')}</td>
+          <td>${esc(u.restaurant_name || '')}</td><td class="small muted">${esc(u.last_login_at ? dt(u.last_login_at) : 'Nenhum acesso')}</td>
           <td>${u.active ? '<span class="badge ok">ativo</span>' : '<span class="badge danger">inativo</span>'}${u.must_change_password ? ' <span class="badge warn">trocar senha</span>' : ''}</td>
           <td class="row" style="justify-content:flex-end;gap:6px"><button class="btn sm" data-edit="${u.id}">Editar</button><button class="btn sm" data-reset="${u.id}">Nova senha</button></td></tr>`).join('')}</tbody>
       </table></div></div>

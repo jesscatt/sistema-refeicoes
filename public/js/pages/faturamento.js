@@ -1,4 +1,4 @@
-import { get, post, put, esc, icon, fail, toast, can, MEAL_LABEL, money, today, download, confirmBox, modal, restDot } from '../ui.js';
+import { dt, get, post, put, esc, icon, fail, toast, can, MEAL_LABEL, money, today, download, confirmBox, modal, restDot } from '../ui.js';
 import { readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -26,7 +26,7 @@ export async function render(el) {
         ${boss && !b.closed ? `<button class="btn primary" id="close">${icon('lock')} Fechar mês</button>` : ''}
         ${can('admin') && b.closed ? `<button class="btn danger" id="reopen">Reabrir mês</button>` : ''}
       </div>
-      ${b.closed ? `<div class="banner info">${icon('lock')}<span>Mês fechado em ${esc(b.closed.closed_at)}${b.closed.closed_by_name ? ' por ' + esc(b.closed.closed_by_name) : ''}. Os números abaixo são os do fechamento${b.live && b.live.total !== b.total ? ` (hoje o sistema calcularia ${money(b.live.total)})` : ''}.</span></div>` : ''}
+      ${b.closed ? `<div class="banner info">${icon('lock')}<span>Mês fechado em ${esc(dt(b.closed.closed_at))}${b.closed.closed_by_name ? ' por ' + esc(b.closed.closed_by_name) : ''}. Os números abaixo são os do fechamento${b.live && b.live.total !== b.total ? ` (hoje o sistema calcularia ${money(b.live.total)})` : ''}.</span></div>` : ''}
       ${!b.closed && pending ? `<div class="banner warn">${icon('alert')}<span>${pending} refeição(ões) previstas sem nenhum registro dos restaurantes; elas não entram no faturamento.</span></div>` : ''}
       ${noPrice ? `<div class="banner warn">${icon('info')}<span>Há refeições sem valor cadastrado. ${boss ? 'Selecione “Preços” para cadastrá-los.' : 'Solicite à supervisão o cadastro dos preços.'}</span></div>` : ''}
       <div class="stats">

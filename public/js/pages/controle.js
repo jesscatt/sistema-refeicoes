@@ -1,4 +1,4 @@
-import { get, esc, icon, fail, can, state, MEALS, MEAL_LABEL, weekday, download, today } from '../ui.js';
+import { dt, get, esc, icon, fail, can, state, MEALS, MEAL_LABEL, weekday, download, today } from '../ui.js';
 import { readParams, syncParams } from './common.js';
 
 // Previsto x realizado (somente consulta): previsto = distribuição; realizado = registros dos restaurantes.
@@ -35,7 +35,7 @@ export async function render(el) {
         <select class="input sm" id="rest" style="width:auto">${state.meta.restaurants.map((r) => `<option value="${r.id}" ${r.id === rest.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select>
         ${can('admin', 'supervisor') ? `<button class="btn" id="csv">${icon('download')} Relatório diário</button>` : ''}
       </div>
-      ${d.closed ? `<div class="banner info">${icon('lock')}<span>Mês fechado pela supervisão em ${esc(d.closed.closed_at)}${d.closed.closed_by_name ? ' por ' + esc(d.closed.closed_by_name) : ''}.</span></div>` : ''}
+      ${d.closed ? `<div class="banner info">${icon('lock')}<span>Mês fechado pela supervisão em ${esc(dt(d.closed.closed_at))}${d.closed.closed_by_name ? ' por ' + esc(d.closed.closed_by_name) : ''}.</span></div>` : ''}
       ${semTotal ? `<div class="banner warn">${icon('alert')}<span><b>${semTotal} refeição(ões)</b> com previsão e sem nenhum registro do restaurante neste mês. Sem registro, a refeição não entra no faturamento.</span></div>` : ''}
       <div class="card"><div class="table-wrap" style="max-height:72vh"><table class="t ctl">
         <thead>
@@ -44,7 +44,8 @@ export async function render(el) {
         </thead>
         <tbody>${days.map((date) => {
           const wd = weekday(date);
-          return `<tr class="${wd === 'sáb' || wd === 'dom' ? 'weekend' : ''}"><td><b>${date.slice(8)}</b> <span class="muted small">${wd}</span></td>
+          const wdA = wd.toUpperCase();
+          return `<tr class="${wd === 'sáb' || wd === 'dom' ? 'weekend' : ''}"><td><b>${date.slice(8)}</b> <span class="muted small">${wdA}</span></td>
           ${meals.map((m) => {
             const r = get1(date, m);
             const prev = r.forecast_adults + r.forecast_children, real = r.checked_adults + r.checked_children;

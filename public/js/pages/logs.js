@@ -1,4 +1,4 @@
-import { get, esc, fail } from '../ui.js';
+import { dt, get, esc, fail } from '../ui.js';
 
 const LABELS = {
   login: 'Acesso ao sistema', logout: 'Saída do sistema', login_falhou: 'Falha de acesso', senha_alterada: 'Alteração de senha',
@@ -26,7 +26,7 @@ export async function render(el) {
     <div class="card"><div class="table-wrap" style="max-height:70vh"><table class="t"><thead><tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Detalhes</th><th>IP</th></tr></thead><tbody id="tb"></tbody></table></div></div>`;
   async function load() {
     const rows = await get(`/api/audit?q=${encodeURIComponent(st.q)}&from=${st.from}&to=${st.to}`);
-    el.querySelector('#tb').innerHTML = rows.map((r) => `<tr><td class="small" style="white-space:nowrap">${esc(r.created_at)}</td><td>${esc(r.username || 'sistema')}</td>
+    el.querySelector('#tb').innerHTML = rows.map((r) => `<tr><td class="small" style="white-space:nowrap">${esc(dt(r.created_at))}</td><td>${esc(r.username || 'sistema')}</td>
       <td><b>${esc(LABELS[r.action] || r.action)}</b></td><td class="small muted" style="max-width:520px;word-break:break-word">${esc(r.details || '')}</td><td class="small muted">${esc(r.ip || '')}</td></tr>`).join('')
       || '<tr><td colspan="5"><div class="empty">Nada encontrado.</div></td></tr>';
   }

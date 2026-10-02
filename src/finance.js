@@ -67,7 +67,7 @@ function dailyData(restId, from, to) {
   for (const r of db.prepare('SELECT date, meal, SUM(adults) ad, SUM(children) ch FROM restaurant_extras WHERE restaurant_id = ? AND date BETWEEN ? AND ? GROUP BY 1, 2').all(restId, from, to)) {
     Object.assign(get(r.date, r.meal), { extra_adults: r.ad, extra_children: r.ch });
   }
-  for (const r of db.prepare('SELECT date, meal, SUM(adults) ad, SUM(children) ch, COUNT(*) n FROM vouchers WHERE restaurant_id = ? AND date BETWEEN ? AND ? GROUP BY 1, 2').all(restId, from, to)) {
+  for (const r of db.prepare('SELECT date, meal, SUM(adults) ad, SUM(children) ch, SUM(adults + children) n FROM vouchers WHERE restaurant_id = ? AND date BETWEEN ? AND ? GROUP BY 1, 2').all(restId, from, to)) {
     Object.assign(get(r.date, r.meal), { voucher_adults: r.ad, voucher_children: r.ch, vouchers: r.n });
   }
   return map;

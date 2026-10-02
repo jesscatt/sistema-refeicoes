@@ -2,7 +2,7 @@ import { post, esc, icon, fail, markdown, today } from '../ui.js';
 
 const SUGG = [
   'Resumo do mês: quantos cafés, almoços e jantares por restaurante, separando adultos e crianças.',
-  'Em quais dias o real ficou muito diferente do previsto? Onde estamos tendo prejuízo?',
+  'Em quais dias o realizado ficou muito diferente do previsto? Em quais refeições houve prejuízo?',
   'A divisão 60/20/20 está sendo respeitada? Mostre a porcentagem real de cada restaurante.',
   'Compare este mês com os dois anteriores.',
   'Quantos clientes comeram fora da lista em cada restaurante?',

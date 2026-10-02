@@ -165,11 +165,13 @@ route('POST', '/api/vouchers', { roles: REG }, ({ body, user, ip }) => {
   const rest = db.prepare('SELECT * FROM restaurants WHERE id = ?').get(restId);
   if (!rest || !rest.accepts_voucher) throw new HttpError(400, `${rest ? rest.name : 'Este restaurante'} não recebe voucher.`);
   const { date, meal } = dm(body);
-  const p = pax(body);
-  const code = String(body.code || '').trim().replace(/\s+/g, '').toUpperCase().slice(0, 40);
-  if (code.length < 2) throw new HttpError(400, 'Informe o número do voucher.');
-  const dup = db.prepare('SELECT date, meal FROM vouchers WHERE restaurant_id = ? AND upper(code) = ?').get(restId, code);
-  if (dup) throw new HttpError(409, `O voucher ${code} já foi recebido em ${dup.date.split('-').reverse().join('/')} (${MEAL_LABEL[dup.meal]}).`);
+  const p = pax(body.qty !== undefined ? { adults: body.qty, children: 0 } : body);
+  // Os vouchers são sempre do resort: registra-se apenas a quantidade (a refeição fica registrada pela data e refeição do serviço)
+  const code = String(body.code || '').trim().replace(/\s+/g, '').toUpperCase().slice(0, 40) || 'RESORT';
+  if (code !== 'RESORT') {
+    const dup = db.prepare('SELECT date, meal FROM vouchers WHERE restaurant_id = ? AND upper(code) = ?').get(restId, code);
+    if (dup) throw new HttpError(409, `O voucher ${code} já foi registrado em ${dup.date.split('-').reverse().join('/')} (${MEAL_LABEL[dup.meal]}).`);
+  }
   const r = db.prepare('INSERT INTO vouchers(date, meal, restaurant_id, code, adults, children, note, user_id) VALUES (?,?,?,?,?,?,?,?)').run(date, meal, restId, code, p.adults, p.children, String(body.note || '').trim().slice(0, 200) || null, user.id);
   audit(user, 'voucher_recebido', { date, meal, restaurant_id: restId, code, ...p }, ip);
   return { id: Number(r.lastInsertRowid) };

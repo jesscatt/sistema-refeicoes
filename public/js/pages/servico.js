@@ -58,7 +58,7 @@ export async function render(el) {
             <button data-t="fora" class="${st.tab === 'fora' ? 'on' : ''}">Atendimentos fora da lista (${data.extras.length})</button>
             <button data-t="avulso" class="${st.tab === 'avulso' ? 'on' : ''}">Consumos cobrados à parte (${data.walkins.length})</button>
             <button data-t="extra" class="${st.tab === 'extra' ? 'on' : ''}">Refeições extras (${reg.extras.reduce((a, x) => a + x.adults + x.children, 0)})</button>
-            ${acceptsVoucher() ? `<button data-t="voucher" class="${st.tab === 'voucher' ? 'on' : ''}">Vouchers registrados (${reg.vouchers.length})</button>` : ''}
+            ${acceptsVoucher() ? `<button data-t="voucher" class="${st.tab === 'voucher' ? 'on' : ''}">Vouchers registrados (${reg.vouchers.reduce((a, x) => a + x.adults + x.children, 0)})</button>` : ''}
           </div>
           <div class="grow"></div>
           <button class="btn sm primary" id="fora">${icon('plus')} Registrar fora da lista</button>
@@ -110,8 +110,8 @@ export async function render(el) {
     }
     if (st.tab === 'voucher') {
       if (!reg.vouchers.length) return '<div class="empty">Não há vouchers registrados neste serviço.</div>';
-      return `<div class="table-wrap"><table class="t"><thead><tr><th>Voucher</th><th>Pessoas</th><th>Observação</th><th>Registrado por</th><th>Horário</th><th></th></tr></thead><tbody>
-        ${reg.vouchers.map((x) => `<tr><td><b>${esc(x.code)}</b></td><td>${paxTxt(x.adults, x.children)}</td><td>${esc(x.note || '')}</td><td class="small">${esc(x.user_name || '')}</td><td>${esc(x.created_at.slice(11, 16))}</td>
+      return `<div class="table-wrap"><table class="t"><thead><tr><th>Refeição</th><th>Quantidade</th><th>Observação</th><th>Registrado por</th><th>Horário</th><th></th></tr></thead><tbody>
+        ${reg.vouchers.map((x) => `<tr><td>${MEAL_FULL[x.meal]}</td><td><b>${x.adults + x.children}</b> voucher(s)</td><td>${esc(x.note || '')}</td><td class="small">${esc(x.user_name || '')}</td><td>${esc(x.created_at.slice(11, 16))}</td>
         <td><button class="btn sm ghost" data-delvoucher="${x.id}">${icon('x')}</button></td></tr>`).join('')}</tbody></table></div>`;
     }
     if (st.tab === 'lista') {
@@ -159,7 +159,7 @@ export async function render(el) {
       try { await del('/api/extras/' + b.dataset.delextra); await load(); } catch (e) { fail(e); }
     }));
     el.querySelectorAll('[data-delvoucher]').forEach((b) => b.addEventListener('click', async () => {
-      if (!(await confirmBox('Deseja excluir este voucher? O número poderá ser registrado novamente.', 'Excluir', true))) return;
+      if (!(await confirmBox('Deseja excluir este registro de vouchers?', 'Excluir', true))) return;
       try { await del('/api/vouchers/' + b.dataset.delvoucher); await load(); } catch (e) { fail(e); }
     }));
   }
@@ -267,7 +267,7 @@ export async function render(el) {
   }
   function bindStepper(s) {
     s.querySelectorAll('[data-s]').forEach((b) => b.addEventListener('click', () => {
-      const v = Math.max(0, Math.min(Number(s.dataset.max), Number(s.dataset.v) + Number(b.dataset.s)));
+      const v = Math.max(Number(s.dataset.min || 0), Math.min(Number(s.dataset.max), Number(s.dataset.v) + Number(b.dataset.s)));
       s.dataset.v = v; s.querySelector('span').textContent = v;
     }));
   }
@@ -291,19 +291,21 @@ export async function render(el) {
 
   function voucherModal() {
     const { el: m, close } = modal({
-      title: `Registro de voucher · ${MEAL_FULL[data.meal]}`,
-      body: `<div class="form-grid"><label class="f" style="grid-column:1/-1">Número do voucher <span style="color:var(--danger)">*</span><input class="input" name="code" autocomplete="off" style="font-size:18px;letter-spacing:.06em" placeholder="Digite ou faça a leitura do código"></label>
-        <label class="f">Adultos<input class="input" name="adults" type="number" min="0" value="1"></label>
-        <label class="f">Crianças<input class="input" name="children" type="number" min="0" value="0"></label>
-        <label class="f" style="grid-column:1/-1">Observação<input class="input" name="note" placeholder="Opcional"></label></div>
-        <p class="muted small">Cada voucher pode ser registrado uma única vez e integra o controle do restaurante pelo valor da refeição.</p>`,
+      title: `Registro de voucher · ${esc(data.restaurant.name)}`,
+      body: `<p class="muted" style="margin-top:0">Vouchers do resort. Informe a quantidade recebida; a refeição é registrada automaticamente.</p>
+        <div class="row" style="gap:24px;align-items:flex-end;flex-wrap:wrap">
+          <div><span class="stepper-l">Refeição</span><div style="font-size:18px;font-weight:700;padding:6px 0">${MEAL_FULL[data.meal]}</div><div class="muted small">${esc(dayLabel(data.date))}</div></div>
+          <div><span class="stepper-l">Quantidade de vouchers</span><div class="stepper lg" data-k="q" data-v="1" data-max="500"><button type="button" data-s="-1">−</button><span>1</span><button type="button" data-s="1">+</button></div></div>
+        </div>
+        <label class="f" style="margin-top:14px">Observação<input class="input" name="note" placeholder="Opcional"></label>
+        <p class="muted small">Os vouchers integram o controle do restaurante pelo valor da refeição.</p>`,
       foot: '<button class="btn" data-close>Cancelar</button><button class="btn primary" data-ok>Registrar voucher</button>',
     });
-    setTimeout(() => m.querySelector('[name=code]').focus(), 50);
+    m.querySelectorAll('.stepper').forEach((x) => { x.dataset.min = '1'; bindStepper(x); });
     m.querySelector('[data-ok]').onclick = async () => {
-      const v = (n) => m.querySelector(`[name=${n}]`).value;
-      if (!v('code').trim()) { m.querySelector('[name=code]').focus(); toast('Informe o número do voucher.', 'err'); return; }
-      try { await post('/api/vouchers', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, code: v('code'), adults: v('adults'), children: v('children'), note: v('note') }); close(); toast('Voucher registrado.'); st.tab = 'voucher'; load(); } catch (e) { fail(e); }
+      const qty = Number(m.querySelector('.stepper[data-k="q"]').dataset.v) || 0;
+      if (qty < 1) { toast('Informe a quantidade de vouchers.', 'err'); return; }
+      try { await post('/api/vouchers', { date: data.date, meal: data.meal, restaurant_id: data.restaurant.id, qty, note: m.querySelector('[name=note]').value }); close(); toast(`${qty} voucher(s) registrado(s) no ${MEAL_FULL[data.meal].toLowerCase()}.`); st.tab = 'voucher'; load(); } catch (e) { fail(e); }
     };
   }
 

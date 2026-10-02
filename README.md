@@ -71,6 +71,8 @@ Todos os textos do sistema seguem a mesma terminologia formal:
 | Não oferece (a refeição) | não serve |
 | Excluir · Salvar · Pesquisar | apagar · gravar · buscar |
 
+Abreviações são permitidas em caixa alta (ADT, CHD, APTOS, SEG, TER...). Datas sempre por extenso com o rótulo: "Entrada: 30/09/2026 · Saída: 04/10/2026" e "02/10/2026 às 10:12".
+
 Mensagens em terceira pessoa ("Não foi encontrada…", "Selecione…", "Informe…") e confirmações em forma de pergunta ("Deseja excluir…?").
 
 ## Perfis
@@ -146,7 +148,7 @@ Substitui as planilhas mensais **Controle semanal dos restaurantes (projeção d
 - **Todos os meses:** escolha o mês na lista; *Todos os meses* baixa um Excel com uma aba por mês, no formato das planilhas.
 - **Preços por mês:** cada restaurante tem o seu valor; criança paga meia (padrão: metade); valor de extra por refeição. Uma nova vigência vale a partir do mês escolhido; meses anteriores continuam com o preço antigo.
 - **Extras:** lançados na tela de marcação (*Extra*), com descrição obrigatória; cobrados pelo valor de extra.
-- **Vouchers (Di Giordana):** botão *Receber voucher* na marcação; cada número de voucher só pode ser recebido uma vez; entra no controle pelo valor da refeição. Quais restaurantes recebem voucher: *Preços e configurações*.
+- **Vouchers (Di Giordana):** os vouchers são do resort; botão *Registrar voucher* no registro de refeições com a **quantidade** (+/−). A refeição (café, almoço ou jantar) e a data ficam registradas automaticamente; entra no controle pelo valor da refeição. Quais restaurantes recebem voucher: *Preços e configurações*.
 - **Administrador do restaurante:** usuário do perfil Restaurante com a opção *Administrador do restaurante* (em *Usuários*). Além das marcações, vê o *Controle do restaurante* (semanas, valores e total do mês) só do seu restaurante. Logins de teste: `511` Di Giordana, `512` Paradiso, `513` Churrascaria (senha `demo1234`).
 - **Histórico:** *Importar histórico* lê as planilhas antigas (todas as abas). O controle de faturamento traz quantidades, preços (inclusive troca de preço no meio do mês), extras e outros pontos; diferenças de fórmulas manuais da planilha entram como *Ajuste da planilha* para o total bater. A planilha de divisão traz o lançamento diário de cada restaurante.
 

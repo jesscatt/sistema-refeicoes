@@ -76,7 +76,7 @@ export async function render(el) {
           </table></div>
           <details style="border-top:1px solid var(--line)"><summary style="padding:10px 18px;cursor:pointer;font-weight:600;font-size:14px">Ver por dia</summary>
             <div class="table-wrap"><table class="t">
-              <thead><tr><th>Refeição</th>${days.map((d) => `<th class="n">${weekday(d)} ${br(d).slice(0, 5)}</th>`).join('')}<th class="n">Total</th></tr></thead>
+              <thead><tr><th>Refeição</th>${days.map((d) => `<th class="n">${weekday(d).toUpperCase()} ${br(d).slice(0, 5)}</th>`).join('')}<th class="n">Total</th></tr></thead>
               <tbody>${r.meals.map((m) => `<tr><td><b>${MEAL_LABEL[m.meal]}</b></td>${days.map((d) => { const x = m.days[d]; return `<td class="n">${x ? `${nf(x.pag_adt + x.pag_chd)}<div class="small muted">${nf(x.pag_chd)} crianças${x.sem_real ? ' · sem registro' : ''}</div>` : '<span class="muted">—</span>'}</td>`; }).join('')}
                 <td class="n"><b>${nf(m.pag_adt + m.pag_chd)}</b><div class="small muted">${nf(m.pag_chd)} crianças</div></td></tr>`).join('')}</tbody>
             </table></div>

@@ -88,7 +88,7 @@ export async function render(el) {
       const head = G.rooms[0];
       return `<details class="grp">
         <summary class="guest grp-head">
-          <span class="room"><span class="badge info">${G.rooms.length} aptos.</span></span>
+          <span class="room"><span class="badge info">${G.rooms.length} APTOS</span></span>
           <span style="min-width:0"><div class="nm"><b>${esc(G.name)}</b></div><div class="sub">Grupo · Reserva nº ${esc(G.num)} · ${pax} pessoas${G.rooms.some((x) => x.att_status) ? ` · <b style="color:var(--ok)">${G.rooms.filter((x) => x.att_status).length} marcados</b>` : ''}</div></span>
           <span class="row" style="gap:4px">${actions(head, r, serving)}</span>
         </summary>

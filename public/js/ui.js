@@ -70,7 +70,15 @@ export const addDays = (iso, n) => { const [y, m, d] = iso.split('-').map(Number
 export const br = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
 const WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 export const weekday = (iso) => { const [y, m, d] = iso.split('-').map(Number); return WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; };
-export const dayLabel = (iso) => `${weekday(iso)}, ${br(iso).slice(0, 5)}`;
+const WD_FULL = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+export const weekdayFull = (iso) => { const [y, m, d] = iso.split('-').map(Number); return WD_FULL[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]; };
+// abreviação do dia da semana em caixa alta (SEG, TER...)
+export const weekdayAbbr = (iso) => weekday(iso).toUpperCase();
+export const dayLabel = (iso) => `${weekdayFull(iso)}, ${br(iso)}`;
+// Período da estadia escrito por extenso: "Entrada: 30/09/2026 · Saída: 04/10/2026"
+// Data e hora por extenso: "2026-10-02 10:12:00" -> "02/10/2026 às 10:12"
+export const dt = (ts) => (ts ? `${br(String(ts).slice(0, 10))}${String(ts).length > 10 ? ' às ' + String(ts).slice(11, 16) : ''}` : '');
+export const stayTxt = (ci, co) => `Entrada: ${br(ci)} · Saída: ${br(co)}`;
 export const money = (v) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const pct = (v) => `${Math.round((v || 0) * 1000) / 10}%`.replace('.', ',');
 export const MEALS = ['cafe', 'almoco', 'janta'];

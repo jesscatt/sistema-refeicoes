@@ -1,4 +1,4 @@
-import { get, put, post, api, esc, icon, fail, toast, modal, state, boardTag, paxTxt, br, roomHtml, MEALS, MEAL_LABEL, dayLabel, restTag, today, addDays, download } from '../ui.js';
+import { stayTxt, get, put, post, api, esc, icon, fail, toast, modal, state, boardTag, paxTxt, br, roomHtml, MEALS, MEAL_LABEL, dayLabel, restTag, today, addDays, download } from '../ui.js';
 import { readParams, syncParams } from './common.js';
 
 // Comercial: rooming list das agências, conferência de apartamentos e trocas (todas as reservas).
@@ -40,7 +40,7 @@ export async function render(el) {
         const act = g.rooms.filter((r) => r.status === 'ativa');
         const nn = noNames(g), pend = g.rooms.reduce((s, r) => s + (r.room_changes_pending || 0), 0);
         return `<details class="card" style="margin-bottom:12px" ${open ? 'open' : ''}>
-          <summary class="card-head" style="cursor:pointer;list-style:none"><div class="grow"><h3>${esc(g.name)}</h3><div class="muted small">Reserva ${esc(g.num)} · ${act.length} apartamento(s) · ${act.reduce((s, r) => s + r.adults + r.children, 0)} pessoas · ${esc(br(act[0]?.checkin || g.rooms[0].checkin))} → ${esc(br(act[0]?.checkout || g.rooms[0].checkout))}</div></div>
+          <summary class="card-head" style="cursor:pointer;list-style:none"><div class="grow"><h3>${esc(g.name)}</h3><div class="muted small">Reserva ${esc(g.num)} · ${act.length} apartamento(s) · ${act.reduce((s, r) => s + r.adults + r.children, 0)} pessoas · ${esc(stayTxt(act[0]?.checkin || g.rooms[0].checkin, act[0]?.checkout || g.rooms[0].checkout))}</div></div>
             ${nn ? `<span class="badge warn">${nn} sem nomes</span>` : '<span class="badge ok">rooming completo</span>'}
             ${pend ? `<span class="badge info">${pend} troca(s) a conferir</span>` : ''}
             <button class="btn sm" data-addroom="${esc(g.num)}">${icon('plus')} Apartamento</button>
@@ -53,7 +53,7 @@ export async function render(el) {
               return `<tr style="${off ? 'opacity:.55' : ''}">
                 <td class="room">${roomHtml(r.room)}</td>
                 <td>${names.length ? names.map(esc).join('<br>') : '<span class="muted small">sem nomes</span>'}${off ? ' <span class="badge danger">removido</span>' : ''}${r.room_changes ? ` <span class="badge ${r.room_changes_pending ? 'warn' : 'info'}">${r.room_changes_pending ? 'troca a conferir' : 'trocou de apartamento'}</span>` : ''}</td>
-                <td class="small">${esc(br(r.checkin))} → ${esc(br(r.checkout))}</td>
+                <td class="small">Entrada: ${esc(br(r.checkin))}<br>Saída: ${esc(br(r.checkout))}</td>
                 <td>${paxTxt(r.adults, r.children)}</td>
                 <td>${boardTag(r.board)}</td>
                 <td class="row" style="justify-content:flex-end;gap:6px;flex-wrap:nowrap">
@@ -92,9 +92,9 @@ export async function render(el) {
       <div class="card pad" style="margin-bottom:14px">
         <label class="f" style="max-width:640px">Reserva / grupo deste rooming list
           <select class="input" id="res"><option value="">— a planilha tem a coluna Reserva / descobrir pelo apartamento —</option>
-            ${rl.groups.map((x) => `<option value="${esc(x.reservation_number)}" ${x.reservation_number === rl.reservation ? 'selected' : ''}>${esc(x.reservation_number)} · ${esc(x.name)} · ${x.rooms} aptos. · ${esc(br(x.checkin).slice(0, 5))} → ${esc(br(x.checkout).slice(0, 5))}</option>`).join('')}
+            ${rl.groups.map((x) => `<option value="${esc(x.reservation_number)}" ${x.reservation_number === rl.reservation ? 'selected' : ''}>${esc(x.reservation_number)} · ${esc(x.name)} · ${x.rooms} APTOS · ${esc(stayTxt(x.checkin, x.checkout))}</option>`).join('')}
           </select></label>
-        ${g ? `<p class="small muted" style="margin:8px 0 0">Apartamentos novos entram nesse grupo com a mesma pensão e as mesmas datas (${esc(br(g.checkin))} → ${esc(br(g.checkout))}).</p>` : ''}
+        ${g ? `<p class="small muted" style="margin:8px 0 0">Apartamentos novos entram nesse grupo com a mesma pensão e as mesmas datas (${esc(stayTxt(g.checkin, g.checkout))}).</p>` : ''}
       </div>
       ${rl.preview ? previewHtml() : `<label class="dropzone" id="dz">${icon('upload')}<h2>Arraste o rooming list para esta área</h2><p class="muted">ou clique para escolher o arquivo (.xlsx ou .csv)</p><input type="file" id="file" accept=".xlsx,.csv,.txt" hidden></label>`}`;
     el.querySelector('#back').onclick = () => { view = 'lista'; rl = null; load().catch(fail); };
@@ -230,7 +230,7 @@ export async function render(el) {
   function remove(r) {
     const { el: m, close } = modal({
       title: `Remover apartamento ${roomHtml(r.room)}?`,
-      body: `<p style="margin-top:0">${guestList(r.guests).map(esc).join(', ') || esc(r.guest_name)} · ${paxTxt(r.adults, r.children)} · ${esc(br(r.checkin))} → ${esc(br(r.checkout))}</p>
+      body: `<p style="margin-top:0">${guestList(r.guests).map(esc).join(', ') || esc(r.guest_name)} · ${paxTxt(r.adults, r.children)} · ${esc(stayTxt(r.checkin, r.checkout))}</p>
         <p class="muted small">O apartamento sai das listas de refeição a partir de agora. Refeições já servidas continuam registradas.</p>
         <label class="f">Motivo (opcional)<input class="input" name="reason" placeholder="Ex.: troca de hóspede, cancelamento"></label>`,
       foot: '<button class="btn" data-close>Voltar</button><button class="btn danger" data-ok>Remover</button>',
