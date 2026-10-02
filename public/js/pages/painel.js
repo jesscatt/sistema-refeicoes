@@ -1,4 +1,4 @@
-import { get, put, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, canSee, state, modal, toast, fail } from '../ui.js';
+import { boardTag, get, put, esc, icon, mealIcon, MEAL_FULL, today, dayLabel, pct, restDot, can, canSee, state, modal, toast, fail } from '../ui.js';
 import { dateBar, bindDateBar, readParams, syncParams } from './common.js';
 
 export async function render(el) {
@@ -20,7 +20,7 @@ export async function render(el) {
         <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>ADT</small> ${d.inhouse.children}<small>CHD</small></div></div>
         <div class="card stat"><div class="k">Entradas · Saídas</div><div class="v">${d.arrivals}<small>entradas</small> ${d.departures}<small>saídas</small></div></div>
         <div class="card stat"><div class="k">Pensões</div><div class="v" style="font-size:15px;font-family:var(--font);display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
-          ${['CM', 'MAP', 'MAPA', 'FAP', 'SA'].filter((b) => boards[b]).map((b) => `<span class="badge"><b>${b}</b> ${boards[b].n}</span>`).join('') || '<span class="muted">—</span>'}
+          ${['CM', 'MAP', 'MAPA', 'FAP', 'SA'].filter((b) => boards[b]).map((b) => `<span class="row" style="gap:4px">${boardTag(b)} <b>${boards[b].n}</b></span>`).join('') || '<span class="muted">—</span>'}
         </div></div>
       </div>
       <div class="grid g3">

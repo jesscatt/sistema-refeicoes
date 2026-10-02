@@ -535,3 +535,10 @@ table.fin tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
 
 .stepper.lg button { width: 48px; height: 48px; font-size: 24px; }
 .stepper.lg span { min-width: 64px; font-size: 22px; }
+
+/* Cores por pensão: CM (café), MAP (café + jantar), MAPA (café + almoço), FAP (pensão completa) */
+.board.b-cm { background: #b7791f; }
+.board.b-map { background: #035b8a; }
+.board.b-mapa { background: #6b4fa0; }
+.board.b-fap { background: #006737; }
+.board.b-sa { background: #7a8790; }

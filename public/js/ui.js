@@ -109,7 +109,7 @@ export function roomHtml(room) {
   return `${esc(m[1])}<span class="tower" title="Torre ${esc(m[2])}">${esc(m[2])}</span>`;
 }
 export const restDot = (r) => `<span class="dot" style="background:${esc(r.color)}"></span>`;
-export const boardTag = (b) => `<span class="board" title="${esc((state.meta?.boards?.[b] || {}).label || '')}">${esc(b)}</span>`;
+export const boardTag = (b) => `<span class="board b-${esc(String(b || '').toLowerCase())}" title="${esc((state.meta?.boards?.[b] || {}).label || '')}">${esc(b)}</span>`;
 export const paxTxt = (a, c) => `${a} ${Number(a) === 1 ? 'adulto' : 'adultos'}${c ? ` e ${c} ${Number(c) === 1 ? 'criança' : 'crianças'}` : ''}`;
 
 export function mealIcon(meal) { return icon(meal === 'cafe' ? 'cup' : meal === 'almoco' ? 'plate' : 'moon'); }
