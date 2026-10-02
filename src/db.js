@@ -297,6 +297,39 @@ CREATE TABLE IF NOT EXISTS finance_entries (
 );
 CREATE INDEX IF NOT EXISTS idx_fin_month ON finance_entries(month);
 
+-- ===== Painel da TV (relatórios do Silbeck) =====
+-- Previsão de Faturamento/Ocupação: um registro por mês (o último relatório enviado prevalece)
+CREATE TABLE IF NOT EXISTS tv_forecast (
+  month TEXT PRIMARY KEY,
+  period_from TEXT, period_to TEXT,
+  revenue REAL NOT NULL DEFAULT 0,
+  apts_total INTEGER, apts_occ INTEGER, apts_pct REAL,
+  beds_total INTEGER, beds_occ INTEGER, beds_pct REAL,
+  adr_apt REAL, adr_bed REAL, stay_avg REAL,
+  days TEXT,
+  generated_at TEXT, imported_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), filename TEXT
+);
+-- Lista de Walk-ins/Reservas por Funcionário: cada envio é um lote; o painel mostra o último
+CREATE TABLE IF NOT EXISTS tv_sales (
+  id INTEGER PRIMARY KEY,
+  batch INTEGER NOT NULL,
+  period_from TEXT, period_to TEXT,
+  seller TEXT NOT NULL,
+  room_nights REAL, apts REAL, pax_rn REAL,
+  value REAL NOT NULL DEFAULT 0,
+  generated_at TEXT, imported_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+-- Unidades de negócio no mês (Resort, Park, Azeite, Envase): valor realizado e meta
+CREATE TABLE IF NOT EXISTS tv_units (
+  month TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  value REAL,
+  goal REAL,
+  updated_by INTEGER REFERENCES users(id),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  PRIMARY KEY (month, unit)
+);
+
 -- Histórico importado das planilhas antigas
 -- Diário (planilha de divisão de cada restaurante): previsão, adultos e crianças por refeição
 CREATE TABLE IF NOT EXISTS hist_daily (

@@ -429,3 +429,25 @@ test('dois abertos e 400 pessoas ou mais: Di Giordana recebe até 300', () => {
   assert.ok(Math.abs(dg.pax - 300) <= 4, `DG ${dg.pax} de ${tot}`);
   assert.ok(restaurantsFor('janta', d)[0].share > 0.6);
 });
+
+test('relatórios do Silbeck (texto do PDF): previsão de faturamento e vendas por funcionário', () => {
+  const { parseForecast, parseSales } = require('../src/silbeck-pdf');
+  const prev = `RESORT TERMAS ROMANAS
+                                 Previsão de Faturamento/Ocupação (01/10/2026 à 31/10/2026)
+ 01/10   QUI          716        505    70,53     211         360,82    358     242   67,60    116      752,95        182.216,24
+Total              22196     12838      57,84   9358          343,03   11098   6123   55,17   4975      719,23      4.403.818,85
+* Permanência Média: 2,10 dias
+Gerado por: Silbeck - SB Hotel em 02/10/2026 13:20:36 Usuário: X`;
+  const f = parseForecast(prev);
+  assert.equal(f.month, '2026-10'); assert.equal(f.revenue, 4403818.85); assert.equal(f.apts_pct, 55.17); assert.equal(f.beds_pct, 57.84);
+  assert.equal(f.apts_occ, 6123); assert.equal(f.days.length, 1); assert.equal(f.generated_at, '2026-10-02 13:20');
+  const vend = `Lista de Walk-ins/Reservas por Funcionário (02/10/2026 à 02/10/2026)
+TISSIANO BERTOLDO ZASSO      0       0       0     0       0       0        0,00    11       0       8    22       0      16   9.627,00    11       0       8    22        0     16    9.627,00
+FLAVIO LOPES                 0       0       0     0       0       0        0,00  600        0     200 1200        0     400 165.000,00  600        0     200 1200         0    400 165.000,00
+                 Totais:     0       0       0     0       0       0        0,00  611        0     208 1222        0     416 174.627,00  611        0     208 1222         0    416 174.627,00
+                                                                                                                                                                Total Líquido:      174.627,00`;
+  const v = parseSales(vend);
+  assert.equal(v.sellers.length, 2);
+  assert.deepEqual([v.sellers[1].name, v.sellers[1].room_nights, v.sellers[1].value], ['FLAVIO LOPES', 600, 165000]);
+  assert.equal(v.total, 174627);
+});

@@ -1,6 +1,6 @@
 FROM node:22-alpine
 ENV NODE_ENV=production TZ=America/Sao_Paulo PORT=3000
-RUN apk add --no-cache tzdata
+RUN apk add --no-cache tzdata poppler-utils
 WORKDIR /app
 COPY . .
 EXPOSE 3000

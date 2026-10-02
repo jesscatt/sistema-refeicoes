@@ -154,6 +154,15 @@ Substitui as planilhas mensais **Controle semanal dos restaurantes (projeção d
 - **Administrador do restaurante:** usuário do perfil Restaurante com a opção *Administrador do restaurante* (em *Usuários*). Além das marcações, vê o *Controle do restaurante* (semanas, valores e total do mês) só do seu restaurante. Logins de teste: `511` Di Giordana, `512` Paradiso, `513` Churrascaria (senha `demo1234`).
 - **Histórico:** *Importar histórico* lê as planilhas antigas (todas as abas). O controle de faturamento traz quantidades, preços (inclusive troca de preço no meio do mês), extras e outros pontos; diferenças de fórmulas manuais da planilha entram como *Ajuste da planilha* para o total bater. A planilha de divisão traz o lançamento diário de cada restaurante.
 
+## Painel da TV
+
+Tela para a TV com o **faturamento previsto e a ocupação** do mês atual e dos três meses seguintes, as **metas do mês** (Resort, Park, Azeite, Envase e total, com o que falta para a meta) e o **ranking de vendas** (Walk-ins/Reservas) dos vendedores do cliente final (padrão: Tissiano, Nicolas, Maria, Carlos).
+
+- *Gestão → Painel da TV* (administrador, supervisão e comercial): envie os PDFs do Silbeck — **Previsão de Faturamento/Ocupação** (um por mês) e **Lista de Walk-ins/Reservas por Funcionário**. Vários arquivos de uma vez; cada envio substitui o anterior do mesmo mês.
+- Informe o realizado e a meta de Park, Azeite e Envase (o Resort usa o faturamento previsto do Silbeck quando fica em branco) e a meta de vendas.
+- Abra o **link do painel** no navegador da TV: não exige login, atualiza a cada minuto. *Gerar novo link* invalida o anterior.
+- O servidor usa o `pdftotext` (pacote `poppler-utils`, já incluído no Dockerfile).
+
 ## Controle da divisão (pagamento dos restaurantes)
 
 Página *Controle da divisão*: escolha a semana (ou qualquer período) e veja, por restaurante e refeição, o pax previsto, marcado e real, quantos adultos e crianças pagar e o valor em R$ (com os valores de *Faturamento → Valores*). A diferença para a previsão aparece em vermelho quando passa do previsto. Base do pagamento: o realizado (registros dos restaurantes). Exporta em Excel. O restaurante vê só o dele.

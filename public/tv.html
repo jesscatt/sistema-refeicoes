@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Resultados · Termas Romanas</title>
+<link rel="icon" href="/img/favicon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #021c2e; --bg2: #04263d; --card: #062f4b; --line: rgba(255,255,255,.10);
+    --ink: #f3f8fb; --muted: #9fbccd; --blue: #035b8a; --teal: #00b1c5; --green: #2fb36b; --amber: #f0b429; --red: #ef6b5b;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
+  body { font-size: clamp(12px, 0.95vw, 22px); }
+  .tv { height: 100vh; display: grid; grid-template-rows: auto auto 1fr; gap: 1.2vw; padding: 1.4vw 1.8vw; background:
+    radial-gradient(1200px 700px at 0% 0%, rgba(0,177,197,.16), transparent 60%), radial-gradient(1000px 600px at 100% 100%, rgba(3,91,138,.35), transparent 60%), var(--bg); }
+  header { display: flex; align-items: center; gap: 1.4vw; border-bottom: 1px solid var(--line); padding-bottom: 1vw; }
+  header img { height: 3.6vw; }
+  header .t { flex: 1; }
+  header h1 { margin: 0; font-size: 2.1em; font-weight: 800; letter-spacing: .01em; }
+  header .s { color: var(--muted); font-size: 1em; margin-top: .2em; }
+  .clock { text-align: right; }
+  .clock b { display: block; font-size: 2.6em; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .clock span { color: var(--muted); }
+  .months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1vw; }
+  .m { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.3vw; position: relative; overflow: hidden; }
+  .m.cur { border-color: rgba(0,177,197,.6); box-shadow: 0 0 0 2px rgba(0,177,197,.25) inset; }
+  .m .lbl { font-size: .95em; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; }
+  .m .lbl i { font-style: normal; color: var(--teal); }
+  .m .rev { font-size: 2.35em; font-weight: 800; margin: .35em 0 .2em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .m .rev small { font-size: .45em; color: var(--muted); font-weight: 600; margin-right: .2em; }
+  .occ { display: flex; align-items: center; gap: 1vw; }
+  .ring { width: 5.2vw; height: 5.2vw; flex: none; }
+  .ring circle { fill: none; stroke-width: 10; }
+  .ring .bg { stroke: rgba(255,255,255,.12); }
+  .ring .fg { stroke: var(--teal); stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .ring text { fill: var(--ink); font-size: 26px; font-weight: 800; text-anchor: middle; dominant-baseline: central; font-family: Inter, sans-serif; }
+  .occ .d { color: var(--muted); line-height: 1.55; }
+  .occ .d b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .m .na { color: var(--muted); margin-top: 1.4em; font-size: 1.1em; }
+  .bottom { display: grid; grid-template-columns: 1.15fr 1fr; gap: 1vw; min-height: 0; }
+  .panel { background: linear-gradient(180deg, var(--card), var(--bg2)); border: 1px solid var(--line); border-radius: 1vw; padding: 1.1vw 1.4vw; display: flex; flex-direction: column; min-height: 0; }
+  .panel h2 { margin: 0 0 .7vw; font-size: 1.35em; text-transform: uppercase; letter-spacing: .1em; display: flex; justify-content: space-between; align-items: baseline; }
+  .panel h2 small { font-size: .62em; color: var(--muted); letter-spacing: .04em; text-transform: none; font-weight: 500; }
+  .goal { display: grid; grid-template-columns: 8.5em 1fr 9.5em 9.5em 9.5em; align-items: center; gap: .9vw; padding: .62vw 0; border-bottom: 1px solid var(--line); }
+  .goal:last-child { border-bottom: 0; }
+  .goal .n { font-weight: 800; font-size: 1.2em; }
+  .goal .v { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 1.12em; white-space: nowrap; }
+  .goal .v small { display: block; color: var(--muted); font-weight: 500; font-size: .7em; text-transform: uppercase; letter-spacing: .08em; }
+  .goal .v.miss { color: var(--amber); }
+  .goal .v.ok { color: var(--green); }
+  .bar { height: 1.05vw; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; position: relative; }
+  .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--blue), var(--teal)); border-radius: 99px; }
+  .bar i.done { background: linear-gradient(90deg, #1f8f55, var(--green)); }
+  .bar b { position: absolute; right: .5em; top: 50%; transform: translateY(-50%); font-size: .72em; }
+  .goal.total { margin-top: .3vw; border-top: 2px solid rgba(0,177,197,.45); border-bottom: 0; }
+  .goal.total .n { color: var(--teal); }
+  .rank { flex: 1; display: flex; flex-direction: column; gap: .6vw; min-height: 0; }
+  .r { display: grid; grid-template-columns: 2.6em 1fr auto; align-items: center; gap: 1vw; background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: .8vw; padding: .75vw 1vw; }
+  .r .pos { width: 2.3em; height: 2.3em; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.15em; background: rgba(255,255,255,.1); }
+  .r:nth-child(1) .pos { background: #d4a72c; color: #1d1600; }
+  .r:nth-child(2) .pos { background: #b9c4cc; color: #1a2228; }
+  .r:nth-child(3) .pos { background: #b0773f; color: #1c1006; }
+  .r.zero .pos { background: rgba(255,255,255,.1) !important; color: var(--muted) !important; }
+  .r.zero { opacity: .7; }
+  .r .nm { font-weight: 800; font-size: 1.45em; }
+  .r .nm small { display: block; color: var(--muted); font-weight: 500; font-size: .55em; margin-top: .15em; }
+  .r .val { text-align: right; font-weight: 800; font-size: 1.55em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .r .val small { display: block; color: var(--muted); font-size: .5em; font-weight: 600; }
+  .r .rb { grid-column: 2 / 4; height: .5vw; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+  .r .rb i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--teal)); }
+  .sfoot { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8vw; margin-top: .8vw; }
+  .sfoot div { background: rgba(255,255,255,.05); border-radius: .7vw; padding: .6vw .9vw; }
+  .sfoot span { display: block; color: var(--muted); font-size: .78em; text-transform: uppercase; letter-spacing: .08em; }
+  .sfoot b { font-size: 1.3em; font-variant-numeric: tabular-nums; }
+  .err { position: fixed; inset: auto 1vw 1vw auto; background: #5c1b16; color: #ffd9d4; padding: .6em 1em; border-radius: .6em; display: none; }
+  .gate { position: fixed; inset: 0; display: grid; place-items: center; background: var(--bg); text-align: center; color: var(--muted); font-size: 1.4em; }
+  .gate b { color: var(--ink); display: block; font-size: 1.5em; margin-bottom: .4em; }
+</style>
+</head>
+<body>
+<div class="tv" id="tv" hidden>
+  <header>
+    <img src="/img/logo-branco.png" alt="Termas Romanas">
+    <div class="t"><h1>Painel de Resultados</h1><div class="s" id="sub">Faturamento, ocupação, metas e vendas</div></div>
+    <div class="clock"><b id="hora">--:--</b><span id="data"></span></div>
+  </header>
+  <section class="months" id="months"></section>
+  <section class="bottom">
+    <div class="panel"><h2>Metas do mês <small id="mes-meta"></small></h2><div id="goals"></div></div>
+    <div class="panel"><h2>Ranking de vendas <small id="periodo"></small></h2><div class="rank" id="rank"></div><div class="sfoot" id="sfoot"></div></div>
+  </section>
+</div>
+<div class="gate" id="gate" hidden><div><b>Painel de Resultados</b>Acesso não autorizado. Utilize o link do painel gerado no sistema.</div></div>
+<div class="err" id="err"></div>
+<script>
+  const MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const WD = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const brl = (v) => (v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const brl0 = (v) => (v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
+  const pct = (v, d = 1) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%');
+  const mlabel = (m) => `${MES[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
+  const dmy = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : '');
+  const key = new URLSearchParams(location.search).get('key') || '';
+
+  function ring(p) {
+    const r = 42, c = 2 * Math.PI * r, v = Math.max(0, Math.min(100, p || 0));
+    return `<svg class="ring" viewBox="0 0 100 100"><circle class="bg" cx="50" cy="50" r="${r}"/><circle class="fg" cx="50" cy="50" r="${r}" stroke-dasharray="${(c * v) / 100} ${c}"/><text x="50" y="50">${Math.round(p || 0)}%</text></svg>`;
+  }
+  function clock() {
+    const d = new Date();
+    document.getElementById('hora').textContent = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('data').textContent = `${WD[d.getDay()]}, ${d.toLocaleDateString('pt-BR')}`;
+  }
+  function draw(d) {
+    document.getElementById('months').innerHTML = d.months.map((m, i) => `<div class="m ${i === 0 ? 'cur' : ''}">
+      <div class="lbl"><span>${mlabel(m.month)}</span><i>${i === 0 ? 'mês atual' : '+' + i}</i></div>
+      ${m.revenue == null ? '<div class="na">Relatório de previsão ainda não enviado.</div>' : `
+      <div class="rev"><small>R$</small>${Number(m.revenue).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+      <div class="occ">${ring(m.apts_pct)}<div class="d">Ocupação dos apartamentos<br><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias<br>Leitos <b>${pct(m.beds_pct)}</b> · Diária média <b>${brl0(m.adr_apt)}</b></div></div>`}
+    </div>`).join('');
+    document.getElementById('mes-meta').textContent = mlabel(d.month);
+    const row = (u, cls = '') => {
+      const p = u.pct == null ? null : u.pct * 100;
+      return `<div class="goal ${cls}"><div class="n">${esc(u.label)}</div>
+        <div class="bar">${p == null ? '' : `<i class="${p >= 100 ? 'done' : ''}" style="width:${Math.min(100, p)}%"></i><b>${pct(p, 0)}</b>`}</div>
+        <div class="v">${brl0(u.value)}<small>Realizado</small></div>
+        <div class="v">${brl0(u.goal)}<small>Meta</small></div>
+        <div class="v ${u.missing === 0 ? 'ok' : u.missing ? 'miss' : ''}">${u.goal == null ? '—' : u.missing === 0 ? 'Meta atingida' : brl0(u.missing)}<small>Falta</small></div></div>`;
+    };
+    document.getElementById('goals').innerHTML = d.units.map((u) => row(u)).join('') + row({ label: 'Total', ...d.units_total }, 'total');
+    const s = d.sales, max = Math.max(1, ...s.ranking.map((r) => r.value));
+    document.getElementById('periodo').textContent = s.period_from ? `Walk-ins e reservas · ${s.period_from === s.period_to ? dmy(s.period_from) : dmy(s.period_from) + ' a ' + dmy(s.period_to)}` : 'Relatório de vendas ainda não enviado';
+    document.getElementById('rank').innerHTML = s.ranking.map((r, i) => `<div class="r ${r.value ? '' : 'zero'}"><div class="pos">${i + 1}º</div>
+      <div class="nm">${esc(r.name)}<small>${r.room_nights ? `${r.room_nights.toLocaleString('pt-BR')} room nights · ${r.apts.toLocaleString('pt-BR')} apartamentos` : 'Sem vendas no período'}</small></div>
+      <div class="val">${brl0(r.value)}</div><div class="rb"><i style="width:${(r.value / max) * 100}%"></i></div></div>`).join('');
+    document.getElementById('sfoot').innerHTML = `<div><span>Total da equipe</span><b>${brl0(s.total)}</b></div><div><span>Meta de vendas</span><b>${brl0(s.goal)}</b></div>
+      <div><span>Falta</span><b style="color:${s.missing === 0 ? 'var(--green)' : 'var(--amber)'}">${s.goal == null ? '—' : s.missing === 0 ? 'Meta atingida' : brl0(s.missing)}</b></div>`;
+    const gen = d.months.find((m) => m.generated_at);
+    document.getElementById('sub').textContent = `Faturamento, ocupação, metas e vendas${gen ? ' · dados do Silbeck de ' + dmy(gen.generated_at) + ' às ' + gen.generated_at.slice(11, 16) : ''}`;
+  }
+  async function load() {
+    try {
+      const r = await fetch('/api/tv/data' + (key ? '?key=' + encodeURIComponent(key) : ''), { credentials: 'same-origin' });
+      if (r.status === 401) { document.getElementById('tv').hidden = true; document.getElementById('gate').hidden = false; return; }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      draw(await r.json());
+      document.getElementById('tv').hidden = false; document.getElementById('gate').hidden = true;
+      document.getElementById('err').style.display = 'none';
+    } catch (e) {
+      const el = document.getElementById('err'); el.textContent = 'Sem conexão com o sistema. Nova tentativa em instantes.'; el.style.display = 'block';
+    }
+  }
+  clock(); setInterval(clock, 10000);
+  load(); setInterval(load, 60000);
+  // recarrega a página a cada 6 horas (atualizações do sistema)
+  setTimeout(() => location.reload(), 6 * 3600 * 1000);
+</script>
+</body>
+</html>
