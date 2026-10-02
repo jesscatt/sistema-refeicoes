@@ -55,4 +55,4 @@ for (let i = 0; i < 90; i++) {
 }
 if (hasData) console.log('Demo: banco já tem reservas; só os usuários de teste foram conferidos.');
 else { const r = upsertReservations(records, { source: 'excel' }); console.log(`Demo: ${r.inserted} quartos de exemplo criados.`); }
-console.log('Usuários: admin/admin1234 · dev/dev12345 · supervisao, refeicao, recepcao, digiordana, paradiso, maestro, comercial (senha demo1234)');
+console.log('Logins: 100 admin (admin1234) · 101 dev (dev12345) · 200 supervisão · 300 refeição · 400 recepção · 501 Di Giordana · 502 Paradiso · 503 Maestro · 600 comercial (senha demo1234)');

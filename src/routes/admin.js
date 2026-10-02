@@ -16,7 +16,7 @@ route('GET', '/api/users/next-code', { roles: ADMIN }, () => ({ code: nextLoginC
 
 function validCode(v, exceptId = 0) {
   const c = String(v ?? '').trim();
-  if (!/^\d{3,8}$/.test(c)) throw new HttpError(400, 'Número de acesso: somente números, de 3 a 8 dígitos.');
+  if (!/^\d{3,8}$/.test(c)) throw new HttpError(400, 'Login: somente números, de 3 a 8 dígitos.');
   if (db.prepare('SELECT 1 FROM users WHERE login_code = ? AND id != ?').get(c, exceptId)) throw new HttpError(409, `O número ${c} já é de outro usuário.`);
   return c;
 }

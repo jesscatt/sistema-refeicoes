@@ -23,7 +23,7 @@ route('POST', '/api/login/lookup', { auth: false }, ({ body, ip }) => {
   cur.n++; lookups.set(ip, cur);
   if (cur.n > 30) throw new HttpError(429, 'Muitas consultas. Aguarde alguns minutos.');
   const u = findLogin(body.code);
-  if (!u || !u.active) throw new HttpError(404, 'Número de acesso não encontrado.');
+  if (!u || !u.active) throw new HttpError(404, 'Login não encontrado.');
   const rest = u.restaurant_id ? db.prepare('SELECT name FROM restaurants WHERE id = ?').get(u.restaurant_id) : null;
   const roles = { admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição', recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial' };
   return { code: u.login_code, name: u.name, role: roles[u.role] + (rest ? ' · ' + rest.name : '') };
@@ -39,7 +39,7 @@ route('POST', '/api/login', { auth: false }, ({ body, res, ip }) => {
     const n = (a && a.until > Date.now() - 15 * 60e3 ? a.n : 0) + 1;
     attempts.set(key, { n, until: n >= 5 ? Date.now() + 5 * 60e3 : 0 });
     audit(u || null, 'login_falhou', { username }, ip);
-    throw new HttpError(401, 'Número de acesso ou senha incorretos.');
+    throw new HttpError(401, 'Login ou senha incorretos.');
   }
   attempts.delete(key);
   createSession(res, u.id);

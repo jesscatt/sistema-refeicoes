@@ -64,44 +64,48 @@ function renderLogin(msg = '') {
   const showMsg = (t) => { const m = body.querySelector('#login-msg'); m.classList.toggle('hidden', !t); m.querySelector('span').textContent = t || ''; };
   const msgHtml = (t) => `<div class="banner danger ${t ? '' : 'hidden'}" id="login-msg">${icon('alert')}<span>${esc(t)}</span></div>`;
 
-  // Passo 1: número de acesso
+  // Um só formulário: ao digitar o número (3+ dígitos) aparece o nome do usuário e o campo de senha
   function step1(code = '', err = '') {
     body.innerHTML = `<form id="login-form" autocomplete="on">
-        <label class="f">Número de acesso<input class="input login-code" name="code" inputmode="numeric" autocomplete="username" placeholder="Ex.: 300" value="${esc(code)}" required autofocus></label>
+        <label class="f">Login<input class="input login-code" name="code" inputmode="numeric" autocomplete="username" placeholder="" value="${esc(code)}" required autofocus></label>
+        <div id="who"></div>
+        <label class="f hidden" id="pwf">Senha<input class="input" name="password" type="password" autocomplete="current-password"></label>
         ${msgHtml(err)}
         <button class="btn primary lg" type="submit">Continuar</button>
       </form>`;
-    const f = body.querySelector('form'), inp = f.querySelector('input'), btn = f.querySelector('button');
-    inp.focus(); inp.select();
-    f.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const f = body.querySelector('form'), inp = f.querySelector('[name=code]'), pw = f.querySelector('[name=password]');
+    const btn = f.querySelector('button[type=submit]'), who = f.querySelector('#who'), pwf = f.querySelector('#pwf');
+    let user = null, deb, seq = 0;
+    const reset = () => { user = null; who.innerHTML = ''; pwf.classList.add('hidden'); pw.required = false; btn.textContent = 'Continuar'; };
+    async function lookup(focusPw) {
       const v = inp.value.trim();
-      if (/^\d+$/.test(v) && v.length < 3) { showMsg('O número de acesso tem pelo menos 3 dígitos.'); return; }
-      btn.disabled = true;
-      try { step2(await api('POST', '/api/login/lookup', { code: v })); }
-      catch (err) { showMsg(err.message); btn.disabled = false; inp.select(); }
-    });
-  }
-
-  // Passo 2: aparece o nome do usuário e pede a senha
-  function step2(u, err = '') {
-    const ini = (String(u.name).split(/\s+/).filter((x) => x.length > 2).length ? String(u.name).split(/\s+/).filter((x) => x.length > 2) : [String(u.name)]).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
-    body.innerHTML = `<form id="login-form" autocomplete="on">
-        <div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)} · nº ${esc(u.code)}</small></div>
-          <button type="button" class="btn sm" id="not-me">Não sou eu</button></div>
-        <input type="hidden" name="code" autocomplete="username" value="${esc(u.code)}">
-        <label class="f">Senha<input class="input" name="password" type="password" autocomplete="current-password" required></label>
-        ${msgHtml(err)}
-        <button class="btn primary lg" type="submit">Entrar</button>
-      </form>`;
-    const f = body.querySelector('form'), btn = f.querySelector('button[type=submit]');
-    f.querySelector('[name=password]').focus();
-    f.querySelector('#not-me').onclick = () => step1('');
+      if (v.length < 3) { reset(); return; }
+      const my = ++seq;
+      try {
+        const u = await api('POST', '/api/login/lookup', { code: v });
+        if (my !== seq) return;
+        user = { ...u, typed: v }; showMsg('');
+        const ini = (String(u.name).split(/\s+/).filter((x) => x.length > 2).length ? String(u.name).split(/\s+/).filter((x) => x.length > 2) : [String(u.name)]).slice(0, 2).map((x) => x[0]).join('').toUpperCase();
+        who.innerHTML = `<div class="login-who"><span class="av">${esc(ini)}</span><div class="grow"><b>${esc(u.name)}</b><small>${esc(u.role)}</small></div></div>`;
+        pwf.classList.remove('hidden'); pw.required = true; btn.textContent = 'Entrar';
+        if (focusPw) pw.focus();
+      } catch (e) {
+        if (my !== seq) return;
+        reset(); if (e.status !== 404 || focusPw) showMsg(e.message);
+      }
+    }
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\s/g, ''); reset(); showMsg(''); clearTimeout(deb); deb = setTimeout(() => lookup(false), 350); });
+    if (code) lookup(false);
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!user || user.typed !== inp.value.trim()) {
+        if (/^\d+$/.test(inp.value.trim()) && inp.value.trim().length < 3) { showMsg('O login tem pelo menos 3 números.'); return; }
+        clearTimeout(deb); await lookup(true); return;
+      }
+      if (!pw.value) { pw.focus(); return; }
       btn.disabled = true;
-      try { await api('POST', '/api/login', { code: u.code, password: f.querySelector('[name=password]').value }); await boot(); }
-      catch (err2) { showMsg(err2.message); btn.disabled = false; const p = f.querySelector('[name=password]'); p.value = ''; p.focus(); }
+      try { await api('POST', '/api/login', { code: user.code, password: pw.value }); await boot(); }
+      catch (err2) { showMsg(err2.message); btn.disabled = false; pw.value = ''; pw.focus(); }
     });
   }
 
