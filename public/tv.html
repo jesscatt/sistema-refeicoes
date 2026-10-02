@@ -50,7 +50,7 @@
   .panel h2 { color: var(--blue); margin: 0 0 .45em; font-size: 1.3em; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; align-items: baseline; gap: 1em; white-space: nowrap; }
   .panel h2 small { font-size: .72em; color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   /* Metas: unidade | progresso | percentual | previsão | falta */
-  #goals { flex: 1; display: grid; grid-auto-rows: auto; align-content: space-between; min-height: 0; }
+  #goals { flex: 1; display: grid; grid-template-rows: auto; grid-auto-rows: minmax(0, 1fr); min-height: 0; }
   .goal { display: grid; grid-template-columns: 6.4em minmax(0,1fr) 2.6em 8.6em 8.6em; column-gap: .8em; align-items: center; gap: .8em; padding: .32em 0; border-bottom: 1px solid var(--line); }
   .goal.head { padding: 0 0 .25em; border-bottom: 2px solid var(--line); }
   .goal.head div { color: var(--muted); font-size: .8em; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; text-align: right; }
