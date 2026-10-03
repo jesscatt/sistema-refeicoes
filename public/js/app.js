@@ -5,6 +5,7 @@ const root = document.getElementById('root');
 // Menu por perfil (o servidor confere as mesmas permissões em cada rota)
 const NAV = [
   { path: 'painel', label: 'Painel geral', icon: 'home', roles: PAGE_ROLES.painel },
+  { path: 'tvadmin', label: 'Painel da TV', icon: 'chart', roles: PAGE_ROLES.tvadmin },
   { sep: 'Operação' },
   { path: 'servico', label: 'Registro de refeições', icon: 'checklist', roles: PAGE_ROLES.servico },
   { path: 'distribuicao', label: 'Distribuição de hóspedes', icon: 'split', roles: PAGE_ROLES.distribuicao },
@@ -15,7 +16,6 @@ const NAV = [
   { path: 'trocas', label: 'Trocas de apartamento', icon: 'swap', roles: PAGE_ROLES.trocas },
   { sep: 'Gestão' },
   { path: 'financeiro', label: 'Controle de faturamento', labelFor: { rest_admin: 'Controle do restaurante' }, icon: 'sheet', roles: PAGE_ROLES.financeiro },
-  { path: 'tvadmin', label: 'Painel da TV', icon: 'chart', roles: PAGE_ROLES.tvadmin },
   { path: 'semana', label: 'Apuração semanal', icon: 'coin', roles: PAGE_ROLES.semana },
   { path: 'controle', label: 'Previsto x realizado', icon: 'sheet', roles: PAGE_ROLES.controle },
   { path: 'faturamento', label: 'Faturamento', icon: 'coin', roles: PAGE_ROLES.faturamento },
