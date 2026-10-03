@@ -140,9 +140,25 @@
     .sfoot span { font-size: .68em; }
     .sfoot b { font-size: 1.05em; }
   }
-  @media (max-width: 380px) {
-    .months { grid-template-columns: 1fr; }
+  /* Celular em pé: um mês por linha, compacto (valor à esquerda, ocupação à direita) */
+  @media (max-width: 600px) {
+    .months { grid-template-columns: 1fr; gap: 8px; }
+    .m { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lbl ring" "rev ring" "det ring"; align-items: center; column-gap: 12px; padding: 10px 14px; }
+    .m .lbl { grid-area: lbl; font-size: .78em; }
+    .m .rev { grid-area: rev; font-size: 1.7em; margin: .1em 0 .1em; }
+    .m .occ { display: contents; }
+    .m .occ .ring { grid-area: ring; }
+    .m .occ .d { grid-area: det; }
+    .m .occ .d div { display: inline; }
+    .m .occ .d div + div::before { content: ' · '; }
+    .m .occ .d div.big { display: none; }
+    .m .occ .d div.big + div::before { content: none; }
+    .m .na { grid-column: 1 / -1; margin-top: .3em; font-size: .9em; }
+    .ring { width: 3.6em; height: 3.6em; }
+    .occ .d { font-size: .74em; }
     .sfoot { grid-template-columns: 1fr 1fr; }
+    .sfoot div:first-child:nth-last-child(3) { grid-column: 1 / -1; } /* total geral em linha inteira */
+    header .s { display: none; }
   }
 </style>
 </head>
