@@ -1,8 +1,8 @@
-import { get, post, put, del, esc, icon, fail, toast, modal, state, MEALS, MEAL_LABEL, confirmBox } from '../ui.js';
+import { get, post, put, del, esc, icon, fail, toast, modal, state, MEALS, MEAL_LABEL, confirmBox, ROLE_LABEL } from '../ui.js';
 
 export async function render(el) {
   async function load() {
-    const [meta, keys, integ] = await Promise.all([get('/api/meta'), get('/api/api-keys'), get('/api/settings/integration')]);
+    const [meta, keys, integ, net] = await Promise.all([get('/api/meta'), get('/api/api-keys'), get('/api/settings/integration'), get('/api/settings/network')]);
     state.meta = meta;
     const base = location.origin;
     el.innerHTML = `
@@ -33,6 +33,26 @@ export async function render(el) {
           <label class="f" style="max-width:220px">Principal recebe até (pessoas)<input class="input" type="number" min="1" id="t-cap" value="${meta.two_open?.main_cap ?? 300}"></label>
           <p class="muted small" style="margin:0 0 10px;flex-basis:100%">Com apenas dois restaurantes abertos no almoço ou no jantar, o principal (Di Giordana) fica com o percentual indicado; com movimento a partir do número informado, recebe até a quantidade indicada e o restante segue para o outro restaurante.</p>
           <p class="muted small" style="margin:0 0 10px">Adultos + crianças. Vale para importação, reservas, rooming list, Comercial e API do site: apartamentos acima do limite são recusados.</p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><h3 class="grow">Acesso somente pela rede interna</h3>
+          <span class="badge ${net.enabled && !net.env_off ? 'ok' : ''}">${net.env_off ? 'Desligado pela variável IP_RESTRICT_OFF' : net.enabled ? 'Restrição ativa' : 'Restrição desligada'}</span>
+          <button class="btn sm primary" id="save-net">Salvar</button></div>
+        <div style="padding:14px 20px">
+          <p class="muted small" style="margin-top:0">O sistema está na internet. Com a restrição ativa, ele só funciona a partir dos IPs públicos da rede do resort (o endereço com que a internet do resort sai). Fora da rede — 4G, casa, outra empresa — aparece a mensagem <i>“Acesso permitido somente pela rede interna do resort”</i>. A integração com o site e com o Silbeck por chave de API continua funcionando.</p>
+          <div class="banner ${net.your_ip_listed ? 'ok' : 'warn'}" style="margin-bottom:12px">${icon(net.your_ip_listed ? 'check' : 'alert')}<span>Seu IP atual: <b>${esc(net.your_ip)}</b> — ${net.your_ip_listed ? 'está na lista.' : 'não está na lista.'} ${net.your_ip_listed ? '' : '<button class="btn sm" id="add-my-ip" style="margin-left:6px">Incluir meu IP</button>'}</span></div>
+          <div class="grid g2" style="gap:14px">
+            <label class="f" style="margin:0">IPs da rede interna (um por linha; aceita faixa, ex.: 177.10.20.0/24)<textarea class="input" id="net-ips" rows="4" placeholder="177.10.20.30">${esc(net.allowlist)}</textarea></label>
+            <div>
+              <div class="small" style="font-weight:700;margin-bottom:6px">Liberados também fora da rede</div>
+              ${['admin', 'supervisor', 'refeicao', 'recepcao', 'restaurante', 'agencia'].map((r) => `<label class="row" style="gap:6px;margin:2px 0"><input type="checkbox" data-exempt="${r}" ${net.exempt_roles.includes(r) ? 'checked' : ''}> ${esc(ROLE_LABEL[r] || r)}</label>`).join('')}
+              <label class="row" style="gap:6px;margin:8px 0 2px"><input type="checkbox" id="net-tv" ${net.exempt_tv ? 'checked' : ''}> Painel da TV pelo link (sem login)</label>
+            </div>
+          </div>
+          <label class="row" style="gap:8px;margin-top:12px;font-weight:700"><input type="checkbox" id="net-on" ${net.enabled ? 'checked' : ''}> Ativar a restrição à rede interna</label>
+          <p class="muted small" style="margin:8px 0 0">Se o IP da internet do resort mudar e ninguém conseguir entrar, crie no Railway a variável <b>IP_RESTRICT_OFF</b> com o valor <b>1</b> para desligar a restrição, entre e atualize a lista.</p>
         </div>
       </div>
 
@@ -103,6 +123,14 @@ GET  ${esc(base)}/api/v1/reservas/{numero}</pre>
           if (s !== 100 && s !== 0) toast(`Atenção: ${MEAL_LABEL[m]} soma ${s}% (a divisão é proporcional mesmo assim).`, 'notif');
         }
         toast('Restaurantes salvos.'); load();
+      } catch (e) { fail(e); }
+    };
+    const addIp = el.querySelector('#add-my-ip');
+    if (addIp) addIp.onclick = () => { const t = el.querySelector('#net-ips'); t.value = (t.value.trim() ? t.value.trim() + '\n' : '') + net.your_ip; };
+    el.querySelector('#save-net').onclick = async () => {
+      try {
+        await put('/api/settings/network', { enabled: el.querySelector('#net-on').checked, allowlist: el.querySelector('#net-ips').value, exempt_roles: [...el.querySelectorAll('[data-exempt]:checked')].map((c) => c.dataset.exempt), exempt_tv: el.querySelector('#net-tv').checked });
+        toast('Acesso pela rede interna salvo.'); load();
       } catch (e) { fail(e); }
     };
     el.querySelector('#save-pol').onclick = async () => {

@@ -159,7 +159,7 @@
     <div class="panel"><h2>Ranking de vendas <small id="periodo"></small></h2><div class="groups" id="groups"></div><div class="sfoot" id="sfoot"></div></div>
   </section>
 </div>
-<div class="gate" id="gate" hidden><div><b>Painel de Resultados</b>Acesso não autorizado. Utilize o link do painel gerado no sistema.</div></div>
+<div class="gate" id="gate" hidden><div><b>Painel de Resultados</b><span id="gate-msg">Acesso não autorizado. Utilize o link do painel gerado no sistema.</span></div></div>
 <div class="err" id="err"></div>
 <script>
   const MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -220,7 +220,11 @@
   async function load() {
     try {
       const r = await fetch('/api/tv/data' + (key ? '?key=' + encodeURIComponent(key) : ''), { credentials: 'same-origin' });
-      if (r.status === 401) { document.getElementById('tv').hidden = true; document.getElementById('gate').hidden = false; return; }
+      if (r.status === 401 || r.status === 403) {
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 403 && j.error) document.getElementById('gate-msg').textContent = j.error;
+        document.getElementById('tv').hidden = true; document.getElementById('gate').hidden = false; return;
+      }
       if (!r.ok) throw new Error('HTTP ' + r.status);
       draw(await r.json());
       document.getElementById('tv').hidden = false; document.getElementById('gate').hidden = true;

@@ -1,4 +1,5 @@
 'use strict';
+const guard = require('../ipguard');
 const { route, HttpError, createSession, destroySession } = require('../http');
 const { db, verifyPassword, hashPassword, audit } = require('../db');
 const { BOARDS, MEAL_LABEL } = require('../util');
@@ -24,6 +25,7 @@ route('POST', '/api/login/lookup', { auth: false }, ({ body, ip }) => {
   if (cur.n > 30) throw new HttpError(429, 'Muitas consultas. Aguarde alguns minutos.');
   const u = findLogin(body.code);
   if (!u || !u.active) throw new HttpError(404, 'Login não encontrado.');
+  if (!guard.userAllowed(ip, u)) throw new HttpError(403, guard.MSG, { network: true }); // fora da rede: não revela o nome
   const rest = u.restaurant_id ? db.prepare('SELECT name FROM restaurants WHERE id = ?').get(u.restaurant_id) : null;
   const roles = { admin: 'Administrador', supervisor: 'Supervisão', refeicao: 'Refeição', recepcao: 'Recepção', restaurante: 'Restaurante', agencia: 'Comercial' };
   return { code: u.login_code, name: u.name, role: roles[u.role] + (rest ? ' · ' + rest.name : '') + (u.role === 'restaurante' && u.rest_admin ? ' · administrador' : '') };
@@ -42,6 +44,10 @@ route('POST', '/api/login', { auth: false }, ({ body, res, ip }) => {
     throw new HttpError(401, 'Login ou senha incorretos.');
   }
   attempts.delete(key);
+  if (!guard.userAllowed(ip, u)) {
+    audit(u, 'login_bloqueado_rede', { ip }, ip);
+    throw new HttpError(403, guard.MSG, { network: true });
+  }
   createSession(res, u.id);
   db.prepare("UPDATE users SET last_login_at = datetime('now','localtime') WHERE id = ?").run(u.id);
   audit(u, 'login', null, ip);

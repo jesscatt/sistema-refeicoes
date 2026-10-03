@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { db } = require('./db');
+const guard = require('./ipguard');
 
 const SESSION_HOURS = Number(process.env.SESSION_HOURS || 14);
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
@@ -105,7 +106,9 @@ function serveStatic(req, res, root) {
 }
 
 function clientIp(req) {
-  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress;
+  // último endereço do X-Forwarded-For = o que o proxy da hospedagem (Railway) recebeu; não pode ser forjado pelo navegador
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return guard.normIp(xff.length ? xff[xff.length - 1] : req.socket.remoteAddress);
 }
 
 /*
@@ -125,12 +128,19 @@ async function handle(req, res, publicDir, apiKeyAuth) {
   match.keys.forEach((k, i) => (params[k] = decodeURIComponent(m[i + 1])));
   const ctx = { req, res, params, query: Object.fromEntries(url.searchParams), ip: clientIp(req), user: null, body: null };
   try {
+    // Restrição à rede interna do resort (a API com chave não é afetada)
+    if (!match.opts.apiKey && match.opts.auth === false && !guard.internal(ctx.ip)) {
+      const open = ['/api/health', '/api/login', '/api/login/lookup'].includes(url.pathname)
+        || (url.pathname === '/api/tv/data' && (guard.tvExempt() || guard.userAllowed(ctx.ip, sessionUser(req))));
+      if (!open) throw new HttpError(403, guard.MSG, { network: true });
+    }
     if (match.opts.apiKey) {
       ctx.apiClient = apiKeyAuth(req);
       if (!ctx.apiClient) throw new HttpError(401, 'Chave de API inválida ou ausente (cabeçalho X-API-Key).');
     } else if (match.opts.auth !== false) {
       ctx.user = sessionUser(req);
       if (!ctx.user) throw new HttpError(401, 'Sessão expirada. Entre novamente.');
+      if (!guard.userAllowed(ctx.ip, ctx.user) && url.pathname !== '/api/logout') throw new HttpError(403, guard.MSG, { network: true });
       if (match.opts.roles && !match.opts.roles.includes(ctx.user.role)) throw new HttpError(403, 'Seu perfil não tem acesso a esta função.');
       // Agência e Cliente final só acessam as rotas liberadas para o portal (as próprias reservas)
       if (PORTAL_ROLES.includes(ctx.user.role) && !match.opts.portal && !(match.opts.roles && match.opts.roles.includes(ctx.user.role))) {
@@ -158,4 +168,4 @@ async function handle(req, res, publicDir, apiKeyAuth) {
   }
 }
 
-module.exports = { route, handle, HttpError, createSession, destroySession, send, PORTAL_ROLES };
+module.exports = { route, handle, HttpError, createSession, destroySession, send, PORTAL_ROLES, clientIp };

@@ -197,6 +197,10 @@ O cabeçalho pode estar em qualquer uma das primeiras linhas; as colunas são re
 
 Antes de gravar aparece a conferência linha a linha (nova, alterada, sem mudança, erro, troca de quarto). Há um modelo em *Importar → Modelo de planilha*.
 
+## Acesso somente pela rede interna
+
+Em *Configurações → Acesso somente pela rede interna* o administrador informa os **IPs públicos da internet do resort** (um por linha; aceita faixa CIDR, ex.: `177.10.20.0/24`) e ativa a restrição. Fora desses IPs o sistema responde *“Acesso permitido somente pela rede interna do resort”* (o login nem mostra o nome do usuário). Exceções opcionais: perfis liberados fora da rede e o painel da TV pelo link. A API com chave (site e Silbeck) não é afetada. O IP considerado é o último do cabeçalho `X-Forwarded-For` (o que o proxy do Railway recebeu), que o navegador não consegue forjar. Para não trancar o administrador, a restrição só é ativada com o IP atual dele na lista (ou com o perfil Administrador liberado). **Emergência:** a variável de ambiente `IP_RESTRICT_OFF=1` desliga a restrição.
+
 ## API para o site e o Silbeck
 
 Crie uma chave em *Configurações → Chaves de API* e envie no cabeçalho `X-API-Key`.

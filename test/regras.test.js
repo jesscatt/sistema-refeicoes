@@ -494,3 +494,14 @@ test('API do Silbeck: ocupação vira a previsão do mês e as reservas viram ve
   assert.deepEqual(s.sellers.map((x) => [x.name, x.value, x.room_nights, x.apts]), [['TISSIANO SILVA', 3000, 3, 1], ['FLAVIO', 1000, 4, 2]]);
   assert.equal(s.total, 4000);
 });
+
+test('rede interna: IP exato, faixa CIDR e IPv6', () => {
+  const g = require('../src/ipguard');
+  const list = ['177.10.20.30', '200.1.1.0/24', '2804:14c::1'].map(g.parseEntry);
+  assert.ok(g.ipInList('177.10.20.30', list));
+  assert.ok(g.ipInList('::ffff:200.1.1.254', list));
+  assert.ok(!g.ipInList('200.1.2.1', list));
+  assert.ok(g.ipInList('2804:14C::1', list));
+  assert.equal(g.parseEntry('300.1.1.1'), null);
+  assert.equal(g.parseEntry('rede'), null);
+});

@@ -300,7 +300,7 @@ async function boot() {
   try {
     state.me = await get('/api/me');
     state.meta = await get('/api/meta');
-  } catch { renderLogin(); return; }
+  } catch (e) { renderLogin(e && e.data && e.data.network ? e.message : undefined); return; }
   renderShell();
   route();
 }

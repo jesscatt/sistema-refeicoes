@@ -181,3 +181,35 @@ route('PUT', '/api/settings/integration', { roles: ADMIN }, ({ body, user, ip })
   audit(user, 'integracao_configurada', { silbeck_url: body.silbeck_url }, ip);
   return { ok: true };
 });
+
+// ---------- Acesso somente pela rede interna (IP) ----------
+const guard = require('../ipguard');
+route('GET', '/api/settings/network', { roles: ADMIN }, ({ ip }) => ({
+  enabled: getSetting('ip_restrict', '0') === '1',
+  env_off: process.env.IP_RESTRICT_OFF === '1',
+  allowlist: getSetting('ip_allowlist', ''),
+  exempt_roles: guard.exemptRoles(),
+  exempt_tv: guard.tvExempt(),
+  your_ip: ip,
+  your_ip_listed: guard.ipInList(ip),
+}));
+
+route('PUT', '/api/settings/network', { roles: ADMIN }, ({ body, user, ip }) => {
+  const lines = String(body.allowlist ?? getSetting('ip_allowlist', '')).split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean);
+  const bad = lines.filter((l) => guard.parseEntry(l) === null);
+  if (bad.length) throw new HttpError(400, `Endereço inválido: ${bad.join(', ')}. Use um IP (ex.: 177.10.20.30) ou uma faixa (ex.: 177.10.20.0/24).`);
+  const exempt = (Array.isArray(body.exempt_roles) ? body.exempt_roles : guard.exemptRoles()).filter((r) => ROLES.includes(r));
+  const enable = body.enabled === undefined ? getSetting('ip_restrict', '0') === '1' : !!body.enabled;
+  const entries = lines.map(guard.parseEntry).filter(Boolean);
+  if (enable && !entries.length) throw new HttpError(400, 'Informe ao menos um IP da rede interna antes de ativar a restrição.');
+  // não deixa o próprio administrador se trancar do lado de fora
+  if (enable && !guard.ipInList(ip, entries) && !exempt.includes(user.role)) {
+    throw new HttpError(400, `Seu IP atual (${ip}) não está na lista. Inclua-o ou libere o perfil Administrador fora da rede para não perder o acesso.`);
+  }
+  setSetting('ip_allowlist', lines.join('\n'));
+  setSetting('ip_exempt_roles', exempt.join(','));
+  if (body.exempt_tv !== undefined) setSetting('ip_exempt_tv', body.exempt_tv ? '1' : '0');
+  setSetting('ip_restrict', enable ? '1' : '0');
+  audit(user, 'rede_interna_configurada', { ativo: enable, ips: lines, perfis_liberados: exempt, tv_liberada: body.exempt_tv }, ip);
+  return { ok: true };
+});
