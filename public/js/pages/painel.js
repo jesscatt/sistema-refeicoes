@@ -14,7 +14,6 @@ export async function render(el) {
         <div class="grow"><h1>Painel geral</h1><p>${esc(dayLabel(d.date))} · divisão Di Giordana 60% · Paradiso 20% · Maestro 20% (café 60/40; com dois restaurantes abertos, 60/40)</p></div>
         ${dateBar({ date: st.date })}
       </div>
-      ${openCard(rd)}
       <div class="stats">
         <div class="card stat"><div class="k">Hospedados</div><div class="v">${d.inhouse.adults + d.inhouse.children}<small>pessoas · ${d.inhouse.reservas} reservas</small></div></div>
         <div class="card stat"><div class="k">Adultos / Crianças</div><div class="v">${d.inhouse.adults}<small>ADT</small> ${d.inhouse.children}<small>CHD</small></div></div>
@@ -23,6 +22,7 @@ export async function render(el) {
           ${['CM', 'MAP', 'MAPA', 'FAP', 'SA'].filter((b) => boards[b]).map((b) => `<span class="row" style="gap:4px">${boardTag(b)} <b>${boards[b].n}</b></span>`).join('') || '<span class="muted">—</span>'}
         </div></div>
       </div>
+      ${openCard(rd)}
       <div class="grid g3">
         ${d.meals.map((m) => mealCard(m, d.date)).join('')}
       </div>
@@ -57,7 +57,7 @@ export async function render(el) {
       <div class="table-wrap"><table class="t week">
         <thead><tr><th>Restaurante</th>${wk.days.map((d) => `<th class="${d === wk.today ? 'today' : ''}">${wdOf(d)}<div>${br(d)}${d === wk.today ? ' · hoje' : ''}</div></th>`).join('')}</tr></thead>
         <tbody>${wk.restaurants.map((r) => `<tr>
-          <td class="wr"><span class="row" style="gap:8px;flex-wrap:nowrap">${restDot(r)}<b>${esc(r.name)}</b></span></td>
+          <td class="wr" style="--rc:${esc(r.color || '#035b8a')}"><span class="wr-name">${esc(r.name)}</span></td>
           ${r.days.map((d) => `<td class="${d.date === wk.today ? 'today' : ''}"><div class="wk-meals">${d.meals.map((m) => {
             const cls = !m.serves ? 'na' : m.open ? 'on' : 'off';
             const can = edit && m.serves && d.date >= wk.today;
