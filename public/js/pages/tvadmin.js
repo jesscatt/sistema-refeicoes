@@ -20,6 +20,12 @@ export async function render(el) {
         <a class="btn primary" href="${esc(link)}" target="_blank" rel="noopener">${icon('home')} Abrir painel da TV</a>
       </div>
 
+      <div class="card pad" style="margin-bottom:16px">
+        <h3 style="margin-top:0">Link do painel para a TV</h3>
+        <p class="muted small">Abra este endereço no navegador da TV. O painel não exige login e se atualiza sozinho a cada minuto. Ao gerar um novo link, o anterior deixa de funcionar.</p>
+        <div class="row" style="gap:8px"><input class="input" id="link" value="${esc(link)}" readonly style="max-width:720px"><button class="btn" id="copy">Copiar link</button><button class="btn danger" id="newkey">Gerar novo link</button></div>
+      </div>
+
       <div class="card" style="margin-bottom:16px">
         <div class="card-head">${icon('upload')}<h3 class="grow">Envio dos relatórios do Silbeck</h3></div>
         <div style="padding:0 18px 16px">
@@ -93,11 +99,7 @@ export async function render(el) {
             <span class="grow muted small">Desmarque <b>Exibir</b> para desativar uma unidade: ela deixa de aparecer no painel da TV e de entrar nos totais, em todos os meses.</span><button class="btn primary" id="usave">Salvar ${mesLabel(row.month)}</button></div>`; })()}
       </div>
 
-      <div class="card pad">
-        <h3 style="margin-top:0">Link do painel para a TV</h3>
-        <p class="muted small">Abra este endereço no navegador da TV. O painel não exige login e se atualiza sozinho a cada minuto. Ao gerar um novo link, o anterior deixa de funcionar.</p>
-        <div class="row" style="gap:8px"><input class="input" id="link" value="${esc(link)}" readonly style="max-width:720px"><button class="btn" id="copy">Copiar link</button><button class="btn danger" id="newkey">Gerar novo link</button></div>
-      </div>`;
+`;
 
     const sbRes = (html) => { el.querySelector('#sb-res').innerHTML = html; };
     const sbSave = el.querySelector('#sb-save');
