@@ -3,7 +3,8 @@
 // (Resort, Parque, Azeite, Terceiros, Envase) e ranking de vendas por canal (cliente final e agências).
 const crypto = require('node:crypto');
 const { route, HttpError } = require('../http');
-const { db, audit, getSetting, setSetting } = require('../db');
+const { db, tx, audit, getSetting, setSetting } = require('../db');
+const silbeck = require('../silbeck-api');
 const { todayISO, monthRange, addDays } = require('../util');
 const { parseSilbeckPdf } = require('../silbeck-pdf');
 
@@ -110,25 +111,111 @@ route('GET', '/api/tv/admin', { roles: TV_EDIT }, () => {
   };
 });
 
+function saveForecast(r, filename) {
+  db.prepare(`INSERT INTO tv_forecast(month, period_from, period_to, revenue, apts_total, apts_occ, apts_pct, beds_total, beds_occ, beds_pct, adr_apt, adr_bed, stay_avg, days, generated_at, imported_at, filename)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now','localtime'), ?)
+    ON CONFLICT(month) DO UPDATE SET period_from = excluded.period_from, period_to = excluded.period_to, revenue = excluded.revenue, apts_total = excluded.apts_total, apts_occ = excluded.apts_occ,
+      apts_pct = excluded.apts_pct, beds_total = excluded.beds_total, beds_occ = excluded.beds_occ, beds_pct = excluded.beds_pct, adr_apt = excluded.adr_apt, adr_bed = excluded.adr_bed,
+      stay_avg = excluded.stay_avg, days = excluded.days, generated_at = excluded.generated_at, imported_at = excluded.imported_at, filename = excluded.filename`)
+    .run(r.month, r.period_from, r.period_to, r.revenue, r.apts_total, r.apts_occ, r.apts_pct, r.beds_total, r.beds_occ, r.beds_pct, r.adr_apt, r.adr_bed, r.stay_avg, JSON.stringify(r.days || []), r.generated_at, filename);
+}
+function saveSales(r) {
+  const batch = (db.prepare('SELECT MAX(batch) b FROM tv_sales').get().b || 0) + 1;
+  const ins = db.prepare('INSERT INTO tv_sales(batch, period_from, period_to, seller, room_nights, apts, pax_rn, value, generated_at) VALUES (?,?,?,?,?,?,?,?,?)');
+  tx(() => { for (const s of r.sellers) ins.run(batch, r.period_from, r.period_to, s.name, s.room_nights, s.apts, s.pax_rn, s.value, r.generated_at); });
+  return batch;
+}
+
 route('POST', '/api/tv/upload', { roles: TV_EDIT, raw: 15 * 1024 * 1024 }, ({ body, req, user, ip }) => {
   const filename = decodeURIComponent(req.headers['x-filename'] || '');
   let r;
   try { r = parseSilbeckPdf(body); } catch (e) { throw new HttpError(400, e.message); }
   if (r.type === 'previsao') {
-    db.prepare(`INSERT INTO tv_forecast(month, period_from, period_to, revenue, apts_total, apts_occ, apts_pct, beds_total, beds_occ, beds_pct, adr_apt, adr_bed, stay_avg, days, generated_at, imported_at, filename)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, datetime('now','localtime'), ?)
-      ON CONFLICT(month) DO UPDATE SET period_from = excluded.period_from, period_to = excluded.period_to, revenue = excluded.revenue, apts_total = excluded.apts_total, apts_occ = excluded.apts_occ,
-        apts_pct = excluded.apts_pct, beds_total = excluded.beds_total, beds_occ = excluded.beds_occ, beds_pct = excluded.beds_pct, adr_apt = excluded.adr_apt, adr_bed = excluded.adr_bed,
-        stay_avg = excluded.stay_avg, days = excluded.days, generated_at = excluded.generated_at, imported_at = excluded.imported_at, filename = excluded.filename`)
-      .run(r.month, r.period_from, r.period_to, r.revenue, r.apts_total, r.apts_occ, r.apts_pct, r.beds_total, r.beds_occ, r.beds_pct, r.adr_apt, r.adr_bed, r.stay_avg, JSON.stringify(r.days), r.generated_at, filename);
+    saveForecast(r, filename);
     audit(user, 'tv_previsao_importada', { mes: r.month, faturamento: r.revenue, ocupacao: r.apts_pct, arquivo: filename }, ip);
     return { type: r.type, month: r.month, revenue: r.revenue, apts_pct: r.apts_pct, beds_pct: r.beds_pct };
   }
-  const batch = (db.prepare('SELECT MAX(batch) b FROM tv_sales').get().b || 0) + 1;
-  const ins = db.prepare('INSERT INTO tv_sales(batch, period_from, period_to, seller, room_nights, apts, pax_rn, value, generated_at) VALUES (?,?,?,?,?,?,?,?,?)');
-  for (const s of r.sellers) ins.run(batch, r.period_from, r.period_to, s.name, s.room_nights, s.apts, s.pax_rn, s.value, r.generated_at);
+  saveSales(r);
   audit(user, 'tv_vendas_importadas', { periodo: [r.period_from, r.period_to], vendedores: r.sellers.length, total: r.total, arquivo: filename }, ip);
   return { type: r.type, period_from: r.period_from, period_to: r.period_to, sellers: r.sellers.length, total: r.total };
+});
+
+// ---------- API do Silbeck: busca automática ----------
+const ADMIN_ONLY = ['admin'];
+const nowLocal = () => { const d = new Date(); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+
+async function syncSilbeckTv(user = null) {
+  const ms = months4();
+  const today = todayISO();
+  const stamp = nowLocal();
+  const out = { months: [], sales: null };
+  for (const m of ms) {
+    const f = await silbeck.forecastMonth(m);
+    f.generated_at = stamp;
+    saveForecast(f, 'API do Silbeck');
+    out.months.push({ month: m, revenue: f.revenue, apts_pct: f.apts_pct });
+  }
+  const from = ms[0] + '-01';
+  const s = await silbeck.salesPeriod(from, today);
+  s.generated_at = stamp;
+  saveSales(s);
+  out.sales = { period_from: from, period_to: today, sellers: s.sellers.length, total: s.total };
+  const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  const summary = `${out.months.map((x) => `${MES[Number(x.month.slice(5)) - 1]}/${x.month.slice(0, 4)}: R$ ${Math.round(x.revenue || 0).toLocaleString('pt-BR')}`).join(' · ')} · vendas: ${s.sellers.length} funcionários, R$ ${Math.round(s.total).toLocaleString('pt-BR')}`;
+  setSetting('silbeck_tv_last_sync', stamp);
+  setSetting('silbeck_tv_last_result', 'OK · ' + summary);
+  audit(user, 'tv_silbeck_sincronizado', out);
+  return out;
+}
+
+let lastTvSync = 0, tvSyncing = false;
+function tvSilbeckTick() {
+  if (getSetting('silbeck_tv_auto', '0') !== '1' || tvSyncing) return;
+  const min = Math.max(10, Number(getSetting('silbeck_tv_interval_min', '30')) || 30);
+  if (Date.now() - lastTvSync < min * 60e3) return;
+  lastTvSync = Date.now(); tvSyncing = true;
+  syncSilbeckTv().catch((e) => { setSetting('silbeck_tv_last_result', 'Erro: ' + e.message); console.error('[silbeck-tv]', e.message); }).finally(() => { tvSyncing = false; });
+}
+
+route('GET', '/api/tv/silbeck', { roles: TV_EDIT }, () => {
+  const c = silbeck.config();
+  return {
+    url: c.url, client_id: c.client_id, has_secret: !!c.client_secret,
+    auto: getSetting('silbeck_tv_auto', '0') === '1', interval_min: Number(getSetting('silbeck_tv_interval_min', '30')) || 30,
+    last_sync: getSetting('silbeck_tv_last_sync', null), last_result: getSetting('silbeck_tv_last_result', null),
+  };
+});
+
+route('PUT', '/api/tv/silbeck', { roles: ADMIN_ONLY }, ({ body, user, ip }) => {
+  if (body.url !== undefined) {
+    const u = String(body.url).trim();
+    if (u && !/^https?:\/\/[^\s]+$/i.test(u)) throw new HttpError(400, 'Endereço da API inválido.');
+    setSetting('silbeck_api_url', u || silbeck.DEFAULT_URL);
+  }
+  if (body.client_id !== undefined) setSetting('silbeck_client_id', String(body.client_id).trim());
+  if (body.client_secret) setSetting('silbeck_client_secret', String(body.client_secret).trim()); // em branco = mantém o atual
+  if (body.auto !== undefined) setSetting('silbeck_tv_auto', body.auto ? '1' : '0');
+  if (body.interval_min !== undefined) setSetting('silbeck_tv_interval_min', String(Math.max(10, Math.min(1440, Number(body.interval_min) || 30))));
+  silbeck.resetToken();
+  audit(user, 'tv_silbeck_configurado', { url: body.url, client_id: body.client_id, segredo_alterado: !!body.client_secret, auto: body.auto, intervalo: body.interval_min }, ip);
+  return { ok: true };
+});
+
+// Testa a conexão: gera o token e consulta a ocupação de hoje (nada é gravado)
+route('POST', '/api/tv/silbeck/test', { roles: TV_EDIT }, async () => {
+  const t0 = Date.now();
+  try {
+    silbeck.resetToken();
+    await silbeck.token();
+    const d = todayISO();
+    const raw = await silbeck.request('GET', '/v1/Ocupacao', { tipoLista: 0, dataInicial: d, dataFinal: d });
+    const f = silbeck.mapForecast(raw, d.slice(0, 7));
+    return { ok: true, ms: Date.now() - t0, today: { apts_occ: f.apts_occ, apts_pct: f.apts_pct, revenue: f.revenue }, sample: JSON.stringify(raw).slice(0, 1500) };
+  } catch (e) { throw new HttpError(502, e.message); }
+});
+
+route('POST', '/api/tv/silbeck/sync', { roles: TV_EDIT }, async ({ user }) => {
+  try { return await syncSilbeckTv(user); } catch (e) { setSetting('silbeck_tv_last_result', 'Erro: ' + e.message); throw new HttpError(502, e.message); }
 });
 
 route('PUT', '/api/tv/units', { roles: TV_EDIT }, ({ body, user, ip }) => {
@@ -169,4 +256,4 @@ route('PUT', '/api/tv/settings', { roles: TV_EDIT }, ({ body, user, ip }) => {
   return { ok: true, key: tvKey() };
 });
 
-module.exports = { dashboard };
+module.exports = { dashboard, tvSilbeckTick, syncSilbeckTv };

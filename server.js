@@ -14,7 +14,7 @@ require('./src/routes/admin');
 require('./src/routes/ia');
 require('./src/routes/portal');
 require('./src/routes/finance');
-require('./src/routes/tv');
+const { tvSilbeckTick } = require('./src/routes/tv');
 const { apiKeyAuth, silbeckTick } = require('./src/routes/integration');
 const { handle } = require('./src/http');
 const { startScheduler } = require('./src/publish');
@@ -35,6 +35,7 @@ if (require.main === module) {
     console.log(`Sistema de Refeições rodando em http://localhost:${PORT}  (fuso ${process.env.TZ})`);
     startScheduler();
     setInterval(silbeckTick, 60 * 1000);
+    setInterval(tvSilbeckTick, 60 * 1000);
   });
 }
 

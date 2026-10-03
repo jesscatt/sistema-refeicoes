@@ -1,4 +1,4 @@
-import { get, put, api, esc, icon, fail, toast, confirmBox, dt } from '../ui.js';
+import { get, put, post, api, esc, icon, fail, toast, confirmBox, dt, hasRole } from '../ui.js';
 
 // Gestão do painel da TV: envio dos relatórios do Silbeck (PDF), metas das unidades e vendedores
 const MES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -9,8 +9,8 @@ const dmy = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') : ''
 const fmt = (v) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export async function render(el) {
-  let d, mi = 0;
-  async function load() { d = await get('/api/tv/admin'); draw(); }
+  let d, sb, mi = 0;
+  async function load() { [d, sb] = await Promise.all([get('/api/tv/admin'), get('/api/tv/silbeck')]); draw(); }
 
   function draw() {
     const link = `${location.origin}/tv.html?key=${encodeURIComponent(d.key)}`;
@@ -26,6 +26,30 @@ export async function render(el) {
           <p class="muted small" style="margin-top:0">Envie em PDF a <b>Previsão de Faturamento/Ocupação</b> (um arquivo por mês: atual e três seguintes) e a <b>Lista de Walk-ins/Reservas por Funcionário</b>. É possível selecionar vários arquivos de uma vez; cada novo envio substitui o anterior do mesmo mês ou do relatório de vendas.</p>
           <div class="row" style="gap:10px"><input type="file" id="pdfs" accept="application/pdf,.pdf" multiple class="input" style="max-width:520px"><button class="btn primary" id="send">${icon('upload')} Enviar relatórios</button></div>
           <div id="res" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head">${icon('swap')}<h3 class="grow">Integração com a API do Silbeck</h3>
+          <span class="badge ${sb.auto ? 'ok' : ''}">${sb.auto ? `Busca automática a cada ${sb.interval_min} min` : 'Busca automática desligada'}</span></div>
+        <div style="padding:0 18px 16px">
+          <p class="muted small" style="margin-top:0">Com a API, o painel busca sozinho a <b>previsão de faturamento e ocupação</b> dos quatro meses (consulta Ocupação) e as <b>vendas por funcionário</b> do mês, pelas reservas cadastradas no período (consulta Lista de Reservas). O envio de PDFs continua disponível.</p>
+          ${hasRole(['admin']) ? `<div class="grid g2" style="gap:10px">
+            <label class="f" style="margin:0">Endereço da API<input class="input" id="sb-url" value="${esc(sb.url)}"></label>
+            <label class="f" style="margin:0">client_id<input class="input" id="sb-id" value="${esc(sb.client_id || '')}" autocomplete="off"></label>
+            <label class="f" style="margin:0">client_secret<input class="input" id="sb-secret" type="password" autocomplete="new-password" placeholder="${sb.has_secret ? '•••••••• (salvo — deixe em branco para manter)' : 'informe o client_secret'}"></label>
+            <div class="row" style="gap:12px;align-items:flex-end">
+              <label class="row" style="gap:6px;margin:0"><input type="checkbox" id="sb-auto" ${sb.auto ? 'checked' : ''}> Buscar automaticamente a cada</label>
+              <input class="input" id="sb-int" type="number" min="10" max="1440" value="${sb.interval_min}" style="width:90px"> <span class="muted small">minutos</span>
+            </div>
+          </div>` : '<p class="small muted">Somente o administrador altera as credenciais da API.</p>'}
+          <div class="row" style="gap:8px;margin-top:12px">
+            ${hasRole(['admin']) ? '<button class="btn" id="sb-save">Salvar configuração</button>' : ''}
+            <button class="btn" id="sb-test">Testar conexão</button>
+            <button class="btn primary" id="sb-sync">Buscar dados agora</button>
+          </div>
+          <div class="small" style="margin-top:10px">${sb.last_sync ? `Última busca: <b>${esc(dt(sb.last_sync))}</b> · ` : ''}<span style="color:${String(sb.last_result || '').startsWith('Erro') ? 'var(--danger)' : 'inherit'}">${esc(sb.last_result || 'Nenhuma busca realizada.')}</span></div>
+          <div id="sb-res" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -75,6 +99,29 @@ export async function render(el) {
         <div class="row" style="gap:8px"><input class="input" id="link" value="${esc(link)}" readonly style="max-width:720px"><button class="btn" id="copy">Copiar link</button><button class="btn danger" id="newkey">Gerar novo link</button></div>
       </div>`;
 
+    const sbRes = (html) => { el.querySelector('#sb-res').innerHTML = html; };
+    const sbSave = el.querySelector('#sb-save');
+    if (sbSave) sbSave.onclick = async () => {
+      try {
+        await put('/api/tv/silbeck', { url: el.querySelector('#sb-url').value, client_id: el.querySelector('#sb-id').value, client_secret: el.querySelector('#sb-secret').value, auto: el.querySelector('#sb-auto').checked, interval_min: el.querySelector('#sb-int').value });
+        toast('Configuração da API salva.'); load();
+      } catch (e) { fail(e); }
+    };
+    el.querySelector('#sb-test').onclick = async () => {
+      sbRes('<span class="muted small">Testando conexão…</span>');
+      try {
+        const r = await post('/api/tv/silbeck/test');
+        sbRes(`<div class="banner ok">${icon('check')}<span>Conexão realizada${r.ms >= 1000 ? ` em ${(r.ms / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} s` : ''}. Hoje: ${r.today.apts_occ ?? '—'} apartamentos ocupados (${pct(r.today.apts_pct)}) · ${brl(r.today.revenue)} em diárias.</span></div><details class="small" style="margin-top:6px"><summary>Resposta recebida da API</summary><pre style="white-space:pre-wrap;max-height:220px;overflow:auto">${esc(r.sample)}</pre></details>`);
+      } catch (e) { sbRes(`<div class="banner danger">${icon('alert')}<span>${esc(e.message)}</span></div>`); }
+    };
+    el.querySelector('#sb-sync').onclick = async () => {
+      sbRes('<span class="muted small">Buscando dados no Silbeck… pode levar alguns segundos.</span>');
+      try {
+        const r = await post('/api/tv/silbeck/sync');
+        await load();
+        sbRes(`<div class="banner ok">${icon('check')}<span>Dados atualizados: ${r.months.map((m) => `${mesLabel(m.month)} ${brl(m.revenue)}`).join(' · ')} · vendas de ${dmy(r.sales.period_from)} a ${dmy(r.sales.period_to)}: ${r.sales.sellers} funcionários, ${brl(r.sales.total)}.</span></div>`);
+      } catch (e) { sbRes(`<div class="banner danger">${icon('alert')}<span>${esc(e.message)}</span></div>`); }
+    };
     el.querySelector('#send').onclick = async () => {
       const files = [...el.querySelector('#pdfs').files];
       if (!files.length) { toast('Selecione os arquivos PDF.', 'err'); return; }

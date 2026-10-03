@@ -482,3 +482,15 @@ test('Lista de Reservas do Silbeck: só as linhas de reserva são validadas; hó
   assert.equal(a.guests, 'PALOMA VALANDRO\nEBERSON SILVA\nTHEODORO SILVA');
   assert.deepEqual([p.rows[1].checkin, p.rows[1].checkout], ['2026-10-10', '2026-10-12']);
 });
+
+test('API do Silbeck: ocupação vira a previsão do mês e as reservas viram vendas por funcionário', () => {
+  const { mapForecast, mapSales } = require('../src/silbeck-api');
+  const f = mapForecast({ result: [{ listaOcupacao: [{ data: '2026-10-01', apto: { total: 200, percentual: 55 }, totalDiaria: 1000 }], aptoTotal: 6123, aptoTotalPercentual: 55.17, paxTotal: 12000, paxTotalPercentual: 41.5, aptoTotalDiariaMedia: 719.2, totalDiaria: 4403818.85, mediaPermanencia: 2.1 }] }.result[0], '2026-10');
+  assert.deepEqual([f.revenue, f.apts_occ, f.apts_pct, f.apts_total, f.adr_apt, f.days.length], [4403818.85, 6123, 55.17, 11098, 719.2, 1]);
+  const s = mapSales({ listaReserva: [
+    { nomeUsuario: 'Tissiano Silva', listaReservaItem: [{ status: 2, qtdeApartamento: 1, dataEntrada: '2026-10-10', dataSaida: '2026-10-13', quantidadeAdulto: 2, valorTotalDiaria: 3000 }, { status: 3, dataEntrada: '2026-10-10', dataSaida: '2026-10-12', valorTotalDiaria: 999 }] },
+    { nomeUsuario: 'FLAVIO', listaReservaItem: [{ status: 2, qtdeApartamento: 2, dataEntrada: '2026-11-01', dataSaida: '2026-11-03', listaData: [{ ValorDiaria: 500 }, { valorDiaria: 500 }] }] },
+  ] }, '2026-10-01', '2026-10-03');
+  assert.deepEqual(s.sellers.map((x) => [x.name, x.value, x.room_nights, x.apts]), [['TISSIANO SILVA', 3000, 3, 1], ['FLAVIO', 1000, 4, 2]]);
+  assert.equal(s.total, 4000);
+});
