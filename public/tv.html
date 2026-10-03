@@ -185,7 +185,7 @@
   }
   function draw(d) {
     document.getElementById('months').innerHTML = d.months.map((m, i) => `<div class="m ${i === 0 ? 'cur' : ''}">
-      <div class="lbl"><span>${mlabel(m.month)}</span><i>${i === 0 ? 'mês atual' : '+' + i}</i></div>
+      <div class="lbl"><span>${mlabel(m.month)}</span>${i === 0 ? '<i>mês atual</i>' : ''}</div>
       ${m.revenue == null ? '<div class="na">Relatório de previsão ainda não enviado.</div>' : `
       <div class="rev"><small>R$</small>${Number(m.revenue).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
       <div class="occ">${ring(m.apts_pct)}<div class="d"><div class="big">Ocupação: ${pct(m.apts_pct)}</div><div><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias</div><div>Diária média <b>${brl0(m.adr_apt)}</b></div></div></div>`}
