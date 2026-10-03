@@ -149,10 +149,7 @@
     .m .occ { display: contents; }
     .m .occ .ring { grid-area: ring; }
     .m .occ .d { grid-area: det; }
-    .m .occ .d div { display: inline; }
-    .m .occ .d div + div::before { content: ' · '; }
     .m .occ .d div.big { display: none; }
-    .m .occ .d div.big + div::before { content: none; }
     .m .na { grid-column: 1 / -1; margin-top: .3em; font-size: .9em; }
     .ring { width: 3.6em; height: 3.6em; }
     .occ .d { font-size: .74em; }
@@ -204,7 +201,7 @@
       <div class="lbl"><span>${mlabel(m.month)}</span>${i === 0 ? '<i>mês atual</i>' : ''}</div>
       ${m.revenue == null ? '<div class="na">Relatório de previsão ainda não enviado.</div>' : `
       <div class="rev"><small>R$</small>${Number(m.revenue).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
-      <div class="occ">${ring(m.apts_pct)}<div class="d"><div class="big">Ocupação: ${pct(m.apts_pct)}</div><div><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias</div><div>Diária média <b>${brl0(m.adr_apt)}</b></div></div></div>`}
+      <div class="occ">${ring(m.apts_pct)}<div class="d"><div class="big">Ocupação: ${pct(m.apts_pct)}</div><div><b>${(m.apts_occ ?? 0).toLocaleString('pt-BR')}</b> de ${(m.apts_total ?? 0).toLocaleString('pt-BR')} diárias</div><div>Diária média <b>${brl0(m.adr_apt)}</b></div>${m.ticket ? `<div>Ticket médio <b>${brl0(m.ticket)}</b></div>` : ''}</div></div>`}
     </div>`).join('');
     document.getElementById('mes-meta').textContent = mlabel(d.month);
     const row = (u, cls = '') => {

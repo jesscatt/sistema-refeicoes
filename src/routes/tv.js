@@ -52,7 +52,9 @@ function dashboard() {
   const fc = Object.fromEntries(db.prepare(`SELECT * FROM tv_forecast WHERE month IN (${ms.map(() => '?').join(',')})`).all(...ms).map((r) => [r.month, r]));
   const months = ms.map((m) => {
     const f = fc[m];
-    return f ? { month: m, revenue: f.revenue, apts_pct: f.apts_pct, beds_pct: f.beds_pct, apts_occ: f.apts_occ, apts_total: f.apts_total, adr_apt: f.adr_apt, stay_avg: f.stay_avg, generated_at: f.generated_at } : { month: m, revenue: null };
+    return f ? { month: m, revenue: f.revenue, apts_pct: f.apts_pct, beds_pct: f.beds_pct, apts_occ: f.apts_occ, apts_total: f.apts_total, adr_apt: f.adr_apt, stay_avg: f.stay_avg, beds_occ: f.beds_occ,
+      // ticket médio = valor total ÷ ocupação total (hóspedes por noite)
+      ticket: f.revenue && f.beds_occ ? Math.round((f.revenue / f.beds_occ) * 100) / 100 : null, generated_at: f.generated_at } : { month: m, revenue: null };
   });
   // Unidades do mês atual (planilha de metas): valor real emitido em notas + antecipações/outras receitas x previsão
   const saved = Object.fromEntries(db.prepare('SELECT * FROM tv_units WHERE month = ?').all(cur).map((r) => [r.unit, r]));
